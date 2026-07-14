@@ -22,7 +22,7 @@ import {
   RecentPost,
   TopUser,
   PlatformAnalytics,
-} from "./pages/dashboard.api";
+} from "../pages/dashboard.api";
 import { LinearGradient } from "expo-linear-gradient";
 
 // ── Stat Card ────────────────────────────────────────────────────────────────
