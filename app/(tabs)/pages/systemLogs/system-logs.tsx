@@ -126,12 +126,12 @@ export default function SystemLogsScreen() {
             </Box>
             <Text style={styles.dateText}>{formattedDate}</Text>
           </HStack>
-          <Text className="text-typography-900 font-semibold text-sm mt-2">
+          <Text className="text-typography-100 font-semibold text-sm mt-2">
             By: {item.first_name} {item.last_name} ({item.role_name || "User"})
           </Text>
           <HStack className="justify-between items-center mt-2">
             <Text className="text-typography-400 text-xs">IP: {item.ip_address || "—"}</Text>
-            <Text className="text-primary-700 text-xs font-semibold">View JSON ➔</Text>
+            <Text className="text-primary-400 text-xs font-semibold">View JSON ➔</Text>
           </HStack>
         </VStack>
       </TouchableOpacity>

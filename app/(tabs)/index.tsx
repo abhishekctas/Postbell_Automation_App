@@ -79,7 +79,7 @@ function StatusBadge({ status }: { status: string }) {
 function SectionHeader({ title, onRefresh }: { title: string; onRefresh?: () => void }) {
   return (
     <HStack className="justify-between items-center mb-3">
-      <Heading size="sm" className="text-typography-900 font-bold">
+      <Heading size="sm" className="text-typography-100 font-bold">
         {title}
       </Heading>
       {onRefresh && (

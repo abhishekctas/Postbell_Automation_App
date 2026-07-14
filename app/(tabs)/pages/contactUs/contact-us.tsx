@@ -143,7 +143,7 @@ export default function ContactUsScreen() {
         <VStack space="xs">
           <HStack className="justify-between items-start">
             <Box style={{ flex: 1, marginRight: 8 }}>
-              <Text className="text-typography-900 font-bold text-base" numberOfLines={1}>
+              <Text className="text-typography-100 font-bold text-base" numberOfLines={1}>
                 {item.subject || "No Subject"}
               </Text>
               <Text className="text-typography-400 text-xs mt-1">🕐 {formattedDate}</Text>
@@ -285,7 +285,7 @@ export default function ContactUsScreen() {
                 <Box>
                   <Text style={styles.detailLabel}>Message</Text>
                   <Box style={styles.messageBox}>
-                    <Text className="text-typography-900 text-sm leading-5">{selectedRequest?.message}</Text>
+                    <Text className="text-typography-100 text-sm leading-5">{selectedRequest?.message}</Text>
                   </Box>
                 </Box>
               </VStack>

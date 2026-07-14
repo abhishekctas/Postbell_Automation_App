@@ -15,7 +15,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { Heading } from "@/components/ui/heading";
 import { Button, ButtonText } from "@/components/ui/button";
-import { getRoles, createRole, updateRole, deleteRole, Role } from "./user-access.api";
+import { getRoles, createRole, updateRole, deleteRole, Role } from "../roleList/roles-management.api";
 
 export default function RolesManagementScreen() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -128,7 +128,7 @@ export default function RolesManagementScreen() {
             <Box style={styles.card}>
               <HStack className="justify-between items-start">
                 <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-                  <Text className="text-typography-900 font-bold text-base">{item.name}</Text>
+                  <Text className="text-typography-100 font-bold text-base">{item.name}</Text>
                   <Text className="text-typography-500 text-sm">{(item as any).description || "No description provided."}</Text>
                 </VStack>
               </HStack>

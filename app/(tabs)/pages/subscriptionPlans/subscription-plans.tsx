@@ -202,7 +202,7 @@ export default function SubscriptionPlansScreen() {
         <HStack className="justify-between items-start">
           <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
             <HStack space="sm" className="items-center">
-              <Text className="text-typography-900 font-bold text-base">{item.name}</Text>
+              <Text className="text-typography-100 font-bold text-base">{item.name}</Text>
               {(item.is_popular_monthly || item.is_popular_annual) && (
                 <Box style={styles.popularBadge}>
                   <Text style={styles.popularBadgeText}>POPULAR</Text>

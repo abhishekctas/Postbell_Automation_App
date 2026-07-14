@@ -1,2 +1,2 @@
-import PostsScreen from "./pages/posts";
+import PostsScreen from "./pages/posts/posts";
 export default PostsScreen;

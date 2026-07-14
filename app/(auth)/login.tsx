@@ -246,7 +246,7 @@ export default function LoginScreen() {
                     autoCorrect={false}
                     onSubmitEditing={handleRequestOtp}
                     returnKeyType="done"
-                    className="text-typography-900"
+                    className="text-typography-100"
                   />
                 </Input>
                 {!!emailError && (

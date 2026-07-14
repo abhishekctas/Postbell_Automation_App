@@ -160,39 +160,39 @@ export default function TabsLayout() {
             </Box>
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.drawerList}>
-              <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/festival-auto-post")}>
+              <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/festivalAutoPost/festival-auto-post")}>
                 <Text style={styles.drawerItemText}>📅  Festival Auto Posts</Text>
               </TouchableOpacity>
               {user?.loginType !== "customer" && (
                 <>
-                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/blogs")}>
+                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/blogs/blogs")}>
                     <Text style={styles.drawerItemText}>✍️  Blog Management</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/features")}>
-                    <Text style={styles.drawerItemText}>⚡  Features CMS</Text>
+                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/features/features")}>
+                    <Text style={styles.drawerItemText}>⚡  Features</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/subscription-plans")}>
+                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/subscriptionPlans/subscription-plans")}>
                     <Text style={styles.drawerItemText}>💳  Subscription Plans</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/customers")}>
-                    <Text style={styles.drawerItemText}>👥  Customer Directory</Text>
+                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/customers/customers")}>
+                    <Text style={styles.drawerItemText}>👥  Customers</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/customer-subscriptions")}>
+                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/customerSubscription/customer-subscriptions")}>
                     <Text style={styles.drawerItemText}>🧾  Customer Subscriptions</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/contact-us")}>
-                    <Text style={styles.drawerItemText}>📥  Contact Inquiries</Text>
+                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/contactUs/contact-us")}>
+                    <Text style={styles.drawerItemText}>📥  Contact </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/user-access")}>
+                  <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/userList/user-access")}>
                     <Text style={styles.drawerItemText}>🔒  Users & Access</Text>
                   </TouchableOpacity>
                 </>
               )}
-              <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/general-settings")}>
+              <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/generalSetting/general-settings")}>
                 <Text style={styles.drawerItemText}>⚙️  General Settings</Text>
               </TouchableOpacity>
               {user?.loginType !== "customer" && (
-                <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/system-logs")}>
+                <TouchableOpacity style={styles.drawerItem} onPress={() => handleNavigate("/pages/systemLogs/system-logs")}>
                   <Text style={styles.drawerItemText}>📊  System Logs</Text>
                 </TouchableOpacity>
               )}

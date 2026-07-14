@@ -142,7 +142,7 @@ export default function CustomerSubscriptionsScreen() {
       <Box style={styles.card}>
         <HStack className="justify-between items-start mb-2">
           <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-            <Text className="text-typography-900 font-bold text-base">{customerName}</Text>
+            <Text className="text-typography-100 font-bold text-base">{customerName}</Text>
             <Text className="text-typography-500 text-sm">{customerEmail}</Text>
           </VStack>
           <Box style={[styles.statusBadge, { backgroundColor: statusMeta.bg }]}>
@@ -153,7 +153,7 @@ export default function CustomerSubscriptionsScreen() {
         </HStack>
 
         <Box style={styles.planSection}>
-          <Text className="text-typography-900 font-semibold text-sm">
+          <Text className="text-typography-100 font-semibold text-sm">
             Plan: {planName} ({price} / {planCycle})
           </Text>
           <Text className="text-typography-500 text-xs mt-1">

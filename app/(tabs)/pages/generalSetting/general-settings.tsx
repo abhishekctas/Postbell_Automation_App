@@ -177,7 +177,7 @@ export default function GeneralAccessScreen() {
 
           {activeTab === 0 && (
             <Box style={styles.card}>
-              <Heading size="md" className="text-typography-900 mb-4">Company Identity</Heading>
+              <Heading size="md" className="text-typography-100 mb-4">Company Identity</Heading>
               <VStack space="md">
                 <VStack space="xs">
                   <Text style={styles.label}>Company Name *</Text>
@@ -205,7 +205,7 @@ export default function GeneralAccessScreen() {
 
           {activeTab === 1 && (
             <Box style={styles.card}>
-              <Heading size="md" className="text-typography-900 mb-4">Social Links</Heading>
+              <Heading size="md" className="text-typography-100 mb-4">Social Links</Heading>
               <VStack space="md">
                 <VStack space="xs">
                   <Text style={styles.label}>Facebook URL</Text>
@@ -229,7 +229,7 @@ export default function GeneralAccessScreen() {
 
           {activeTab === 2 && (
             <Box style={styles.card}>
-              <Heading size="md" className="text-typography-900 mb-4">AI API Configuration</Heading>
+              <Heading size="md" className="text-typography-100 mb-4">AI API Configuration</Heading>
               <VStack space="md">
                 <VStack space="xs">
                   <Text style={styles.label}>Gemini API Key</Text>
@@ -245,7 +245,7 @@ export default function GeneralAccessScreen() {
 
           {activeTab === 3 && (
             <Box style={styles.card}>
-              <Heading size="md" className="text-typography-900 mb-4">Advanced Settings</Heading>
+              <Heading size="md" className="text-typography-100 mb-4">Advanced Settings</Heading>
               <VStack space="md">
                 <VStack space="xs">
                   <Text style={styles.label}>Default Hashtags (comma separated)</Text>
@@ -281,7 +281,7 @@ export default function GeneralAccessScreen() {
 
           {activeTab === 4 && (
             <Box style={styles.card}>
-              <Heading size="md" className="text-typography-900 mb-4">Footer Information</Heading>
+              <Heading size="md" className="text-typography-100 mb-4">Footer Information</Heading>
               <VStack space="md">
                 <VStack space="xs">
                   <Text style={styles.label}>Footer Company Name</Text>

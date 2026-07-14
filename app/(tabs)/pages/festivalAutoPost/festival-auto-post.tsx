@@ -234,7 +234,7 @@ export default function FestivalAutoPostScreen() {
             </Box>
           )}
           <VStack space="xs" style={{ flex: 1 }}>
-            <Text className="text-typography-900 font-bold text-base">{item.name}</Text>
+            <Text className="text-typography-100 font-bold text-base">{item.name}</Text>
             <Text className="text-typography-500 text-sm">
               Date: {formattedDate} {item.category ? `• ${item.category}` : ""}
             </Text>

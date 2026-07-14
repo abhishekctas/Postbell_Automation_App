@@ -16,7 +16,8 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { Heading } from "@/components/ui/heading";
 import { Button, ButtonText } from "@/components/ui/button";
-import { listUsers, createUser, updateUser, deleteUser, getRoles, User, Role } from "./user-access.api";
+import { listUsers, createUser, updateUser, deleteUser, User } from "./user-access.api";
+import { getRoles, Role } from "../roleList/roles-management.api";
 
 export default function UsersManagementScreen() {
   const [users, setUsers] = useState<User[]>([]);
@@ -189,7 +190,7 @@ export default function UsersManagementScreen() {
     <Box style={styles.userCard}>
       <HStack className="justify-between items-start">
         <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-          <Text className="text-typography-900 font-bold text-base">
+          <Text className="text-typography-100 font-bold text-base">
             {item.first_name} {item.last_name}
           </Text>
           <Text className="text-typography-500 text-sm">{item.email}</Text>
@@ -335,7 +336,7 @@ export default function UsersManagementScreen() {
 
       <Modal visible={showRoleSelect} transparent animationType="fade" onRequestClose={() => setShowRoleSelect(false)}>
         <Box style={styles.modalOverlay}>
-          <Box style={[styles.modalContainer, { maxWidth: 300 }]}> 
+          <Box style={[styles.modalContainer, { maxWidth: 300 }]}>
             <Heading size="sm" className="mb-4">
               Select Role
             </Heading>

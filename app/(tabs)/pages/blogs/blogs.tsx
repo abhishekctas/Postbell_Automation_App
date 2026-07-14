@@ -18,18 +18,20 @@ import { Heading } from "@/components/ui/heading";
 import { Button, ButtonText } from "@/components/ui/button";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  listFeatures,
-  createFeature,
-  updateFeature,
-  deleteFeature,
-  updateFeatureStatus,
-  Feature,
-  FeaturePoint,
-} from "./features.api";
+  listBlogs,
+  createBlog,
+  updateBlog,
+  deleteBlog,
+  updateBlogStatus,
+  getAllTags,
+  BlogPost,
+  Tag,
+} from "./blogs.api";
 import { router } from "expo-router";
 
-export default function FeaturesScreen() {
-  const [features, setFeatures] = useState<Feature[]>([]);
+export default function BlogsScreen() {
+  const [blogs, setBlogs] = useState<BlogPost[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -39,20 +41,25 @@ export default function FeaturesScreen() {
 
   // Form State
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
+  const [editingBlog, setEditingBlog] = useState<BlogPost | null>(null);
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
-  const [description, setDescription] = useState("");
-  const [order, setOrder] = useState("0");
-  const [status, setStatus] = useState<number>(1); // 1 = Active, 0 = Inactive
+  const [excerpt, setExcerpt] = useState("");
+  const [body, setBody] = useState("");
+  const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+  const [showTagSelect, setShowTagSelect] = useState(false);
+  const [status, setStatus] = useState<number>(1); // 1 = Published, 0 = Draft
 
-  // Feature Points sub-state
-  const [featurePoints, setFeaturePoints] = useState<FeaturePoint[]>([]);
-  const [pointTitle, setPointTitle] = useState("");
-  const [pointDesc, setPointDesc] = useState("");
-  const [pointIcon, setPointIcon] = useState("");
+  const fetchTagsList = async () => {
+    try {
+      const res = await getAllTags();
+      setTags(res);
+    } catch (e) {
+      console.log("Failed to fetch blog tags:", e);
+    }
+  };
 
-  const fetchFeaturesList = useCallback(
+  const fetchBlogsList = useCallback(
     async (pg = 1, reset = true) => {
       if (reset) setLoading(true);
       try {
@@ -65,20 +72,19 @@ export default function FeaturesScreen() {
           queryParams.append("search", search.trim());
         }
 
-        const res = await listFeatures(queryParams.toString());
-        // Backend returns either direct array or { data, pagination }
-        const items = res?.data || (Array.isArray(res) ? res : []);
+        const res = (await listBlogs(queryParams.toString())) as any;
+        const items = res?.data || (Array.isArray(res) ? res : (res?.results || []));
 
         if (reset) {
-          setFeatures(items);
+          setBlogs(items);
         } else {
-          setFeatures((prev) => [...prev, ...items]);
+          setBlogs((prev) => [...prev, ...items]);
         }
 
         setHasMore(items.length >= 10);
         setPage(pg);
       } catch (err: any) {
-        Alert.alert("Error", err.message || "Failed to load features.");
+        Alert.alert("Error", err.message || "Failed to load blogs.");
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -89,66 +95,42 @@ export default function FeaturesScreen() {
   );
 
   useEffect(() => {
-    fetchFeaturesList(1, true);
+    fetchTagsList();
+    fetchBlogsList(1, true);
   }, [search]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchFeaturesList(1, true);
+    fetchBlogsList(1, true);
   };
 
   const loadMore = () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
-    fetchFeaturesList(page + 1, false);
+    fetchBlogsList(page + 1, false);
   };
 
   const handleOpenAdd = () => {
-    setEditingFeature(null);
+    setEditingBlog(null);
     setTitle("");
     setSlug("");
-    setDescription("");
-    setOrder("0");
+    setExcerpt("");
+    setBody("");
+    setSelectedTag(tags[0] || null);
     setStatus(1);
-    setFeaturePoints([]);
-    setPointTitle("");
-    setPointDesc("");
-    setPointIcon("");
     setModalVisible(true);
   };
 
-  const handleOpenEdit = (feature: Feature) => {
-    setEditingFeature(feature);
-    setTitle(feature.title || "");
-    setSlug(feature.slug || "");
-    setDescription(feature.description || "");
-    setOrder(feature.order ? String(feature.order) : "0");
-    setStatus(feature.status ?? 1);
-    setFeaturePoints(feature.feature_points || []);
-    setPointTitle("");
-    setPointDesc("");
-    setPointIcon("");
+  const handleOpenEdit = (blog: BlogPost) => {
+    setEditingBlog(blog);
+    setTitle(blog.title || "");
+    setSlug(blog.slug || "");
+    setExcerpt(blog.excerpt || "");
+    setBody(blog.body || "");
+    const matchingTag = tags.find((t) => t._id === blog.category || t.id === blog.category);
+    setSelectedTag(matchingTag || null);
+    setStatus(blog.status ?? 1);
     setModalVisible(true);
-  };
-
-  const handleAddFeaturePoint = () => {
-    if (!pointTitle.trim()) {
-      Alert.alert("Validation Error", "Feature Point Title is required.");
-      return;
-    }
-    const newPoint: FeaturePoint = {
-      point_title: pointTitle,
-      point_description: pointDesc,
-      icon: pointIcon || "star",
-    };
-    setFeaturePoints((prev) => [...prev, newPoint]);
-    setPointTitle("");
-    setPointDesc("");
-    setPointIcon("");
-  };
-
-  const handleRemoveFeaturePoint = (index: number) => {
-    setFeaturePoints((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
@@ -162,97 +144,85 @@ export default function FeaturesScreen() {
     }
 
     try {
-      const payload = {
+      const payload: Partial<BlogPost> = {
         title,
         slug,
-        description,
-        order: Number(order),
+        excerpt,
+        body,
         status,
-        feature_points: featurePoints,
+        category: selectedTag?._id || selectedTag?.id || undefined,
       };
 
-      if (editingFeature) {
-        await updateFeature(editingFeature._id || editingFeature.id || "", payload);
-        Alert.alert("Success", "Feature updated successfully!");
+      if (editingBlog) {
+        await updateBlog(editingBlog._id || editingBlog.id || "", payload);
+        Alert.alert("Success", "Blog post updated successfully!");
       } else {
-        await createFeature(payload);
-        Alert.alert("Success", "Feature created successfully!");
+        await createBlog(payload);
+        Alert.alert("Success", "Blog post created successfully!");
       }
 
       setModalVisible(false);
-      fetchFeaturesList(1, true);
+      fetchBlogsList(1, true);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save feature.");
+      Alert.alert("Error", e.message || "Failed to save blog post.");
     }
   };
 
-  const handleToggleStatus = async (item: Feature) => {
-    const id = item._id || item.id || "";
-    const nextStatusVal = item.status === 1 ? 0 : 1;
+  const handleToggleStatus = async (blog: BlogPost) => {
+    const id = blog._id || blog.id || "";
     try {
-      await updateFeatureStatus(id, nextStatusVal === 1);
-      setFeatures((prev) =>
-        prev.map((f) => ((f._id || f.id) === id ? { ...f, status: nextStatusVal } : f)),
+      await updateBlogStatus(id);
+      setBlogs((prev) =>
+        prev.map((b) => ((b._id || b.id) === id ? { ...b, status: b.status === 1 ? 0 : 1 } : b)),
       );
+      Alert.alert("Success", "Blog status changed successfully.");
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to update feature status.");
+      Alert.alert("Error", e.message || "Failed to toggle status.");
     }
   };
 
-  const handleDelete = (item: Feature) => {
-    const id = item._id || item.id || "";
-    Alert.alert("Delete Feature", `Are you sure you want to delete the feature "${item.title}"?`, [
+  const handleDelete = (blog: BlogPost) => {
+    const id = blog._id || blog.id || "";
+    Alert.alert("Delete Blog", `Are you sure you want to delete the blog "${blog.title}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteFeature(id);
-            Alert.alert("Success", "Feature deleted successfully.");
-            setFeatures((prev) => prev.filter((f) => (f._id || f.id) !== id));
+            await deleteBlog(id);
+            Alert.alert("Success", "Blog deleted successfully.");
+            setBlogs((prev) => prev.filter((b) => (b._id || b.id) !== id));
           } catch (e: any) {
-            Alert.alert("Error", e.message || "Failed to delete feature.");
+            Alert.alert("Error", e.message || "Failed to delete blog.");
           }
         },
       },
     ]);
   };
 
-  const renderItem = ({ item }: { item: Feature }) => {
-    const isAct = item.status === 1;
+  const renderItem = ({ item }: { item: BlogPost }) => {
+    const isPub = item.status === 1;
+    const formattedDate = item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-IN") : "—";
 
     return (
       <Box style={styles.card}>
         <HStack className="justify-between items-start">
           <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-            <Text className="text-typography-900 font-bold text-base">{item.title}</Text>
-            <Text className="text-typography-400 text-xs">Slug: {item.slug} | Order: {item.order}</Text>
-            {item.description ? (
-              <Text className="text-typography-500 text-sm mt-1">{item.description}</Text>
+            <Text className="text-typography-100 font-bold text-base">{item.title}</Text>
+            <Text className="text-typography-400 text-xs">Slug: {item.slug} | Created: {formattedDate}</Text>
+            {item.excerpt ? (
+              <Text className="text-typography-500 text-sm mt-1">{item.excerpt}</Text>
             ) : null}
-
-            {item.feature_points?.length > 0 && (
-              <Box className="mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                <Text style={{ fontSize: 11, fontWeight: "700", color: "#64748b", marginBottom: 4 }}>
-                  Feature Highlights ({item.feature_points.length}):
-                </Text>
-                {item.feature_points.map((pt, i) => (
-                  <Text key={pt._id || i} style={styles.highlightText}>
-                    • [{pt.icon || "star"}] {pt.point_title}
-                  </Text>
-                ))}
-              </Box>
-            )}
           </VStack>
           <VStack space="sm" className="items-end">
-            <Box style={[styles.statusBadge, { backgroundColor: isAct ? "#dcfce7" : "#fee2e2" }]}>
-              <Text style={{ color: isAct ? "#15803d" : "#dc2626", fontSize: 10, fontWeight: "700" }}>
-                {isAct ? "Active" : "Inactive"}
+            <Box style={[styles.statusBadge, { backgroundColor: isPub ? "#dcfce7" : "#fef9c3" }]}>
+              <Text style={{ color: isPub ? "#15803d" : "#a16207", fontSize: 10, fontWeight: "700" }}>
+                {isPub ? "Published" : "Draft"}
               </Text>
             </Box>
             <TouchableOpacity style={styles.statusToggleAction} onPress={() => handleToggleStatus(item)}>
-              <Text style={styles.statusToggleActionText}>{isAct ? "Deactivate" : "Activate"}</Text>
+              <Text style={styles.statusToggleActionText}>{isPub ? "Make Draft" : "Publish"}</Text>
             </TouchableOpacity>
           </VStack>
         </HStack>
@@ -278,14 +248,14 @@ export default function FeaturesScreen() {
               <Text className="text-white text-sm font-medium">← Back</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
-              <Text style={styles.addBtnText}>+ Add Feature</Text>
+              <Text style={styles.addBtnText}>+ Add Blog</Text>
             </TouchableOpacity>
           </HStack>
           <Heading size="xl" style={{ color: "#fff" }}>
-            Features CMS
+            Blog Management
           </Heading>
           <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
-            Manage features and highlights displayed on frontend portals
+            Create and edit articles, guidelines, and content pages
           </Text>
         </Box>
       </LinearGradient>
@@ -294,7 +264,7 @@ export default function FeaturesScreen() {
       <Box style={styles.filterSection}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search features..."
+          placeholder="Search articles..."
           placeholderTextColor="#94a3b8"
           value={search}
           onChangeText={setSearch}
@@ -307,7 +277,7 @@ export default function FeaturesScreen() {
         </Box>
       ) : (
         <FlatList
-          data={features}
+          data={blogs}
           keyExtractor={(item) => item._id || item.id || Math.random().toString()}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -318,7 +288,7 @@ export default function FeaturesScreen() {
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
             <Box className="items-center justify-center py-20">
-              <Text className="text-typography-400 text-base">No features found</Text>
+              <Text className="text-typography-400 text-base">No blog articles found</Text>
             </Box>
           }
           ListFooterComponent={
@@ -333,7 +303,7 @@ export default function FeaturesScreen() {
         <Box style={styles.modalOverlay}>
           <Box style={styles.modalContainer}>
             <Heading size="md" className="mb-4">
-              {editingFeature ? "Edit Feature" : "Add Feature"}
+              {editingBlog ? "Edit Blog" : "Add Blog"}
             </Heading>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
               <VStack space="md">
@@ -346,80 +316,62 @@ export default function FeaturesScreen() {
                       setTitle(val);
                       setSlug(val.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, ""));
                     }}
-                    placeholder="e.g. AI Writer"
+                    placeholder="Article title"
                   />
                 </VStack>
 
                 <VStack space="xs">
                   <Text style={styles.label}>Slug *</Text>
-                  <TextInput style={styles.modalInput} value={slug} onChangeText={setSlug} placeholder="e.g. ai-writer" />
+                  <TextInput style={styles.modalInput} value={slug} onChangeText={setSlug} placeholder="article-slug" />
+                </VStack>
+
+                {/* Tag Selection */}
+                <VStack space="xs">
+                  <Text style={styles.label}>Category / Tag</Text>
+                  <TouchableOpacity style={styles.selectBtn} onPress={() => setShowTagSelect(true)}>
+                    <Text style={styles.selectBtnText}>{selectedTag ? selectedTag.title : "No category selected"}</Text>
+                  </TouchableOpacity>
                 </VStack>
 
                 <VStack space="xs">
-                  <Text style={styles.label}>Description</Text>
+                  <Text style={styles.label}>Excerpt</Text>
                   <TextInput
-                    style={[styles.modalInput, { minHeight: 50 }]}
-                    value={description}
-                    onChangeText={setDescription}
+                    style={[styles.modalInput, { minHeight: 45 }]}
+                    value={excerpt}
+                    onChangeText={setExcerpt}
                     multiline
-                    placeholder="Short description"
+                    placeholder="Short summary preview"
                   />
                 </VStack>
 
-                <HStack space="md">
-                  <VStack space="xs" style={{ flex: 1 }}>
-                    <Text style={styles.label}>Display Order</Text>
-                    <TextInput style={styles.modalInput} value={order} onChangeText={setOrder} keyboardType="numeric" placeholder="0" />
-                  </VStack>
-                  <VStack space="xs" style={{ flex: 1 }}>
-                    <Text style={styles.label}>Status *</Text>
-                    <HStack space="xs">
-                      <TouchableOpacity
-                        style={[styles.statusToggleBtn, status === 1 && styles.statusToggleBtnActive]}
-                        onPress={() => setStatus(1)}
-                      >
-                        <Text style={[styles.statusToggleText, status === 1 && styles.statusToggleTextActive]}>Active</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.statusToggleBtn, status === 0 && styles.statusToggleBtnActiveDanger]}
-                        onPress={() => setStatus(0)}
-                      >
-                        <Text style={[styles.statusToggleText, status === 0 && styles.statusToggleTextActiveDanger]}>Inactive</Text>
-                      </TouchableOpacity>
-                    </HStack>
-                  </VStack>
-                </HStack>
+                <VStack space="xs">
+                  <Text style={styles.label}>Body content</Text>
+                  <TextInput
+                    style={[styles.modalInput, { minHeight: 120 }]}
+                    value={body}
+                    onChangeText={setBody}
+                    multiline
+                    placeholder="Enter HTML or text body content..."
+                  />
+                </VStack>
 
-                {/* Sub-form to manage feature points */}
-                <Box style={styles.subformContainer}>
-                  <Heading size="xs" className="mb-2 text-typography-700">
-                    Manage Feature Points ({featurePoints.length})
-                  </Heading>
-                  <VStack space="xs" className="mb-3">
-                    <TextInput style={styles.subformInput} value={pointTitle} onChangeText={setPointTitle} placeholder="Point Title *" />
-                    <TextInput style={styles.subformInput} value={pointDesc} onChangeText={setPointDesc} placeholder="Point Description" />
-                    <TextInput style={styles.subformInput} value={pointIcon} onChangeText={setPointIcon} placeholder="Icon (e.g. check, star)" />
-                    <TouchableOpacity style={styles.subformAddBtn} onPress={handleAddFeaturePoint}>
-                      <Text style={styles.subformAddBtnText}>+ Add Highlight Point</Text>
+                <VStack space="xs">
+                  <Text style={styles.label}>Status *</Text>
+                  <HStack space="sm">
+                    <TouchableOpacity
+                      style={[styles.statusToggleBtn, status === 1 && styles.statusToggleBtnActive]}
+                      onPress={() => setStatus(1)}
+                    >
+                      <Text style={[styles.statusToggleText, status === 1 && styles.statusToggleTextActive]}>Published</Text>
                     </TouchableOpacity>
-                  </VStack>
-
-                  {featurePoints.map((pt, index) => (
-                    <HStack key={index} className="justify-between items-center bg-white p-2 rounded-lg border border-slate-100 mb-1">
-                      <VStack style={{ flex: 1, marginRight: 8 }}>
-                        <Text style={{ fontSize: 12, fontWeight: "700", color: "#334155" }}>
-                          [{pt.icon}] {pt.point_title}
-                        </Text>
-                        {pt.point_description ? (
-                          <Text style={{ fontSize: 10, color: "#64748b" }}>{pt.point_description}</Text>
-                        ) : null}
-                      </VStack>
-                      <TouchableOpacity onPress={() => handleRemoveFeaturePoint(index)}>
-                        <Text style={{ fontSize: 11, color: "#dc2626", fontWeight: "700" }}>Remove</Text>
-                      </TouchableOpacity>
-                    </HStack>
-                  ))}
-                </Box>
+                    <TouchableOpacity
+                      style={[styles.statusToggleBtn, status === 0 && styles.statusToggleBtnActiveDanger]}
+                      onPress={() => setStatus(0)}
+                    >
+                      <Text style={[styles.statusToggleText, status === 0 && styles.statusToggleTextActiveDanger]}>Draft</Text>
+                    </TouchableOpacity>
+                  </HStack>
+                </VStack>
               </VStack>
             </ScrollView>
 
@@ -431,6 +383,35 @@ export default function FeaturesScreen() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             </HStack>
+          </Box>
+        </Box>
+      </Modal>
+
+      {/* Category / Tag Selection Modal */}
+      <Modal visible={showTagSelect} transparent animationType="fade" onRequestClose={() => setShowTagSelect(false)}>
+        <Box style={styles.modalOverlay}>
+          <Box style={[styles.modalContainer, { maxWidth: 300 }]}>
+            <Heading size="sm" className="mb-4">
+              Select Category
+            </Heading>
+            <FlatList
+              data={tags}
+              keyExtractor={(t) => t._id || t.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.selectItem}
+                  onPress={() => {
+                    setSelectedTag(item);
+                    setShowTagSelect(false);
+                  }}
+                >
+                  <Text style={styles.selectBtnText}>{item.title}</Text>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity style={styles.closeSelectBtn} onPress={() => setShowTagSelect(false)}>
+              <Text style={{ fontWeight: "700", color: "#64748b" }}>Close</Text>
+            </TouchableOpacity>
           </Box>
         </Box>
       </Modal>
@@ -470,7 +451,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  highlightText: { fontSize: 11, color: "#475569", marginTop: 2 },
   statusBadge: {
     borderRadius: 8,
     paddingHorizontal: 8,
@@ -524,6 +504,15 @@ const styles = StyleSheet.create({
     color: "#1e293b",
     backgroundColor: "#f8fafc",
   },
+  selectBtn: {
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#f8fafc",
+  },
+  selectBtnText: { fontSize: 14, color: "#1e293b" },
   statusToggleBtn: {
     flex: 1,
     alignItems: "center",
@@ -545,33 +534,6 @@ const styles = StyleSheet.create({
   statusToggleText: { fontSize: 13, fontWeight: "600", color: "#64748b" },
   statusToggleTextActive: { color: "#15803d" },
   statusToggleTextActiveDanger: { color: "#dc2626" },
-  subformContainer: {
-    backgroundColor: "#f8fafc",
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    marginTop: 8,
-  },
-  subformInput: {
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 13,
-    color: "#1e293b",
-    backgroundColor: "#fff",
-    marginBottom: 6,
-  },
-  subformAddBtn: {
-    backgroundColor: "#193867",
-    borderRadius: 8,
-    alignItems: "center",
-    paddingVertical: 8,
-    marginTop: 4,
-  },
-  subformAddBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   cancelBtn: {
     flex: 1,
     alignItems: "center",
@@ -580,4 +542,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   cancelBtnText: { color: "#475569", fontWeight: "700", fontSize: 14 },
+  selectItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  closeSelectBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    marginTop: 10,
+    borderRadius: 10,
+    backgroundColor: "#f1f5f9",
+  },
 });

@@ -40,7 +40,7 @@ function InfoRow({ label, value, editing, onChangeText, keyboardType, multiline 
           keyboardType={keyboardType} multiline={multiline}
         />
       ) : (
-        <Text className="text-typography-900 text-sm font-medium">{value || "—"}</Text>
+        <Text className="text-typography-200 text-sm font-medium">{value || "—"}</Text>
       )}
     </VStack>
   );
@@ -127,9 +127,9 @@ export default function ProfileScreen() {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <Box style={styles.card}>
             <HStack className="justify-between items-center mb-4">
-              <Heading size="sm" className="text-typography-900">Personal Details</Heading>
+              <Heading size="sm" className="text-typography-100">Personal Details</Heading>
               <TouchableOpacity onPress={() => setEditing((e) => !e)}>
-                <Text className="text-primary-700 font-semibold text-sm">{editing ? "Cancel" : "✏ Edit"}</Text>
+                <Text className="text-primary-400 font-semibold text-sm">{editing ? "Cancel" : "✏ Edit"}</Text>
               </TouchableOpacity>
             </HStack>
             <VStack space="md">

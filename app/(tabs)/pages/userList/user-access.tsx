@@ -7,7 +7,7 @@ import { Heading } from "@/components/ui/heading";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import UsersManagementScreen from "./users-management";
-import RolesManagementScreen from "./roles-management";
+import RolesManagementScreen from "../roleList/roles-management";
 
 export default function UserAccessScreen() {
   const [activeTab, setActiveTab] = useState<"users" | "roles">("users");

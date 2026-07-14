@@ -195,7 +195,7 @@ export default function CustomersScreen() {
       <Box style={styles.card}>
         <HStack className="justify-between items-start">
           <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-            <Text className="text-typography-900 font-bold text-base">
+            <Text className="text-typography-100 font-bold text-base">
               {item.first_name} {item.last_name}
             </Text>
             <Text className="text-typography-500 text-sm">{item.email}</Text>

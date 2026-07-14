@@ -120,7 +120,7 @@ export default function ForgotPasswordScreen() {
                     autoCorrect={false}
                     onSubmitEditing={handleRequestReset}
                     returnKeyType="done"
-                    className="text-typography-900"
+                    className="text-typography-100"
                   />
                 </Input>
                 {!!emailError && (
@@ -153,12 +153,12 @@ export default function ForgotPasswordScreen() {
             <VStack space="lg" className="items-center py-4">
               <Text style={{ fontSize: 48 }}>✉️</Text>
               <VStack space="xs" className="items-center">
-                <Heading size="md" className="text-typography-900 font-bold text-center">
+                <Heading size="md" className="text-typography-100 font-bold text-center">
                   Check Your Email
                 </Heading>
-                <Text className="text-typography-500 text-sm text-center">
+                <Text className="text-typography-400 text-sm text-center">
                   We've sent a password reset link to{" "}
-                  <Text className="text-primary-700 font-semibold">{email}</Text>
+                  <Text className="text-primary-500 font-semibold">{email}</Text>
                 </Text>
               </VStack>
               <Button
