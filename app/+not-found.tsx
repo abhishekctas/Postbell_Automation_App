@@ -19,7 +19,7 @@ export default function NotFoundScreen() {
       >
         <Box className="px-4 pt-8 pb-4 md:pt-10 md:pb-8 md:rounded-sm md:px-[140px] bg-background-0 flex-1 items-center">
 
-          <Heading className="mt-10 text-2xl text-center text-typography-800 ">
+          <Heading className="mt-10 text-2xl text-center text-typography-900 ">
             Oops! Page not found
           </Heading>
           <Text className="text-sm mt-2 mb-8 text-center max-w-72 md:max-w-[372px]">
