@@ -18,6 +18,53 @@ import { Heading } from "@/components/ui/heading";
 import { Button, ButtonText } from "@/components/ui/button";
 import { listUsers, createUser, updateUser, deleteUser, User } from "./user-access.api";
 import { getRoles, Role } from "../roleList/roles-management.api";
+import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+
+const USER_TABLE_COLUMNS: HtmlTableColumn[] = [
+  {
+    key: "first_name",
+    label: "Name",
+    width: "180px",
+    render: (_v, row) => `${row.first_name || ""} ${row.last_name || ""}`.trim(),
+  },
+  {
+    key: "email",
+    label: "Email",
+    width: "180px",
+  },
+  {
+    key: "contact_no",
+    label: "Contact",
+    width: "120px",
+    render: (v) => (v ? String(v) : "—"),
+  },
+  {
+    key: "role_name",
+    label: "Role",
+    width: "120px",
+    render: (v) => v ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#eff6ff;color:#1d4ed8;">${escapeHtmlUser(String(v))}</span>` : "No Role",
+  },
+  {
+    key: "status",
+    label: "Status",
+    width: "100px",
+    render: (v) => {
+      const isAct = v === 1;
+      const bg = isAct ? "#dcfce7" : "#fee2e2";
+      const color = isAct ? "#15803d" : "#dc2626";
+      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${bg};color:${color};">${isAct ? "Active" : "Inactive"}</span>`;
+    },
+  },
+];
+
+function escapeHtmlUser(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+const USER_ROW_ACTIONS = [
+  { label: "Edit", action: "edit" },
+  { label: "Delete", action: "delete", style: "danger" },
+];
 
 export default function UsersManagementScreen() {
   const [users, setUsers] = useState<User[]>([]);
@@ -90,12 +137,6 @@ export default function UsersManagementScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchUsersList(1, true);
-  };
-
-  const loadMore = () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    fetchUsersList(page + 1, false);
   };
 
   const handleOpenAdd = () => {
@@ -186,37 +227,6 @@ export default function UsersManagementScreen() {
     ]);
   };
 
-  const renderUserItem = ({ item }: { item: User }) => (
-    <Box style={styles.userCard}>
-      <HStack className="justify-between items-start">
-        <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-          <Text className="text-typography-100 font-bold text-base">
-            {item.first_name} {item.last_name}
-          </Text>
-          <Text className="text-typography-500 text-sm">{item.email}</Text>
-          {item.contact_no ? <Text className="text-typography-400 text-xs">📞 {item.contact_no}</Text> : null}
-          <Box style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>{item.role_name || "No Role"}</Text>
-          </Box>
-        </VStack>
-        <Box style={[styles.statusBadge, { backgroundColor: item.status === 1 ? "#dcfce7" : "#fee2e2" }]}>
-          <Text style={{ color: item.status === 1 ? "#15803d" : "#dc2626", fontSize: 10, fontWeight: "700" }}>
-            {item.status === 1 ? "Active" : "Inactive"}
-          </Text>
-        </Box>
-      </HStack>
-
-      <HStack space="sm" className="mt-4 justify-end">
-        <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
-          <Text style={styles.actionBtnText}>✏ Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={() => handleDelete(item)}>
-          <Text style={[styles.actionBtnText, { color: "#dc2626" }]}>🗑 Delete</Text>
-        </TouchableOpacity>
-      </HStack>
-    </Box>
-  );
-
   return (
     <Box className="flex-1 bg-background-50">
       <Box style={styles.filterSection}>
@@ -234,22 +244,35 @@ export default function UsersManagementScreen() {
           <ActivityIndicator size="large" color="#193867" />
         </Box>
       ) : (
-        <FlatList
-          data={users}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#193867" />}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={
+        >
+          {users.length === 0 ? (
             <Box className="items-center justify-center py-20">
               <Text className="text-typography-400 text-base">No users found</Text>
             </Box>
-          }
-          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} /> : null}
-          renderItem={renderUserItem}
-        />
+          ) : (
+            <HtmlTable
+              columns={USER_TABLE_COLUMNS}
+              data={users}
+              rowActions={USER_ROW_ACTIONS}
+              onRowAction={(action, rowId) => {
+                if (action === "edit") {
+                  const u = users.find((x) => (x._id || x.id) === rowId);
+                  if (u) handleOpenEdit(u);
+                } else if (action === "delete") {
+                  const u = users.find((x) => (x._id || x.id) === rowId);
+                  if (u) handleDelete(u);
+                }
+              }}
+            />
+          )}
+          {loadingMore && (
+            <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
+          )}
+        </ScrollView>
       )}
 
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>

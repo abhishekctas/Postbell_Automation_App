@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import { Box } from "@/components/ui/box";
@@ -74,7 +75,12 @@ export default function ForgotPasswordScreen() {
       >
         <VStack space="sm" className="items-center mb-10 mt-16">
           <Box style={styles.logoBox}>
-            <Text style={styles.logoText}>P</Text>
+            {/* <Text style={styles.logoText}>P</Text> */}
+            <Image
+              source={require("../../assets/images/logo.png")}
+              style={{ width: 70, height: 70 }}
+              resizeMode="contain"
+            />
           </Box>
           <Heading
             size="2xl"
@@ -106,7 +112,7 @@ export default function ForgotPasswordScreen() {
                 <Input
                   size="lg"
                   isInvalid={!!emailError}
-                  className="border-outline-200 bg-background-50 rounded-xl"
+                  className="border-outline-200 rounded-xl"
                 >
                   <InputField
                     placeholder="you@example.com"
@@ -120,7 +126,7 @@ export default function ForgotPasswordScreen() {
                     autoCorrect={false}
                     onSubmitEditing={handleRequestReset}
                     returnKeyType="done"
-                    className="text-typography-100"
+                    className="text-typography-200"
                   />
                 </Input>
                 {!!emailError && (
@@ -135,7 +141,7 @@ export default function ForgotPasswordScreen() {
                 className="bg-primary-700 rounded-xl h-14"
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#061226" />
                 ) : (
                   <ButtonText className="font-semibold text-base">
                     Send Reset Link
@@ -212,7 +218,8 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "white",
+    // backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,

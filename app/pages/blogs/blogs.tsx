@@ -28,6 +28,52 @@ import {
   Tag,
 } from "./blogs.api";
 import { router } from "expo-router";
+import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+
+const BLOG_TABLE_COLUMNS: HtmlTableColumn[] = [
+  {
+    key: "title",
+    label: "Title",
+    width: "200px",
+  },
+  {
+    key: "slug",
+    label: "Slug",
+    width: "150px",
+  },
+  {
+    key: "status",
+    label: "Status",
+    width: "110px",
+    render: (v) => {
+      const isPub = v === 1;
+      const bg = isPub ? "#dcfce7" : "#fef9c3";
+      const color = isPub ? "#15803d" : "#a16207";
+      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${bg};color:${color};">${isPub ? "Published" : "Draft"}</span>`;
+    },
+  },
+  {
+    key: "createdAt",
+    label: "Date",
+    width: "120px",
+    render: (v) => {
+      if (!v) return "—";
+      const d = new Date(v);
+      return !isNaN(d.getTime()) ? d.toLocaleDateString("en-IN") : String(v);
+    },
+  },
+  {
+    key: "excerpt",
+    label: "Excerpt",
+    width: "200px",
+    render: (v) => (v ? String(v).substring(0, 50) + (String(v).length > 50 ? "..." : "") : "—"),
+  },
+];
+
+const BLOG_ROW_ACTIONS = [
+  { label: "Edit", action: "edit" },
+  { label: "Delete", action: "delete", style: "danger" },
+];
 
 export default function BlogsScreen() {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -201,44 +247,6 @@ export default function BlogsScreen() {
     ]);
   };
 
-  const renderItem = ({ item }: { item: BlogPost }) => {
-    const isPub = item.status === 1;
-    const formattedDate = item.createdAt ? new Date(item.createdAt).toLocaleDateString("en-IN") : "—";
-
-    return (
-      <Box style={styles.card}>
-        <HStack className="justify-between items-start">
-          <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-            <Text className="text-typography-100 font-bold text-base">{item.title}</Text>
-            <Text className="text-typography-400 text-xs">Slug: {item.slug} | Created: {formattedDate}</Text>
-            {item.excerpt ? (
-              <Text className="text-typography-500 text-sm mt-1">{item.excerpt}</Text>
-            ) : null}
-          </VStack>
-          <VStack space="sm" className="items-end">
-            <Box style={[styles.statusBadge, { backgroundColor: isPub ? "#dcfce7" : "#fef9c3" }]}>
-              <Text style={{ color: isPub ? "#15803d" : "#a16207", fontSize: 10, fontWeight: "700" }}>
-                {isPub ? "Published" : "Draft"}
-              </Text>
-            </Box>
-            <TouchableOpacity style={styles.statusToggleAction} onPress={() => handleToggleStatus(item)}>
-              <Text style={styles.statusToggleActionText}>{isPub ? "Make Draft" : "Publish"}</Text>
-            </TouchableOpacity>
-          </VStack>
-        </HStack>
-
-        <HStack space="sm" className="mt-4 justify-end">
-          <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
-            <Text style={styles.actionBtnText}>✏ Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={() => handleDelete(item)}>
-            <Text style={[styles.actionBtnText, { color: "#dc2626" }]}>🗑 Delete</Text>
-          </TouchableOpacity>
-        </HStack>
-      </Box>
-    );
-  };
-
   return (
     <Box className="flex-1 bg-background-50">
       <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
@@ -276,26 +284,37 @@ export default function BlogsScreen() {
           <ActivityIndicator size="large" color="#193867" />
         </Box>
       ) : (
-        <FlatList
-          data={blogs}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#193867" />
           }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={
+        >
+          {blogs.length === 0 ? (
             <Box className="items-center justify-center py-20">
               <Text className="text-typography-400 text-base">No blog articles found</Text>
             </Box>
-          }
-          ListFooterComponent={
-            loadingMore ? <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} /> : null
-          }
-          renderItem={renderItem}
-        />
+          ) : (
+            <HtmlTable
+              columns={BLOG_TABLE_COLUMNS}
+              data={blogs}
+              rowActions={BLOG_ROW_ACTIONS}
+              onRowAction={(action, rowId) => {
+                if (action === "edit") {
+                  const b = blogs.find((x) => (x._id || x.id) === rowId);
+                  if (b) handleOpenEdit(b);
+                } else if (action === "delete") {
+                  const b = blogs.find((x) => (x._id || x.id) === rowId);
+                  if (b) handleDelete(b);
+                }
+              }}
+            />
+          )}
+          {loadingMore && (
+            <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
+          )}
+        </ScrollView>
       )}
 
       {/* Add / Edit Modal */}

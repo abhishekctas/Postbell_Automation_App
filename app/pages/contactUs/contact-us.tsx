@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
@@ -19,6 +18,53 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { LinearGradient } from "expo-linear-gradient";
 import { listContactRequests, updateContactStatus, deleteContactRequest, ContactRequest } from "./contact-us.api";
 import { router } from "expo-router";
+import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+
+const CONTACT_TABLE_COLUMNS: HtmlTableColumn[] = [
+  {
+    key: "subject",
+    label: "Subject",
+    width: "200px",
+    render: (v) => (v ? String(v) : "No Subject"),
+  },
+  {
+    key: "first_name",
+    label: "Name",
+    width: "160px",
+    render: (_v, row) => `${row.first_name || ""} ${row.last_name || ""}`.trim(),
+  },
+  {
+    key: "email",
+    label: "Email",
+    width: "180px",
+  },
+  {
+    key: "contactStatus",
+    label: "Status",
+    width: "100px",
+    render: (v) => {
+      const isResolved = v === 1;
+      const bg = isResolved ? "#dcfce7" : "#fef9c3";
+      const color = isResolved ? "#15803d" : "#a16207";
+      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${bg};color:${color};">${isResolved ? "Resolved" : "Pending"}</span>`;
+    },
+  },
+  {
+    key: "createdAt",
+    label: "Date",
+    width: "120px",
+    render: (v) => {
+      if (!v) return "—";
+      const d = new Date(v);
+      return !isNaN(d.getTime()) ? d.toLocaleDateString("en-IN") : String(v);
+    },
+  },
+];
+
+const CONTACT_ROW_ACTIONS = [
+  { label: "Toggle Status", action: "toggle" },
+  { label: "Delete", action: "delete", style: "danger" },
+];
 
 export default function ContactUsScreen() {
   const [requests, setRequests] = useState<ContactRequest[]>([]);
@@ -83,12 +129,6 @@ export default function ContactUsScreen() {
     fetchRequestsList(1, true);
   };
 
-  const loadMore = () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    fetchRequestsList(page + 1, false);
-  };
-
   const handleToggleStatus = async (item: ContactRequest) => {
     const id = item._id || item.id || "";
     const nextStatus = item.contactStatus === 1 ? 0 : 1;
@@ -126,53 +166,6 @@ export default function ContactUsScreen() {
         },
       },
     ]);
-  };
-
-  const renderItem = ({ item }: { item: ContactRequest }) => {
-    const isResolved = item.contactStatus === 1;
-    const formattedDate = item.createdAt
-      ? new Date(item.createdAt).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : "—";
-
-    return (
-      <TouchableOpacity style={styles.card} onPress={() => setSelectedRequest(item)} activeOpacity={0.8}>
-        <VStack space="xs">
-          <HStack className="justify-between items-start">
-            <Box style={{ flex: 1, marginRight: 8 }}>
-              <Text className="text-typography-100 font-bold text-base" numberOfLines={1}>
-                {item.subject || "No Subject"}
-              </Text>
-              <Text className="text-typography-400 text-xs mt-1">🕐 {formattedDate}</Text>
-            </Box>
-            <Box style={[styles.statusBadge, { backgroundColor: isResolved ? "#dcfce7" : "#fef9c3" }]}>
-              <Text style={{ color: isResolved ? "#15803d" : "#a16207", fontSize: 10, fontWeight: "700" }}>
-                {isResolved ? "Resolved" : "Pending"}
-              </Text>
-            </Box>
-          </HStack>
-
-          <Text className="text-typography-700 font-semibold text-sm mt-2">
-            By: {item.first_name} {item.last_name}
-          </Text>
-          <Text className="text-typography-500 text-sm mt-1" numberOfLines={2}>
-            {item.message}
-          </Text>
-
-          <HStack space="sm" className="mt-4 justify-end">
-            <TouchableOpacity style={styles.actionBtn} onPress={() => handleToggleStatus(item)}>
-              <Text style={styles.actionBtnText}>{isResolved ? "↺ Mark Pending" : "✓ Mark Resolved"}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={() => handleDelete(item)}>
-              <Text style={[styles.actionBtnText, { color: "#dc2626" }]}>🗑 Delete</Text>
-            </TouchableOpacity>
-          </HStack>
-        </VStack>
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -220,26 +213,37 @@ export default function ContactUsScreen() {
           <ActivityIndicator size="large" color="#193867" />
         </Box>
       ) : (
-        <FlatList
-          data={requests}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#193867" />
           }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={
+        >
+          {requests.length === 0 ? (
             <Box className="items-center justify-center py-20">
               <Text className="text-typography-400 text-base">No inquiries found</Text>
             </Box>
-          }
-          ListFooterComponent={
-            loadingMore ? <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} /> : null
-          }
-          renderItem={renderItem}
-        />
+          ) : (
+            <HtmlTable
+              columns={CONTACT_TABLE_COLUMNS}
+              data={requests}
+              rowActions={CONTACT_ROW_ACTIONS}
+              onRowAction={(action, rowId) => {
+                if (action === "toggle") {
+                  const r = requests.find((x) => (x._id || x.id) === rowId);
+                  if (r) handleToggleStatus(r);
+                } else if (action === "delete") {
+                  const r = requests.find((x) => (x._id || x.id) === rowId);
+                  if (r) handleDelete(r);
+                }
+              }}
+            />
+          )}
+          {loadingMore && (
+            <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
+          )}
+        </ScrollView>
       )}
 
       {/* Details Modal */}

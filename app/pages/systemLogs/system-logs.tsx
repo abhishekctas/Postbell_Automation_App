@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
   Modal,
   TextInput,
-  View,
   ScrollView,
 } from "react-native";
 import { Box } from "@/components/ui/box";
@@ -18,6 +16,44 @@ import { Heading } from "@/components/ui/heading";
 import { LinearGradient } from "expo-linear-gradient";
 import { listSystemLogs, SystemLog } from "./system-logs.api";
 import { Calendar } from "react-native-calendars";
+import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+
+const LOG_TABLE_COLUMNS: HtmlTableColumn[] = [
+  {
+    key: "operation",
+    label: "Operation",
+    width: "130px",
+    render: (v) => `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;background:#eff6ff;color:#1d4ed8;">${String(v || "—")}</span>`,
+  },
+  {
+    key: "first_name",
+    label: "User",
+    width: "180px",
+    render: (_v, row) => `${row.first_name || ""} ${row.last_name || ""} (${row.role_name || "User"})`,
+  },
+  {
+    key: "ip_address",
+    label: "IP Address",
+    width: "130px",
+    render: (v) => (v ? String(v) : "—"),
+  },
+  {
+    key: "createdAt",
+    label: "Date",
+    width: "160px",
+    render: (v) => {
+      if (!v) return "—";
+      const d = new Date(v);
+      return !isNaN(d.getTime())
+        ? d.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+        : String(v);
+    },
+  },
+];
+
+const LOG_ROW_ACTIONS = [
+  { label: "View Details", action: "view" },
+];
 
 export default function SystemLogsScreen() {
   const [logs, setLogs] = useState<SystemLog[]>([]);
@@ -90,52 +126,10 @@ export default function SystemLogsScreen() {
     fetchLogs(1, true);
   };
 
-  const loadMore = () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    fetchLogs(page + 1, false);
-  };
-
   const handleClearFilters = () => {
     setSearch("");
     setDateFrom("");
     setDateTo("");
-  };
-
-  const renderLogItem = ({ item }: { item: SystemLog }) => {
-    const formattedDate = item.createdAt
-      ? new Date(item.createdAt).toLocaleString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "—";
-
-    return (
-      <TouchableOpacity
-        style={styles.logCard}
-        onPress={() => setSelectedLog(item)}
-        activeOpacity={0.7}
-      >
-        <VStack space="xs">
-          <HStack className="justify-between items-center">
-            <Box style={styles.opBadge}>
-              <Text style={styles.opBadgeText}>{item.operation}</Text>
-            </Box>
-            <Text style={styles.dateText}>{formattedDate}</Text>
-          </HStack>
-          <Text className="text-typography-100 font-semibold text-sm mt-2">
-            By: {item.first_name} {item.last_name} ({item.role_name || "User"})
-          </Text>
-          <HStack className="justify-between items-center mt-2">
-            <Text className="text-typography-400 text-xs">IP: {item.ip_address || "—"}</Text>
-            <Text className="text-primary-400 text-xs font-semibold">View JSON ➔</Text>
-          </HStack>
-        </VStack>
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -192,9 +186,7 @@ export default function SystemLogsScreen() {
           <ActivityIndicator size="large" color="#193867" />
         </Box>
       ) : (
-        <FlatList
-          data={logs}
-          keyExtractor={(item) => item._id}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -204,26 +196,34 @@ export default function SystemLogsScreen() {
               tintColor="#193867"
             />
           }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={
+        >
+          {logs.length === 0 ? (
             <Box className="items-center justify-center py-20">
               <Text className="text-typography-400 text-base">
                 No system logs found
               </Text>
             </Box>
-          }
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator
-                size="small"
-                color="#193867"
-                style={{ marginVertical: 20 }}
-              />
-            ) : null
-          }
-          renderItem={renderLogItem}
-        />
+          ) : (
+            <HtmlTable
+              columns={LOG_TABLE_COLUMNS}
+              data={logs}
+              rowActions={LOG_ROW_ACTIONS}
+              onRowAction={(action, rowId) => {
+                if (action === "view") {
+                  const l = logs.find((x) => x._id === rowId);
+                  if (l) setSelectedLog(l);
+                }
+              }}
+            />
+          )}
+          {loadingMore && (
+            <ActivityIndicator
+              size="small"
+              color="#193867"
+              style={{ marginVertical: 20 }}
+            />
+          )}
+        </ScrollView>
       )}
 
       {/* Date Picker Modal */}

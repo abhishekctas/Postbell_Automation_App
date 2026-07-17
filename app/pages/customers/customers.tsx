@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
@@ -19,6 +18,49 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { LinearGradient } from "expo-linear-gradient";
 import { listCustomers, createCustomer, updateCustomer, deleteCustomer, Customer } from "./customers.api";
 import { router } from "expo-router";
+import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+
+const CUSTOMER_TABLE_COLUMNS: HtmlTableColumn[] = [
+  {
+    key: "first_name",
+    label: "Name",
+    width: "180px",
+    render: (_v, row) => `${row.first_name || ""} ${row.last_name || ""}`.trim(),
+  },
+  {
+    key: "email",
+    label: "Email",
+    width: "180px",
+  },
+  {
+    key: "contact_no",
+    label: "Contact",
+    width: "120px",
+    render: (v) => (v ? String(v) : "—"),
+  },
+  {
+    key: "gender",
+    label: "Gender",
+    width: "80px",
+    render: (v) => (v === 1 ? "Male" : v === 2 ? "Female" : "Other"),
+  },
+  {
+    key: "status",
+    label: "Status",
+    width: "100px",
+    render: (v) => {
+      const isAct = v === 1;
+      const bg = isAct ? "#dcfce7" : "#fee2e2";
+      const color = isAct ? "#15803d" : "#dc2626";
+      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${bg};color:${color};">${isAct ? "Active" : "Inactive"}</span>`;
+    },
+  },
+];
+
+const CUSTOMER_ROW_ACTIONS = [
+  { label: "Edit", action: "edit" },
+  { label: "Delete", action: "delete", style: "danger" },
+];
 
 export default function CustomersScreen() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -84,12 +126,6 @@ export default function CustomersScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchCustomersList(1, true);
-  };
-
-  const loadMore = () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    fetchCustomersList(page + 1, false);
   };
 
   const handleOpenAdd = () => {
@@ -188,46 +224,6 @@ export default function CustomersScreen() {
     return "Other";
   };
 
-  const renderCustomerItem = ({ item }: { item: Customer }) => {
-    const isAct = item.status === 1;
-
-    return (
-      <Box style={styles.card}>
-        <HStack className="justify-between items-start">
-          <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-            <Text className="text-typography-100 font-bold text-base">
-              {item.first_name} {item.last_name}
-            </Text>
-            <Text className="text-typography-500 text-sm">{item.email}</Text>
-            {item.contact_no ? <Text className="text-typography-400 text-xs">📞 {item.contact_no}</Text> : null}
-            <HStack space="sm" className="mt-1 items-center">
-              <Box style={styles.badge}>
-                <Text style={styles.badgeText}>{getGenderLabel(item.gender)}</Text>
-              </Box>
-              {item.dob ? (
-                <Text className="text-typography-400 text-xs">🎂 {item.dob}</Text>
-              ) : null}
-            </HStack>
-          </VStack>
-          <Box style={[styles.statusBadge, { backgroundColor: isAct ? "#dcfce7" : "#fee2e2" }]}>
-            <Text style={{ color: isAct ? "#15803d" : "#dc2626", fontSize: 10, fontWeight: "700" }}>
-              {isAct ? "Active" : "Inactive"}
-            </Text>
-          </Box>
-        </HStack>
-
-        <HStack space="sm" className="mt-4 justify-end">
-          <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
-            <Text style={styles.actionBtnText}>✏ Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={() => handleDelete(item)}>
-            <Text style={[styles.actionBtnText, { color: "#dc2626" }]}>🗑 Delete</Text>
-          </TouchableOpacity>
-        </HStack>
-      </Box>
-    );
-  };
-
   return (
     <Box className="flex-1 bg-background-50">
       <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
@@ -265,26 +261,37 @@ export default function CustomersScreen() {
           <ActivityIndicator size="large" color="#193867" />
         </Box>
       ) : (
-        <FlatList
-          data={customers}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#193867" />
           }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={
+        >
+          {customers.length === 0 ? (
             <Box className="items-center justify-center py-20">
               <Text className="text-typography-400 text-base">No customers found</Text>
             </Box>
-          }
-          ListFooterComponent={
-            loadingMore ? <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} /> : null
-          }
-          renderItem={renderCustomerItem}
-        />
+          ) : (
+            <HtmlTable
+              columns={CUSTOMER_TABLE_COLUMNS}
+              data={customers}
+              rowActions={CUSTOMER_ROW_ACTIONS}
+              onRowAction={(action, rowId) => {
+                if (action === "edit") {
+                  const c = customers.find((x) => (x._id || x.id) === rowId);
+                  if (c) handleOpenEdit(c);
+                } else if (action === "delete") {
+                  const c = customers.find((x) => (x._id || x.id) === rowId);
+                  if (c) handleDelete(c);
+                }
+              }}
+            />
+          )}
+          {loadingMore && (
+            <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
+          )}
+        </ScrollView>
       )}
 
       {/* Add / Edit Modal */}

@@ -10,6 +10,7 @@ import {
   ScrollView,
   TextInput,
   Platform,
+  Image,
 } from "react-native";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
@@ -20,19 +21,20 @@ import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useAuth } from "@/context/AuthContext";
 import { listPosts, createPost, updatePost, deletePost, publishPostNow, Post } from "./posts.api";
+import { Feather, FontAwesome } from "@expo/vector-icons";
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 const STATUS_META: Record<string, { bg: string; color: string; label: string }> = {
-  published: { bg: "#dcfce7", color: "#15803d", label: "Published" },
-  scheduled: { bg: "#dbeafe", color: "#1d4ed8", label: "Scheduled" },
-  draft: { bg: "#fef9c3", color: "#a16207", label: "Draft" },
-  partial: { bg: "#ede9fe", color: "#6d28d9", label: "Partial" },
-  partial_published: { bg: "#ede9fe", color: "#6d28d9", label: "Partial" },
-  failed: { bg: "#fee2e2", color: "#dc2626", label: "Failed" },
+  published: { bg: "#eff6ff", color: "#3b82f6", label: "Published" },
+  scheduled: { bg: "#f0fdf4", color: "#22c55e", label: "Scheduled" },
+  draft: { bg: "#f1f5f9", color: "#64748b", label: "Draft" },
+  failed: { bg: "#fef2f2", color: "#ef4444", label: "Failed" },
+  partial: { bg: "#fef3c7", color: "#d97706", label: "Partial" },
 };
 
 function StatusBadge({ status }: { status?: string }) {
-  const meta = STATUS_META[status ?? "draft"] ?? { bg: "#f1f5f9", color: "#64748b", label: status ?? "—" };
+  const normStatus = (status ?? "draft").toLowerCase();
+  const meta = STATUS_META[normStatus] ?? STATUS_META.draft;
   return (
     <Box style={[styles.badge, { backgroundColor: meta.bg }]}>
       <Text style={[styles.badgeText, { color: meta.color }]}>{meta.label}</Text>
@@ -41,7 +43,7 @@ function StatusBadge({ status }: { status?: string }) {
 }
 
 // ── Filter tab ────────────────────────────────────────────────────────────────
-const FILTERS = ["all", "published", "scheduled", "draft", "partial", "failed"];
+const FILTERS = ["all", "scheduled", "published", "failed", "draft"];
 
 function FilterTabs({
   active,
@@ -59,6 +61,7 @@ function FilterTabs({
       contentContainerStyle={styles.filterList}
       renderItem={({ item }) => {
         const isActive = active === item;
+        const displayLabel = item === "draft" ? "Drafts" : item.charAt(0).toUpperCase() + item.slice(1);
         return (
           <TouchableOpacity
             onPress={() => onChange(item)}
@@ -70,7 +73,7 @@ function FilterTabs({
                 isActive && styles.filterTextActive,
               ]}
             >
-              {item.charAt(0).toUpperCase() + item.slice(1)}
+              {displayLabel}
             </Text>
           </TouchableOpacity>
         );
@@ -82,66 +85,80 @@ function FilterTabs({
 // ── Post card ─────────────────────────────────────────────────────────────────
 function PostCard({
   post,
-  onDelete,
-  onPublish,
-  onOpenDetails,
+  onOpenOptions,
 }: {
   post: Post;
-  onDelete: () => void;
-  onPublish: () => void;
-  onOpenDetails: () => void;
+  onOpenOptions: () => void;
 }) {
-  const id = post._id || post.id || "";
   const platforms = post.selectedNetworks ?? [];
+  const previewImg = post.image_url;
 
   return (
     <Box style={styles.postCard}>
-      <HStack className="justify-between items-start mb-2">
-        <VStack space="xs" style={{ flex: 1, marginRight: 10 }}>
+      <HStack space="md" className="items-center" style={{ flex: 1 }}>
+        {/* Left: Thumbnail */}
+        {previewImg ? (
+          <Image source={{ uri: previewImg }} style={styles.cardImage} resizeMode="cover" />
+        ) : (
+          <LinearGradient colors={["#e0f2fe", "#bae6fd"]} style={styles.cardImagePlaceholder}>
+            <Text style={{ fontSize: 20 }}>📝</Text>
+          </LinearGradient>
+        )}
+
+        {/* Middle: Details */}
+        <VStack space="xs" style={{ flex: 1, justifyContent: "center" }}>
           <Text
-            className="text-typography-100 font-semibold text-sm"
+            className="text-typography-900 font-bold text-sm"
             numberOfLines={2}
+            style={styles.cardTitle}
           >
             {post.title || post.caption || "Untitled Post"}
           </Text>
-          {platforms.length > 0 && (
-            <Text className="text-typography-400 text-xs">
-              📱 {platforms.join(", ")}
-            </Text>
-          )}
           {post.createdAt && (
-            <Text className="text-typography-400 text-xs">
-              🕐 {(() => {
+            <Text style={styles.cardDate}>
+              {(() => {
                 const d = new Date(post.createdAt);
-                return !isNaN(d.getTime()) ? d.toLocaleDateString("en-IN") : post.createdAt;
+                if (isNaN(d.getTime())) return post.createdAt;
+                return d.toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                }) + " • " + d.toLocaleTimeString("en-IN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                });
               })()}
             </Text>
           )}
-        </VStack>
-        <StatusBadge status={post.post_status} />
-      </HStack>
 
-      {/* Action buttons */}
-      <HStack space="sm" className="mt-3">
-        <TouchableOpacity style={styles.actionBtn} onPress={onOpenDetails}>
-          <Text style={styles.actionBtnText}>👁 View</Text>
-        </TouchableOpacity>
-        {post.post_status === "draft" && (
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={onPublish}
-          >
-            <Text style={styles.actionBtnText}>▶ Publish Now</Text>
+          {/* Social Platforms */}
+          {platforms.length > 0 && (
+            <HStack space="xs" className="mt-1 items-center">
+              {platforms.map((p, idx) => {
+                const name = p.toLowerCase();
+                let iconName = "";
+                let iconColor = "#64748b";
+                if (name.includes("facebook")) { iconName = "facebook-square"; iconColor = "#1877f2"; }
+                else if (name.includes("instagram")) { iconName = "instagram"; iconColor = "#e1306c"; }
+                else if (name.includes("whatsapp")) { iconName = "whatsapp"; iconColor = "#25d366"; }
+                else if (name.includes("twitter") || name.includes("x")) { iconName = "twitter"; iconColor = "#1da1f2"; }
+                else if (name.includes("linkedin")) { iconName = "linkedin"; iconColor = "#0a66c2"; }
+                else if (name.includes("youtube")) { iconName = "youtube-play"; iconColor = "#ff0000"; }
+                if (!iconName) return null;
+                return <FontAwesome key={idx} name={iconName as any} size={15} color={iconColor} style={{ marginRight: 4 }} />;
+              })}
+            </HStack>
+          )}
+        </VStack>
+
+        {/* Right: Actions and Status */}
+        <VStack style={{ alignItems: "flex-end", height: "100%", justifyContent: "space-between", minHeight: 70 }}>
+          <TouchableOpacity onPress={onOpenOptions} style={styles.moreBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Feather name="more-horizontal" size={20} color="#64748b" />
           </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[styles.actionBtn, styles.actionBtnDanger]}
-          onPress={onDelete}
-        >
-          <Text style={[styles.actionBtnText, { color: "#dc2626" }]}>
-            🗑 Delete
-          </Text>
-        </TouchableOpacity>
+          <StatusBadge status={post.post_status} />
+        </VStack>
       </HStack>
     </Box>
   );
@@ -160,6 +177,8 @@ export default function PostsScreen() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [editorVisible, setEditorVisible] = useState(false);
+  const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+  const [actionPost, setActionPost] = useState<Post | null>(null);
   const [editorTitle, setEditorTitle] = useState("");
   const [editorCaption, setEditorCaption] = useState("");
   const [editorHashtags, setEditorHashtags] = useState("");
@@ -185,7 +204,6 @@ export default function PostsScreen() {
         const res = (await listPosts(queryParams.toString())) as any;
         const rawItems = res?.data || (Array.isArray(res) ? res : (res?.results || []));
         const items: Post[] = Array.isArray(rawItems) ? rawItems : [];
-        console.log(items, "items****************")
         if (reset) {
           setPosts(items);
         } else {
@@ -316,23 +334,22 @@ export default function PostsScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
+    <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
-      <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
-        <Box className="px-5 pt-14 pb-4">
-          <Heading size="xl" style={{ color: "#fff" }}>
+      <Box style={styles.header}>
+        <HStack className="justify-between items-center px-5 pt-14 pb-4">
+          <Heading size="xl" style={{ color: "#fff", fontWeight: "700" }}>
             Posts
           </Heading>
-          <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
-            {posts.length} posts loaded
-          </Text>
-        </Box>
-      </LinearGradient>
-
-      <Box style={styles.topActions}>
-        <TouchableOpacity onPress={() => handleOpenEditor()} style={styles.topActionBtn}>
-          <Text style={styles.topActionText}>+ Add Post</Text>
-        </TouchableOpacity>
+          <HStack space="md" className="items-center">
+            <TouchableOpacity onPress={() => Alert.alert("Filter", "Filter click triggered")}>
+              <Feather name="filter" size={22} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => Alert.alert("Search", "Search click triggered")}>
+              <Feather name="search" size={22} color="#fff" />
+            </TouchableOpacity>
+          </HStack>
+        </HStack>
       </Box>
 
       {/* Filters */}
@@ -341,7 +358,7 @@ export default function PostsScreen() {
       {/* List */}
       {loading ? (
         <Box className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#193867" />
+          <ActivityIndicator size="large" color="#0052d4" />
         </Box>
       ) : (
         <FlatList
@@ -353,7 +370,7 @@ export default function PostsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#193867"
+              tintColor="#0052d4"
             />
           }
           onEndReached={loadMore}
@@ -369,7 +386,7 @@ export default function PostsScreen() {
             loadingMore ? (
               <ActivityIndicator
                 size="small"
-                color="#193867"
+                color="#0052d4"
                 style={{ marginVertical: 20 }}
               />
             ) : null
@@ -377,21 +394,32 @@ export default function PostsScreen() {
           renderItem={({ item }) => (
             <PostCard
               post={item}
-              onDelete={() => handleDelete(item._id || item.id || "")}
-              onPublish={() => handlePublish(item._id || item.id || "")}
-              onOpenDetails={() => handleOpenDetails(item)}
+              onOpenOptions={() => {
+                setActionPost(item);
+                setOptionsModalVisible(true);
+              }}
             />
           )}
         />
       )}
 
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fabBtn}
+        onPress={() => handleOpenEditor()}
+        activeOpacity={0.8}
+      >
+        <Feather name="plus" size={24} color="#ffffff" />
+      </TouchableOpacity>
+
+      {/* Post Details Modal */}
       <Modal visible={detailModalVisible} transparent animationType="slide" onRequestClose={() => setDetailModalVisible(false)}>
         <Box style={styles.modalOverlay}>
           <Box style={styles.modalCard}>
             <HStack className="justify-between items-center mb-4">
               <Heading size="md" style={{ color: "#0f172a" }}>Post Details</Heading>
               <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
-                <Text style={{ color: "#193867", fontWeight: "700" }}>Close</Text>
+                <Text style={{ color: "#0052d4", fontWeight: "700" }}>Close</Text>
               </TouchableOpacity>
             </HStack>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -417,13 +445,14 @@ export default function PostsScreen() {
         </Box>
       </Modal>
 
+      {/* Add / Edit Post Modal */}
       <Modal visible={editorVisible} transparent animationType="slide" onRequestClose={() => setEditorVisible(false)}>
         <Box style={styles.modalOverlay}>
           <Box style={styles.modalCard}>
             <HStack className="justify-between items-center mb-4">
               <Heading size="md" style={{ color: "#0f172a" }}>{selectedPost ? "Edit Post" : "Add Post"}</Heading>
               <TouchableOpacity onPress={() => setEditorVisible(false)}>
-                <Text style={{ color: "#193867", fontWeight: "700" }}>Cancel</Text>
+                <Text style={{ color: "#0052d4", fontWeight: "700" }}>Cancel</Text>
               </TouchableOpacity>
             </HStack>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -474,68 +503,158 @@ export default function PostsScreen() {
           </Box>
         </Box>
       </Modal>
+
+      {/* Options Menu Modal */}
+      <Modal visible={optionsModalVisible} transparent animationType="fade" onRequestClose={() => setOptionsModalVisible(false)}>
+        <TouchableOpacity style={styles.optionsModalOverlay} activeOpacity={1} onPress={() => setOptionsModalVisible(false)}>
+          <Box style={styles.optionsModalCard}>
+            <Text style={styles.optionsModalTitle} numberOfLines={1}>
+              {actionPost?.title || actionPost?.caption || "Post Actions"}
+            </Text>
+            
+            <TouchableOpacity style={styles.optionItem} onPress={() => {
+              setOptionsModalVisible(false);
+              if (actionPost) handleOpenDetails(actionPost);
+            }}>
+              <Feather name="eye" size={18} color="#1e293b" style={{ marginRight: 12 }} />
+              <Text style={styles.optionItemText}>View Details</Text>
+            </TouchableOpacity>
+
+            {actionPost?.post_status === "draft" && (
+              <TouchableOpacity style={styles.optionItem} onPress={() => {
+                setOptionsModalVisible(false);
+                if (actionPost?._id || actionPost?.id) handlePublish(actionPost._id || actionPost.id || "");
+              }}>
+                <Feather name="play" size={18} color="#1e293b" style={{ marginRight: 12 }} />
+                <Text style={styles.optionItemText}>Publish Now</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.optionItem} onPress={() => {
+              setOptionsModalVisible(false);
+              if (actionPost) handleOpenEditor(actionPost);
+            }}>
+              <Feather name="edit-2" size={18} color="#1e293b" style={{ marginRight: 12 }} />
+              <Text style={styles.optionItemText}>Edit Post</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.optionItem, { borderBottomWidth: 0 }]} onPress={() => {
+              setOptionsModalVisible(false);
+              if (actionPost?._id || actionPost?.id) handleDelete(actionPost._id || actionPost.id || "");
+            }}>
+              <Feather name="trash-2" size={18} color="#dc2626" style={{ marginRight: 12 }} />
+              <Text style={[styles.optionItemText, { color: "#dc2626" }]}>Delete Post</Text>
+            </TouchableOpacity>
+          </Box>
+        </TouchableOpacity>
+      </Modal>
     </Box>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingBottom: 4 },
-  topActions: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, backgroundColor: "#f8fafc" },
-  topActionBtn: { alignSelf: "flex-start", backgroundColor: "#193867", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
-  topActionText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  filterList: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  filterBtn: {
+  header: {
+    backgroundColor: "#0052d4",
+    paddingBottom: 4,
+  },
+  filterList: {
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  filterBtn: {
+    paddingHorizontal: 18,
     paddingVertical: 7,
-    borderRadius: 10,
-    backgroundColor: "#f1f5f9",
+    borderRadius: 999,
+    backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#e2e8f0",
     alignItems: "center",
     justifyContent: "center",
     minHeight: 34,
+    marginRight: 4,
   },
   filterBtnActive: {
-    backgroundColor: "#193867",
-    borderColor: "#193867",
+    backgroundColor: "#0052d4",
+    borderColor: "#0052d4",
   },
-  filterText: { fontSize: 13, color: "#64748b", fontWeight: "600", lineHeight: 18 },
-  filterTextActive: { color: "#ffffff" },
-  listContent: { padding: 16, paddingBottom: 40 },
+  filterText: {
+    fontSize: 13,
+    color: "#64748b",
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  filterTextActive: {
+    color: "#ffffff",
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 80,
+  },
   postCard: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     elevation: 2,
+  },
+  cardImage: {
+    width: 68,
+    height: 68,
+    borderRadius: 12,
+    backgroundColor: "#f1f5f9",
+  },
+  cardImagePlaceholder: {
+    width: 68,
+    height: 68,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardTitle: {
+    fontSize: 14,
+    color: "#0f172a",
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  cardDate: {
+    fontSize: 11,
+    color: "#64748b",
+    marginTop: 2,
+  },
+  moreBtn: {
+    padding: 4,
+    alignSelf: "flex-end",
   },
   badge: {
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    alignSelf: "flex-start",
+    alignSelf: "flex-end",
   },
-  badgeText: { fontSize: 10, fontWeight: "700" },
-  actionBtn: {
-    backgroundColor: "#f0f7ff",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700",
   },
-  actionBtnDanger: {
-    backgroundColor: "#fff5f5",
-    borderColor: "#fecaca",
-  },
-  actionBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#193867",
+  fabBtn: {
+    position: "absolute",
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#0052d4",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   modalOverlay: {
     flex: 1,
@@ -549,8 +668,30 @@ const styles = StyleSheet.create({
     padding: 20,
     maxHeight: "90%",
   },
-  detailLabel: { fontSize: 12, fontWeight: "700", color: "#64748b", textTransform: "uppercase" },
-  detailValue: { fontSize: 14, color: "#0f172a", lineHeight: 20 },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748b",
+    textTransform: "uppercase",
+  },
+  detailValue: {
+    fontSize: 14,
+    color: "#0f172a",
+    lineHeight: 20,
+  },
+  actionBtn: {
+    backgroundColor: "#f0f7ff",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#0052d4",
+  },
   input: {
     borderWidth: 1,
     borderColor: "#e2e8f0",
@@ -560,7 +701,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     color: "#0f172a",
   },
-  dateBox: { justifyContent: "center", minHeight: 44 },
+  dateBox: {
+    justifyContent: "center",
+    minHeight: 44,
+  },
   statusChip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -569,9 +713,58 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
-  statusChipActive: { backgroundColor: "#193867", borderColor: "#193867" },
-  statusChipText: { color: "#475569", fontWeight: "700", fontSize: 12 },
-  statusChipTextActive: { color: "#fff" },
-  saveBtn: { marginTop: 14, backgroundColor: "#193867", paddingVertical: 12, borderRadius: 12, alignItems: "center" },
-  saveBtnText: { color: "#fff", fontWeight: "700" },
+  statusChipActive: {
+    backgroundColor: "#0052d4",
+    borderColor: "#0052d4",
+  },
+  statusChipText: {
+    color: "#475569",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  statusChipTextActive: {
+    color: "#fff",
+  },
+  saveBtn: {
+    marginTop: 14,
+    backgroundColor: "#0052d4",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  saveBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+  optionsModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    justifyContent: "flex-end",
+  },
+  optionsModalCard: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+  },
+  optionsModalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  optionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  optionItemText: {
+    fontSize: 15,
+    color: "#1e293b",
+    fontWeight: "600",
+  },
 });

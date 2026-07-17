@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   TextInput,
+  Platform,
 } from "react-native";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
@@ -15,7 +16,7 @@ import { Heading } from "@/components/ui/heading";
 import { Button, ButtonText } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { fetchWithAuth, API_ENDPOINTS } from "@/services/api";
-import { LinearGradient } from "expo-linear-gradient";
+import { Feather } from "@expo/vector-icons";
 
 interface ProfileData {
   first_name?: string;
@@ -31,16 +32,18 @@ function InfoRow({ label, value, editing, onChangeText, keyboardType, multiline 
   onChangeText?: (v: string) => void; keyboardType?: any; multiline?: boolean;
 }) {
   return (
-    <VStack space="xs">
-      <Text style={styles.label}>{label}</Text>
+    <VStack space="xs" style={{ marginBottom: 12 }}>
+      <Text style={styles.formLabel}>{label}</Text>
       {editing && onChangeText ? (
         <TextInput
           style={[styles.input, multiline && { minHeight: 72, textAlignVertical: "top" }]}
           value={value} onChangeText={onChangeText}
           keyboardType={keyboardType} multiline={multiline}
+          placeholder={`Enter ${label.toLowerCase()}`}
+          placeholderTextColor="#94a3b8"
         />
       ) : (
-        <Text className="text-typography-200 text-sm font-medium">{value || "—"}</Text>
+        <Text style={styles.formValue}>{value || "—"}</Text>
       )}
     </VStack>
   );
@@ -93,66 +96,186 @@ export default function ProfileScreen() {
     finally { setSaving(false); }
   };
 
-  const initials = `${user?.first_name?.[0] ?? ""}${user?.last_name?.[0] ?? ""}`.toUpperCase() || "U";
+  const initials = `${firstName?.[0] ?? user?.first_name?.[0] ?? ""}${lastName?.[0] ?? user?.last_name?.[0] ?? ""}`.toUpperCase() || "KC";
 
   return (
-    <Box className="flex-1 bg-background-50">
-      <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
-        <VStack className="items-center px-5 pt-14 pb-8" space="sm">
-          <Box style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </Box>
-          <Heading size="lg" style={{ color: "#fff", marginTop: 8 }}>
-            {user?.first_name} {user?.last_name}
+    <Box className="flex-1 bg-[#f8fafc]">
+      {/* Header */}
+      <Box style={styles.header}>
+        <HStack className="justify-between items-center px-5 pt-14 pb-4">
+          <Heading size="xl" style={{ color: "#fff", fontWeight: "700" }}>
+            Profile
           </Heading>
-          <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>{user?.email}</Text>
-          {user?.role_name && (
-            <Box style={styles.roleBadge}>
-              <Text style={styles.roleText}>{user.role_name}</Text>
-            </Box>
-          )}
-          {user?.isSuperAdmin && (
-            <Box style={[styles.roleBadge, { backgroundColor: "rgba(253,224,71,0.25)" }]}>
-              <Text style={[styles.roleText, { color: "#fde047" }]}>⭐ Super Admin</Text>
-            </Box>
-          )}
-        </VStack>
-      </LinearGradient>
+          <TouchableOpacity onPress={() => Alert.alert("Settings", "App Settings coming soon")}>
+            <Feather name="settings" size={22} color="#fff" />
+          </TouchableOpacity>
+        </HStack>
+      </Box>
 
       {loading ? (
         <Box className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#193867" />
+          <ActivityIndicator size="large" color="#0052d4" />
         </Box>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Box style={styles.card}>
-            <HStack className="justify-between items-center mb-4">
-              <Heading size="sm" className="text-typography-100">Personal Details</Heading>
-              <TouchableOpacity onPress={() => setEditing((e) => !e)}>
-                <Text className="text-primary-400 font-semibold text-sm">{editing ? "Cancel" : "✏ Edit"}</Text>
-              </TouchableOpacity>
+          {/* Profile card */}
+          <Box style={styles.profileCard}>
+            <HStack space="md" className="items-center">
+              {/* Initials Avatar with overlay badge */}
+              <Box style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>{initials}</Text>
+                <TouchableOpacity style={styles.avatarBadge} activeOpacity={0.8}>
+                  <Feather name="camera" size={12} color="#fff" />
+                </TouchableOpacity>
+              </Box>
+
+              <VStack space="xs" style={{ flex: 1 }}>
+                <Heading size="md" style={styles.nameText}>
+                  {firstName} {lastName}
+                </Heading>
+                <Text style={styles.emailText}>{user?.email}</Text>
+                <TouchableOpacity style={styles.viewProfileBtn} onPress={() => setEditing((e) => !e)}>
+                  <Text style={styles.viewProfileText}>{editing ? "Hide Details" : "View Profile"}</Text>
+                </TouchableOpacity>
+              </VStack>
             </HStack>
-            <VStack space="md">
-              <InfoRow label="First Name" value={firstName} editing={editing} onChangeText={setFirstName} />
-              <InfoRow label="Last Name" value={lastName} editing={editing} onChangeText={setLastName} />
-              <InfoRow label="Email" value={user?.email ?? ""} editing={false} />
-              <InfoRow label="Phone" value={contactNo} editing={editing} onChangeText={setContactNo} keyboardType="phone-pad" />
-              <InfoRow label="Address" value={address} editing={editing} onChangeText={setAddress} multiline />
-            </VStack>
-            {editing && (
-              <Button size="lg" onPress={handleSave} isDisabled={saving} className="bg-primary-700 rounded-xl mt-5">
-                {saving ? <ActivityIndicator color="#fff" /> : <ButtonText>Save Changes</ButtonText>}
-              </Button>
-            )}
           </Box>
 
-          <TouchableOpacity style={styles.signOutBtn}
-            onPress={() => Alert.alert("Sign Out", "Are you sure?", [
-              { text: "Cancel", style: "cancel" },
-              { text: "Sign Out", style: "destructive", onPress: signOut },
-            ])}>
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
+          {/* Stats Box */}
+          <Box style={styles.statsCard}>
+            <HStack className="justify-around items-center">
+              <VStack style={styles.statColumn} className="items-center">
+                <Text style={styles.statNumber}>12</Text>
+                <Text style={styles.statLabel}>Total Posts</Text>
+              </VStack>
+              <Box style={styles.statDivider} />
+              <VStack style={styles.statColumn} className="items-center">
+                <Text style={styles.statNumber}>8</Text>
+                <Text style={styles.statLabel}>Scheduled</Text>
+              </VStack>
+              <Box style={styles.statDivider} />
+              <VStack style={styles.statColumn} className="items-center">
+                <Text style={styles.statNumber}>15.4K</Text>
+                <Text style={styles.statLabel}>Reach</Text>
+              </VStack>
+            </HStack>
+          </Box>
+
+          {/* Settings Options List */}
+          <VStack space="sm" style={{ marginBottom: 16 }}>
+            {/* Social Accounts */}
+            <TouchableOpacity style={styles.menuRow} activeOpacity={0.7} onPress={() => Alert.alert("Social Accounts", "Manage connected platforms")}>
+              <HStack space="md" className="items-center" style={{ flex: 1 }}>
+                <Box style={[styles.menuIconBg, { backgroundColor: "#eff6ff" }]}>
+                  <Feather name="globe" size={18} color="#0052d4" />
+                </Box>
+                <VStack style={{ flex: 1 }}>
+                  <Text style={styles.menuTitle}>Social Accounts</Text>
+                  <Text style={styles.menuSubtitle}>Manage connected platforms</Text>
+                </VStack>
+                <HStack className="items-center">
+                  <Text style={styles.countText}>3</Text>
+                  <Feather name="chevron-right" size={16} color="#94a3b8" style={{ marginLeft: 4 }} />
+                </HStack>
+              </HStack>
+            </TouchableOpacity>
+
+            {/* Notification Settings */}
+            <TouchableOpacity style={styles.menuRow} activeOpacity={0.7} onPress={() => Alert.alert("Notification Settings", "Manage notifications settings")}>
+              <HStack space="md" className="items-center" style={{ flex: 1 }}>
+                <Box style={[styles.menuIconBg, { backgroundColor: "#fef2f2" }]}>
+                  <Feather name="bell" size={18} color="#ef4444" />
+                </Box>
+                <VStack style={{ flex: 1 }}>
+                  <Text style={styles.menuTitle}>Notification Settings</Text>
+                  <Text style={styles.menuSubtitle}>Manage your notifications</Text>
+                </VStack>
+                <Feather name="chevron-right" size={16} color="#94a3b8" />
+              </HStack>
+            </TouchableOpacity>
+
+            {/* Account Settings */}
+            <TouchableOpacity style={styles.menuRow} activeOpacity={0.7} onPress={() => setEditing((e) => !e)}>
+              <HStack space="md" className="items-center" style={{ flex: 1 }}>
+                <Box style={[styles.menuIconBg, { backgroundColor: "#f0fdf4" }]}>
+                  <Feather name="settings" size={18} color="#22c55e" />
+                </Box>
+                <VStack style={{ flex: 1 }}>
+                  <Text style={styles.menuTitle}>Account Settings</Text>
+                  <Text style={styles.menuSubtitle}>Update your profile and preferences</Text>
+                </VStack>
+                <Feather name="chevron-right" size={16} color="#94a3b8" />
+              </HStack>
+            </TouchableOpacity>
+
+            {/* Subscription Plan */}
+            <TouchableOpacity style={styles.menuRow} activeOpacity={0.7} onPress={() => Alert.alert("Subscription Plan", "Subscription details screen")}>
+              <HStack space="md" className="items-center" style={{ flex: 1 }}>
+                <Box style={[styles.menuIconBg, { backgroundColor: "#faf5ff" }]}>
+                  <Feather name="credit-card" size={18} color="#a855f7" />
+                </Box>
+                <VStack style={{ flex: 1 }}>
+                  <Text style={styles.menuTitle}>Subscription Plan</Text>
+                  <Text style={styles.menuSubtitle}>Manage your subscription</Text>
+                </VStack>
+                <Feather name="chevron-right" size={16} color="#94a3b8" />
+              </HStack>
+            </TouchableOpacity>
+
+            {/* Help & Support */}
+            <TouchableOpacity style={styles.menuRow} activeOpacity={0.7} onPress={() => Alert.alert("Help & Support", "Support contact details")}>
+              <HStack space="md" className="items-center" style={{ flex: 1 }}>
+                <Box style={[styles.menuIconBg, { backgroundColor: "#f6ffed" }]}>
+                  <Feather name="help-circle" size={18} color="#52c41a" />
+                </Box>
+                <VStack style={{ flex: 1 }}>
+                  <Text style={styles.menuTitle}>Help & Support</Text>
+                  <Text style={styles.menuSubtitle}>Get help and contact support</Text>
+                </VStack>
+                <Feather name="chevron-right" size={16} color="#94a3b8" />
+              </HStack>
+            </TouchableOpacity>
+
+            {/* Log Out */}
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Sign Out", style: "destructive", onPress: signOut },
+              ])}
+            >
+              <HStack space="md" className="items-center" style={{ flex: 1 }}>
+                <Box style={[styles.menuIconBg, { backgroundColor: "#fff5f5" }]}>
+                  <Feather name="log-out" size={18} color="#dc2626" />
+                </Box>
+                <VStack style={{ flex: 1 }}>
+                  <Text style={[styles.menuTitle, { color: "#dc2626" }]}>Log Out</Text>
+                  <Text style={styles.menuSubtitle}>Sign out from your account</Text>
+                </VStack>
+              </HStack>
+            </TouchableOpacity>
+          </VStack>
+
+          {/* Inline Editable Form Details */}
+          {editing && (
+            <Box style={styles.editCard}>
+              <Heading size="sm" style={styles.editCardTitle}>Edit Personal Details</Heading>
+              <VStack space="md">
+                <InfoRow label="First Name" value={firstName} editing={editing} onChangeText={setFirstName} />
+                <InfoRow label="Last Name" value={lastName} editing={editing} onChangeText={setLastName} />
+                <InfoRow label="Email" value={user?.email ?? ""} editing={false} />
+                <InfoRow label="Phone" value={contactNo} editing={editing} onChangeText={setContactNo} keyboardType="phone-pad" />
+                <InfoRow label="Address" value={address} editing={editing} onChangeText={setAddress} multiline />
+              </VStack>
+              <Button size="lg" onPress={handleSave} isDisabled={saving} style={styles.saveBtn}>
+                {saving ? <ActivityIndicator color="#fff" /> : <ButtonText style={{ fontWeight: "700" }}>Save Changes</ButtonText>}
+              </Button>
+            </Box>
+          )}
+
+          {/* Footer version */}
+          <Text style={styles.footerVersion}>PostBell v1.0.0</Text>
         </ScrollView>
       )}
     </Box>
@@ -160,15 +283,187 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingBottom: 4 },
-  avatarCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" },
-  avatarText: { fontSize: 32, fontWeight: "800", color: "#fff" },
-  roleBadge: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
-  roleText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  scroll: { padding: 16, paddingBottom: 40 },
-  card: { backgroundColor: "#fff", borderRadius: 20, padding: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3, marginBottom: 16 },
-  label: { fontSize: 11, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 },
-  input: { borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: "#1e293b", backgroundColor: "#f8fafc" },
-  signOutBtn: { backgroundColor: "#fee2e2", borderRadius: 16, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#fca5a5" },
-  signOutText: { color: "#dc2626", fontWeight: "700", fontSize: 15 },
+  header: {
+    backgroundColor: "#0052d4",
+    paddingBottom: 4,
+  },
+  scroll: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  profileCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  avatarCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "#e0f2fe",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  avatarText: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#0369a1",
+  },
+  avatarBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#0052d4",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#ffffff",
+  },
+  nameText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  emailText: {
+    fontSize: 12,
+    color: "#64748b",
+  },
+  viewProfileBtn: {
+    backgroundColor: "#0052d4",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  viewProfileText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  statsCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  statColumn: {
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  statLabel: {
+    fontSize: 11,
+    color: "#64748b",
+    marginTop: 2,
+    fontWeight: "500",
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: "#e2e8f0",
+  },
+  menuRow: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  menuIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  menuSubtitle: {
+    fontSize: 11,
+    color: "#64748b",
+    marginTop: 1,
+  },
+  countText: {
+    fontSize: 13,
+    color: "#64748b",
+    fontWeight: "600",
+  },
+  editCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 8,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  editCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 14,
+  },
+  formLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#94a3b8",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  formValue: {
+    fontSize: 14,
+    color: "#0f172a",
+    fontWeight: "600",
+    paddingVertical: 4,
+  },
+  input: {
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: "#1e293b",
+    backgroundColor: "#f8fafc",
+  },
+  saveBtn: {
+    backgroundColor: "#0052d4",
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  footerVersion: {
+    fontSize: 12,
+    color: "#94a3b8",
+    textAlign: "center",
+    marginTop: 20,
+    fontWeight: "500",
+  },
 });

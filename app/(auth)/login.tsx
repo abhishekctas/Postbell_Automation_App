@@ -162,20 +162,20 @@ export default function LoginScreen() {
         {/* ── HEADER ──────────────────────────────────────────────────────── */}
         <VStack space="sm" className="items-center mb-10 mt-16">
           <Box style={styles.logoBox}>
-            <Text className="text-white font-bold text-4xl">P</Text>
-            {/* <Image
-              source={require("../../assets/images/Gemini_Generated_Image_logo.png")}
-              style={{ width: 80, height: 80 }}
+            {/* <Text className="text-white font-bold text-4xl">P</Text> */}
+            <Image
+              source={require("../../assets/images/logo.png")}
+              style={{ width: 70, height: 70 }}
               resizeMode="contain"
-            /> */}
+            />
           </Box>
           <Heading
             size="2xl"
-            className="text-white font-bold tracking-tight mt-3"
+            className="text-white font-bold tracking-tight mt-2"
           >
             Postbell
           </Heading>
-          <Text className="text-blue-200 text-sm text-center">
+          <Text className="text-blue-200 text-sm text-center my-0">
             Automation Panel
           </Text>
         </VStack>
@@ -232,7 +232,7 @@ export default function LoginScreen() {
                 <Input
                   size="lg"
                   isInvalid={!!emailError}
-                  className="border-outline-200 bg-background-50 rounded-xl"
+                  className="border-outline-200 rounded-xl"
                 >
                   <InputField
                     placeholder="you@example.com"
@@ -246,7 +246,7 @@ export default function LoginScreen() {
                     autoCorrect={false}
                     onSubmitEditing={handleRequestOtp}
                     returnKeyType="done"
-                    className="text-typography-100"
+                    className="text-typography-200"
                   />
                 </Input>
                 {!!emailError && (
@@ -261,7 +261,7 @@ export default function LoginScreen() {
                 className="bg-primary-700 rounded-xl h-14"
               >
                 {isSubmitting ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#061226" />
                 ) : (
                   <ButtonText className="font-semibold text-base">
                     Send OTP
@@ -301,7 +301,7 @@ export default function LoginScreen() {
               </VStack>
 
               {/* OTP Boxes */}
-              <HStack space="sm" className="justify-center my-2">
+              <HStack space="sm" className="justify-center">
                 {otp.map((digit, i) => (
                   <RNTextInput
                     key={i}
@@ -401,7 +401,8 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "white",
+    // backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,

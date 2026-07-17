@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
   Alert,
   StyleSheet,
+  ScrollView,
 } from "react-native";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
@@ -16,6 +16,58 @@ import { Heading } from "@/components/ui/heading";
 import { LinearGradient } from "expo-linear-gradient";
 import { listSubscriptions, cancelSubscription, Subscription } from "./customer-subscriptions.api";
 import { router } from "expo-router";
+import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+
+const SUB_TABLE_COLUMNS: HtmlTableColumn[] = [
+  {
+    key: "customer_id",
+    label: "Customer",
+    width: "180px",
+    render: (_v, row) => {
+      if (row.customer_id) return `${row.customer_id.first_name || ""} ${row.customer_id.last_name || ""}`.trim();
+      return row.customerEmail || "Unknown";
+    },
+  },
+  {
+    key: "plan_id",
+    label: "Plan",
+    width: "160px",
+    render: (_v, row) => {
+      const name = row.plan_id?.name || "Standard Plan";
+      const price = row.plan_price ?? row.plan_id?.price_per_month ?? 0;
+      const cycle = row.plan_id?.billing_cycle || "monthly";
+      return `${name} (₹${price}/${cycle})`;
+    },
+  },
+  {
+    key: "starts_at",
+    label: "Period",
+    width: "180px",
+    render: (_v, row) => {
+      const start = row.starts_at ? new Date(row.starts_at).toLocaleDateString("en-IN") : "—";
+      const end = row.ends_at ? new Date(row.ends_at).toLocaleDateString("en-IN") : "—";
+      return `${start} to ${end}`;
+    },
+  },
+  {
+    key: "status",
+    label: "Status",
+    width: "100px",
+    render: (v) => {
+      const val = typeof v === "string" ? v.toLowerCase() : "active";
+      const map: Record<string, { bg: string; color: string; text: string }> = {
+        active: { bg: "#dcfce7", color: "#15803d", text: "Active" },
+        cancelled: { bg: "#fee2e2", color: "#dc2626", text: "Cancelled" },
+      };
+      const meta = map[val] || { bg: "#f1f5f9", color: "#64748b", text: val };
+      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${meta.bg};color:${meta.color};">${meta.text}</span>`;
+    },
+  },
+];
+
+const SUB_ROW_ACTIONS = [
+  { label: "Cancel", action: "cancel", style: "danger" },
+];
 
 export default function CustomerSubscriptionsScreen() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -76,12 +128,6 @@ export default function CustomerSubscriptionsScreen() {
     fetchSubscriptionsList(1, true);
   };
 
-  const loadMore = () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    fetchSubscriptionsList(page + 1, false);
-  };
-
   const handleCancelSubscription = (item: Subscription) => {
     const id = item._id || item.id || "";
     const customerName =
@@ -123,53 +169,6 @@ export default function CustomerSubscriptionsScreen() {
       default:
         return { bg: "#f1f5f9", color: "#64748b" };
     }
-  };
-
-  const renderItem = ({ item }: { item: Subscription }) => {
-    const statusMeta = getStatusStyle(item.status);
-    const customerName = item.customer_id
-      ? `${item.customer_id.first_name} ${item.customer_id.last_name}`
-      : "Unknown Customer";
-    const customerEmail = item.customer_id?.email || item.customerEmail || "";
-    const planName = item.plan_id?.name || "Standard Plan";
-    const planCycle = item.plan_id?.billing_cycle || "monthly";
-    const price = item.plan_price ?? item.plan_id?.price_per_month ?? 0;
-
-    const startDate = item.starts_at ? new Date(item.starts_at).toLocaleDateString("en-IN") : "—";
-    const endDate = item.ends_at ? new Date(item.ends_at).toLocaleDateString("en-IN") : "—";
-
-    return (
-      <Box style={styles.card}>
-        <HStack className="justify-between items-start mb-2">
-          <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-            <Text className="text-typography-100 font-bold text-base">{customerName}</Text>
-            <Text className="text-typography-500 text-sm">{customerEmail}</Text>
-          </VStack>
-          <Box style={[styles.statusBadge, { backgroundColor: statusMeta.bg }]}>
-            <Text style={{ color: statusMeta.color, fontSize: 10, fontWeight: "700", textTransform: "capitalize" }}>
-              {item.status || "Active"}
-            </Text>
-          </Box>
-        </HStack>
-
-        <Box style={styles.planSection}>
-          <Text className="text-typography-100 font-semibold text-sm">
-            Plan: {planName} ({price} / {planCycle})
-          </Text>
-          <Text className="text-typography-500 text-xs mt-1">
-            Period: {startDate} to {endDate}
-          </Text>
-        </Box>
-
-        {item.status === "active" && (
-          <HStack className="mt-4 justify-end">
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => handleCancelSubscription(item)}>
-              <Text style={styles.cancelBtnText}>✕ Cancel Subscription</Text>
-            </TouchableOpacity>
-          </HStack>
-        )}
-      </Box>
-    );
   };
 
   return (
@@ -217,26 +216,34 @@ export default function CustomerSubscriptionsScreen() {
           <ActivityIndicator size="large" color="#193867" />
         </Box>
       ) : (
-        <FlatList
-          data={subscriptions}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#193867" />
           }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={
+        >
+          {subscriptions.length === 0 ? (
             <Box className="items-center justify-center py-20">
               <Text className="text-typography-400 text-base">No subscriptions found</Text>
             </Box>
-          }
-          ListFooterComponent={
-            loadingMore ? <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} /> : null
-          }
-          renderItem={renderItem}
-        />
+          ) : (
+            <HtmlTable
+              columns={SUB_TABLE_COLUMNS}
+              data={subscriptions}
+              rowActions={SUB_ROW_ACTIONS}
+              onRowAction={(action, rowId) => {
+                if (action === "cancel") {
+                  const s = subscriptions.find((x) => (x._id || x.id) === rowId);
+                  if (s) handleCancelSubscription(s);
+                }
+              }}
+            />
+          )}
+          {loadingMore && (
+            <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
+          )}
+        </ScrollView>
       )}
     </Box>
   );

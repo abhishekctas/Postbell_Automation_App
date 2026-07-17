@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
@@ -27,6 +26,62 @@ import {
   SubscriptionPlan,
 } from "./subscription-plans.api";
 import { router } from "expo-router";
+import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+
+const PLAN_TABLE_COLUMNS: HtmlTableColumn[] = [
+  {
+    key: "name",
+    label: "Plan Name",
+    width: "160px",
+    render: (v, row) => {
+      const popular = row.is_popular_monthly || row.is_popular_annual;
+      return popular ? `${v} <span style="display:inline-block;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:800;background:#fef3c7;color:#d97706;margin-left:4px;">POPULAR</span>` : v;
+    },
+  },
+  {
+    key: "price_per_month",
+    label: "Price/Month",
+    width: "120px",
+    render: (v) => `₹${v}`,
+  },
+  {
+    key: "price_per_year",
+    label: "Price/Year",
+    width: "120px",
+    render: (v) => (v ? `₹${v}` : "—"),
+  },
+  {
+    key: "posts_per_month",
+    label: "Posts/Mo",
+    width: "90px",
+  },
+  {
+    key: "posts_per_day",
+    label: "Posts/Day",
+    width: "90px",
+  },
+  {
+    key: "ai_content_generation_limit",
+    label: "AI Limit",
+    width: "90px",
+  },
+  {
+    key: "status",
+    label: "Status",
+    width: "100px",
+    render: (v) => {
+      const isAct = v === 1;
+      const bg = isAct ? "#dcfce7" : "#fee2e2";
+      const color = isAct ? "#15803d" : "#dc2626";
+      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${bg};color:${color};">${isAct ? "Active" : "Inactive"}</span>`;
+    },
+  },
+];
+
+const PLAN_ROW_ACTIONS = [
+  { label: "Edit", action: "edit" },
+  { label: "Delete", action: "delete", style: "danger" },
+];
 
 export default function SubscriptionPlansScreen() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -194,62 +249,6 @@ export default function SubscriptionPlansScreen() {
     ]);
   };
 
-  const renderItem = ({ item }: { item: SubscriptionPlan }) => {
-    const isAct = item.status === 1;
-
-    return (
-      <Box style={styles.card}>
-        <HStack className="justify-between items-start">
-          <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-            <HStack space="sm" className="items-center">
-              <Text className="text-typography-100 font-bold text-base">{item.name}</Text>
-              {(item.is_popular_monthly || item.is_popular_annual) && (
-                <Box style={styles.popularBadge}>
-                  <Text style={styles.popularBadgeText}>POPULAR</Text>
-                </Box>
-              )}
-            </HStack>
-            <Text className="text-typography-500 text-sm mt-1">
-              ₹{item.price_per_month} / month {item.price_per_year ? `• ₹${item.price_per_year} / year` : ""}
-            </Text>
-            {item.description ? (
-              <Text className="text-typography-400 text-xs italic mt-1">{item.description}</Text>
-            ) : null}
-
-            <VStack space="xs" className="mt-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-              <Text style={styles.limitText}>📤 Posts: {item.posts_per_month}/mo ({item.posts_per_day}/day)</Text>
-              <Text style={styles.limitText}>🤖 AI content generations: {item.ai_content_generation_limit}/mo</Text>
-              {item.features?.length > 0 && (
-                <Text style={[styles.limitText, { marginTop: 4, fontWeight: "600" }]}>
-                  ✔ {item.features.join(", ")}
-                </Text>
-              )}
-            </VStack>
-          </VStack>
-          <VStack space="sm" className="items-end">
-            <Box style={[styles.statusBadge, { backgroundColor: isAct ? "#dcfce7" : "#fee2e2" }]}>
-              <Text style={{ color: isAct ? "#15803d" : "#dc2626", fontSize: 10, fontWeight: "700" }}>
-                {isAct ? "Active" : "Inactive"}
-              </Text>
-            </Box>
-            <TouchableOpacity style={styles.statusToggleAction} onPress={() => handleToggleStatus(item)}>
-              <Text style={styles.statusToggleActionText}>{isAct ? "Deactivate" : "Activate"}</Text>
-            </TouchableOpacity>
-          </VStack>
-        </HStack>
-
-        <HStack space="sm" className="mt-4 justify-end">
-          <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
-            <Text style={styles.actionBtnText}>✏ Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={() => handleDelete(item)}>
-            <Text style={[styles.actionBtnText, { color: "#dc2626" }]}>🗑 Delete</Text>
-          </TouchableOpacity>
-        </HStack>
-      </Box>
-    );
-  };
-
   return (
     <Box className="flex-1 bg-background-50">
       <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
@@ -276,21 +275,34 @@ export default function SubscriptionPlansScreen() {
           <ActivityIndicator size="large" color="#193867" />
         </Box>
       ) : (
-        <FlatList
-          data={plans}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#193867" />
           }
-          ListEmptyComponent={
+        >
+          {plans.length === 0 ? (
             <Box className="items-center justify-center py-20">
               <Text className="text-typography-400 text-base">No subscription plans found</Text>
             </Box>
-          }
-          renderItem={renderItem}
-        />
+          ) : (
+            <HtmlTable
+              columns={PLAN_TABLE_COLUMNS}
+              data={plans}
+              rowActions={PLAN_ROW_ACTIONS}
+              onRowAction={(action, rowId) => {
+                if (action === "edit") {
+                  const p = plans.find((x) => (x._id || x.id) === rowId);
+                  if (p) handleOpenEdit(p);
+                } else if (action === "delete") {
+                  const p = plans.find((x) => (x._id || x.id) === rowId);
+                  if (p) handleDelete(p);
+                }
+              }}
+            />
+          )}
+        </ScrollView>
       )}
 
       {/* Add / Edit Modal */}

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  FlatList,
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
@@ -16,6 +15,26 @@ import { Text } from "@/components/ui/text";
 import { Heading } from "@/components/ui/heading";
 import { Button, ButtonText } from "@/components/ui/button";
 import { getRoles, createRole, updateRole, deleteRole, Role } from "../roleList/roles-management.api";
+import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+
+const ROLE_TABLE_COLUMNS: HtmlTableColumn[] = [
+  {
+    key: "name",
+    label: "Role Name",
+    width: "200px",
+  },
+  {
+    key: "description",
+    label: "Description",
+    width: "300px",
+    render: (v) => (v ? String(v) : "No description provided."),
+  },
+];
+
+const ROLE_ROW_ACTIONS = [
+  { label: "Edit", action: "edit" },
+  { label: "Delete", action: "delete", style: "danger" },
+];
 
 export default function RolesManagementScreen() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -114,35 +133,28 @@ export default function RolesManagementScreen() {
           <ActivityIndicator size="large" color="#193867" />
         </Box>
       ) : (
-        <FlatList
-          data={roles}
-          keyExtractor={(item) => item._id || item.id || `role-${Math.random()}`}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
+        <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+          {roles.length === 0 ? (
             <Box className="items-center justify-center py-20">
               <Text className="text-typography-400 text-base">No roles found</Text>
             </Box>
-          }
-          renderItem={({ item }) => (
-            <Box style={styles.card}>
-              <HStack className="justify-between items-start">
-                <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-                  <Text className="text-typography-100 font-bold text-base">{item.name}</Text>
-                  <Text className="text-typography-500 text-sm">{(item as any).description || "No description provided."}</Text>
-                </VStack>
-              </HStack>
-              <HStack space="sm" className="mt-4 justify-end">
-                <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
-                  <Text style={styles.actionBtnText}>✏ Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={() => handleDelete(item)}>
-                  <Text style={[styles.actionBtnText, { color: "#dc2626" }]}>🗑 Delete</Text>
-                </TouchableOpacity>
-              </HStack>
-            </Box>
+          ) : (
+            <HtmlTable
+              columns={ROLE_TABLE_COLUMNS}
+              data={roles}
+              rowActions={ROLE_ROW_ACTIONS}
+              onRowAction={(action, rowId) => {
+                if (action === "edit") {
+                  const r = roles.find((x) => (x._id || x.id) === rowId);
+                  if (r) handleOpenEdit(r);
+                } else if (action === "delete") {
+                  const r = roles.find((x) => (x._id || x.id) === rowId);
+                  if (r) handleDelete(r);
+                }
+              }}
+            />
           )}
-        />
+        </ScrollView>
       )}
 
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
