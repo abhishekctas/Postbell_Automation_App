@@ -7,7 +7,7 @@ export interface HtmlTableColumn<T = any> {
   key: string;
   label: string;
   width?: string;
-  render?: (value: any, row: T) => string;
+  render?: (value: any, row: T) => string | React.ReactNode;
 }
 
 interface HtmlTableProps {
@@ -15,12 +15,24 @@ interface HtmlTableProps {
   data: any[];
   rowActions?: { label: string; action: string; style?: string }[];
   onRowAction?: (action: string, rowId: string) => void;
+  tableContainerStyle?: any;
+  headerRowStyle?: any;
+  headerCellTextStyle?: any;
+  rowStyle?: any;
+  rowEvenStyle?: any;
+  rowOddStyle?: any;
+  cellStyle?: any;
+  iconOnlyActions?: boolean;
 }
 
 // Simple HTML/span stripper and parser to native React Native components
 function renderCellContent(value: any) {
   if (value === null || value === undefined) {
     return <Text style={styles.emptyText}>—</Text>;
+  }
+
+  if (React.isValidElement(value)) {
+    return value;
   }
 
   const str = String(value);
@@ -63,24 +75,38 @@ function renderCellContent(value: any) {
   return <Text style={styles.cellText}>{str}</Text>;
 }
 
-export default function HtmlTable({ columns, data, rowActions, onRowAction }: HtmlTableProps) {
+export default function HtmlTable({
+  columns,
+  data,
+  rowActions,
+  onRowAction,
+  tableContainerStyle,
+  headerRowStyle,
+  headerCellTextStyle,
+  rowStyle,
+  rowEvenStyle,
+  rowOddStyle,
+  cellStyle,
+  iconOnlyActions = false,
+}: HtmlTableProps) {
   const hasActions = rowActions && rowActions.length > 0;
+  const actionColWidth = iconOnlyActions ? 100 : 180;
 
   // Calculate suitable table width based on columns and their defined widths
   const totalTableWidth = columns.reduce((acc, col) => {
     const w = col.width ? parseInt(col.width, 10) : 150;
     return acc + w;
-  }, hasActions ? 180 : 0);
+  }, hasActions ? actionColWidth : 0);
 
   const tableMinWidth = Math.max(totalTableWidth, 750);
 
   return (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, tableContainerStyle]}>
       <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.scrollView}>
         <View style={{ minWidth: tableMinWidth }}>
           <Table style={{ width: "100%" }}>
             <TableHeader style={styles.tableHeader}>
-              <TableRow style={styles.headerRow}>
+              <TableRow style={[styles.headerRow, headerRowStyle]}>
                 {columns.map((col) => {
                   const width = col.width ? parseInt(col.width, 10) : 150;
                   return (
@@ -89,13 +115,13 @@ export default function HtmlTable({ columns, data, rowActions, onRowAction }: Ht
                       useRNView={true}
                       style={[styles.headerCell, { width }]}
                     >
-                      <Text style={styles.headerCellText}>{col.label}</Text>
+                      <Text style={[styles.headerCellText, headerCellTextStyle]}>{col.label}</Text>
                     </TableHead>
                   );
                 })}
                 {hasActions && (
-                  <TableHead useRNView={true} style={[styles.headerCell, { width: 180 }]}>
-                    <Text style={styles.headerCellText}>Actions</Text>
+                  <TableHead useRNView={true} style={[styles.headerCell, { width: actionColWidth }]}>
+                    <Text style={[styles.headerCellText, headerCellTextStyle]}>Actions</Text>
                   </TableHead>
                 )}
               </TableRow>
@@ -123,7 +149,8 @@ export default function HtmlTable({ columns, data, rowActions, onRowAction }: Ht
                       key={rowId}
                       style={[
                         styles.row,
-                        isEven ? styles.rowEven : styles.rowOdd,
+                        rowStyle,
+                        isEven ? [styles.rowEven, rowEvenStyle] : [styles.rowOdd, rowOddStyle],
                       ]}
                     >
                       {columns.map((col) => {
@@ -137,7 +164,7 @@ export default function HtmlTable({ columns, data, rowActions, onRowAction }: Ht
                           <TableData
                             key={col.key}
                             useRNView={true}
-                            style={[styles.cell, { width }]}
+                            style={[styles.cell, cellStyle, { width }]}
                           >
                             {renderCellContent(value)}
                           </TableData>
@@ -147,7 +174,7 @@ export default function HtmlTable({ columns, data, rowActions, onRowAction }: Ht
                       {hasActions && (
                         <TableData
                           useRNView={true}
-                          style={[styles.cell, { width: 180 }]}
+                          style={[styles.cell, cellStyle, { width: actionColWidth }]}
                         >
                           <View style={styles.actionsContainer}>
                             {rowActions.map((actionInfo) => {
@@ -158,6 +185,15 @@ export default function HtmlTable({ columns, data, rowActions, onRowAction }: Ht
                                   style={[
                                     styles.actionBtn,
                                     isDanger ? styles.actionBtnDanger : styles.actionBtnNormal,
+                                    iconOnlyActions && {
+                                      width: 32,
+                                      height: 32,
+                                      paddingHorizontal: 0,
+                                      paddingVertical: 0,
+                                      justifyContent: "center",
+                                      alignItems: "center",
+                                      borderRadius: 8,
+                                    }
                                   ]}
                                   onPress={() => {
                                     if (onRowAction) {
@@ -166,18 +202,20 @@ export default function HtmlTable({ columns, data, rowActions, onRowAction }: Ht
                                   }}
                                 >
                                   {actionInfo.action === "edit" ? (
-                                    <Pencil size={11} color={isDanger ? "#dc2626" : "#4f46e5"} style={{ marginRight: 4 }} />
+                                    <Pencil size={14} color={isDanger ? "#dc2626" : "#2563eb"} style={!iconOnlyActions && { marginRight: 4 }} />
                                   ) : actionInfo.action === "delete" ? (
-                                    <Trash2 size={11} color="#dc2626" style={{ marginRight: 4 }} />
+                                    <Trash2 size={14} color="#dc2626" style={!iconOnlyActions && { marginRight: 4 }} />
                                   ) : null}
-                                  <Text
-                                    style={[
-                                      styles.actionBtnText,
-                                      isDanger ? styles.actionBtnTextDanger : styles.actionBtnTextNormal,
-                                    ]}
-                                  >
-                                    {actionInfo.label}
-                                  </Text>
+                                  {!iconOnlyActions && (
+                                    <Text
+                                      style={[
+                                        styles.actionBtnText,
+                                        isDanger ? styles.actionBtnTextDanger : styles.actionBtnTextNormal,
+                                      ]}
+                                    >
+                                      {actionInfo.label}
+                                    </Text>
+                                  )}
                                 </TouchableOpacity>
                               );
                             })}

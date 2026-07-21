@@ -228,7 +228,7 @@ export default function UsersManagementScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
+    <Box className="flex-1 bg-[#f8fafc]">
       <Box style={styles.filterSection}>
         <TextInput
           style={styles.searchInput}

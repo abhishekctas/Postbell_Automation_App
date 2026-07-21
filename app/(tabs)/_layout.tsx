@@ -11,14 +11,131 @@ import {
   ScrollView,
   TouchableOpacity,
   Pressable,
+  DeviceEventEmitter,
 } from "react-native";
 import { Box } from "@/components/ui/box";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather, Ionicons } from "@expo/vector-icons";
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+function TabIcon({ children, focused }: { children: React.ReactNode; focused: boolean }) {
   return (
     <View style={{ opacity: focused ? 1 : 0.5 }}>
-      <Text style={{ fontSize: 22 }}>{emoji}</Text>
+      <Text style={{ fontSize: 22 }}>{children}</Text>
+    </View>
+  );
+}
+
+function CustomTabBar({ state, navigation }: any) {
+  const insets = useSafeAreaInsets();
+
+  const handleTabPress = (tabIndex: number) => {
+    if (tabIndex === 0) {
+      navigation.navigate("index");
+    } else if (tabIndex === 1) {
+      navigation.navigate("posts");
+    } else if (tabIndex === 2) {
+      // Navigate to posts tab with search parameter to add post
+      router.push("/posts?action=add");
+    } else if (tabIndex === 3) {
+      navigation.navigate("profile");
+    } else if (tabIndex === 4) {
+      // Open drawer menu
+      DeviceEventEmitter.emit("toggleDrawer");
+    }
+  };
+
+  const getIsActive = (tabIndex: number) => {
+    if (tabIndex === 0) return state.index === 0;
+    if (tabIndex === 1) return state.index === 1;
+    if (tabIndex === 3) return state.index === 2; // profile is route index 2 in state.routes
+    return false;
+  };
+
+  const activeColor = "#0b53f8";
+  const inactiveColor = "#80889B";
+
+  return (
+    <View style={[
+      styles.tabBarContainer,
+      {
+        bottom: Platform.OS === "ios" ? insets.bottom / 2 + 8 : 4,
+        paddingBottom: Platform.OS === "ios" ? insets.bottom / 2 : 0,
+      }
+    ]}>
+      {/* Tab 0: Dashboard */}
+      <TouchableOpacity
+        style={styles.tabButton}
+        onPress={() => handleTabPress(0)}
+        activeOpacity={0.7}
+      >
+        <Ionicons
+          name={getIsActive(0) ? "home" : "home-outline"}
+          size={22}
+          color={getIsActive(0) ? activeColor : inactiveColor}
+        />
+        <Text style={[styles.tabLabel, { color: getIsActive(0) ? activeColor : inactiveColor }]}>
+          Dashboard
+        </Text>
+      </TouchableOpacity>
+
+      {/* Tab 1: Posts */}
+      <TouchableOpacity
+        style={styles.tabButton}
+        onPress={() => handleTabPress(1)}
+        activeOpacity={0.7}
+      >
+        <Feather
+          name="file-text"
+          size={21}
+          color={getIsActive(1) ? activeColor : inactiveColor}
+        />
+        <Text style={[styles.tabLabel, { color: getIsActive(1) ? activeColor : inactiveColor }]}>
+          Posts
+        </Text>
+      </TouchableOpacity>
+
+      {/* Tab 2: Floating Plus Button */}
+      <View style={styles.plusButtonOuter}>
+        <TouchableOpacity
+          style={styles.plusButton}
+          onPress={() => handleTabPress(2)}
+          activeOpacity={0.8}
+        >
+          <Feather name="plus" size={26} color="#ffffff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Tab 3: Profile */}
+      <TouchableOpacity
+        style={styles.tabButton}
+        onPress={() => handleTabPress(3)}
+        activeOpacity={0.7}
+      >
+        <Feather
+          name="user"
+          size={21}
+          color={getIsActive(3) ? activeColor : inactiveColor}
+        />
+        <Text style={[styles.tabLabel, { color: getIsActive(3) ? activeColor : inactiveColor }]}>
+          Profile
+        </Text>
+      </TouchableOpacity>
+
+      {/* Tab 4: Menu */}
+      <TouchableOpacity
+        style={styles.tabButton}
+        onPress={() => handleTabPress(4)}
+        activeOpacity={0.7}
+      >
+        <Feather
+          name="menu"
+          size={22}
+          color={inactiveColor}
+        />
+        <Text style={[styles.tabLabel, { color: inactiveColor }]}>
+          Menu
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -27,6 +144,13 @@ export default function TabsLayout() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const insets = useSafeAreaInsets();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("toggleDrawer", () => {
+      setDrawerOpen(true);
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -52,80 +176,33 @@ export default function TabsLayout() {
   return (
     <>
       <Tabs
+        tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{
           headerShown: false,
-          tabBarStyle: {
-            backgroundColor: "#ffffff",
-            borderTopWidth: 1,
-            borderTopColor: "#e2e8f0",
-            paddingBottom: Platform.OS === "ios" ? insets.bottom : 8,
-            paddingTop: 8,
-            height: Platform.OS === "ios" ? 80 + insets.bottom : 65,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 8,
-          },
-          tabBarActiveTintColor: "#193867",
-          tabBarInactiveTintColor: "#94a3b8",
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: "700",
-            marginTop: 2,
-          },
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
             title: "Dashboard",
-            tabBarIcon: ({ focused }) => (
-              <View style={[styles.iconBox, focused && styles.iconBoxActive]}>
-                <TabIcon emoji="📊" focused={focused} />
-              </View>
-            ),
           }}
         />
         <Tabs.Screen
           name="posts"
           options={{
             title: "Posts",
-            tabBarIcon: ({ focused }) => (
-              <View style={[styles.iconBox, focused && styles.iconBoxActive]}>
-                <TabIcon emoji="📝" focused={focused} />
-              </View>
-            ),
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
             title: "Profile",
-            tabBarIcon: ({ focused }) => (
-              <View style={[styles.iconBox, focused && styles.iconBoxActive]}>
-                <TabIcon emoji="👤" focused={focused} />
-              </View>
-            ),
           }}
         />
         <Tabs.Screen
           name="menu"
           options={{
             title: "Menu",
-            tabBarIcon: ({ focused }) => (
-              <View style={[styles.iconBox, focused && styles.iconBoxActive]}>
-                <TabIcon emoji="☰" focused={focused} />
-              </View>
-            ),
-            tabBarButton: (props) => (
-              <TouchableOpacity
-                style={props.style}
-                onPress={() => setDrawerOpen(true)}
-              >
-                {props.children}
-              </TouchableOpacity>
-            ),
           }}
         />
         <Tabs.Screen
@@ -147,10 +224,6 @@ export default function TabsLayout() {
           <Pressable style={styles.modalBackdropTouch} onPress={() => setDrawerOpen(false)} />
           <Box style={[styles.drawerContainer, { paddingBottom: 16, marginBottom: Platform.OS === "ios" ? 85 + insets.bottom : 75 }]}>
             <Box style={styles.drawerHeader}>
-              {/* <Box>
-                <Text style={styles.drawerTitle}>Settings & Administration</Text>
-                <Text style={styles.drawerSubtitle}>Quickly configure panels and services</Text>
-              </Box> */}
               <TouchableOpacity
                 onPress={() => setDrawerOpen(false)}
                 style={styles.closeButton}
@@ -205,6 +278,56 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  tabBarContainer: {
+    flexDirection: "row",
+    backgroundColor: "#ffffff",
+    height: 70,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    position: "absolute",
+    left: 12,
+    right: 12,
+    alignItems: "center",
+    justifyContent: "space-around",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    zIndex: 9999,
+    elevation: 12,
+  },
+  tabButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  plusButtonOuter: {
+    width: 68,
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: -5,
+  },
+  plusButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 27,
+    backgroundColor: "#0b53f8",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0b53f8",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   iconBox: {
     width: 36,
     height: 36,

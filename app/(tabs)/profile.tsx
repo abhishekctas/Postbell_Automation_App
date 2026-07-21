@@ -17,6 +17,7 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { fetchWithAuth, API_ENDPOINTS } from "@/services/api";
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 interface ProfileData {
   first_name?: string;
@@ -102,10 +103,15 @@ export default function ProfileScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
       <Box style={styles.header}>
-        <HStack className="justify-between items-center px-5 pt-14 pb-4">
-          <Heading size="xl" style={{ color: "#fff", fontWeight: "700" }}>
-            Profile
-          </Heading>
+        <HStack className="justify-between items-center px-5 pt-14 pb-2">
+          <Box>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Text className="text-white text-sm font-medium">← Back</Text>
+            </TouchableOpacity>
+            <Heading size="xl" style={{ color: "#fff", fontWeight: "700", paddingTop: 12 }}>
+              Profile
+            </Heading>
+          </Box>
           <TouchableOpacity onPress={() => Alert.alert("Settings", "App Settings coming soon")}>
             <Feather name="settings" size={22} color="#fff" />
           </TouchableOpacity>
@@ -137,26 +143,6 @@ export default function ProfileScreen() {
                 <TouchableOpacity style={styles.viewProfileBtn} onPress={() => setEditing((e) => !e)}>
                   <Text style={styles.viewProfileText}>{editing ? "Hide Details" : "View Profile"}</Text>
                 </TouchableOpacity>
-              </VStack>
-            </HStack>
-          </Box>
-
-          {/* Stats Box */}
-          <Box style={styles.statsCard}>
-            <HStack className="justify-around items-center">
-              <VStack style={styles.statColumn} className="items-center">
-                <Text style={styles.statNumber}>12</Text>
-                <Text style={styles.statLabel}>Total Posts</Text>
-              </VStack>
-              <Box style={styles.statDivider} />
-              <VStack style={styles.statColumn} className="items-center">
-                <Text style={styles.statNumber}>8</Text>
-                <Text style={styles.statLabel}>Scheduled</Text>
-              </VStack>
-              <Box style={styles.statDivider} />
-              <VStack style={styles.statColumn} className="items-center">
-                <Text style={styles.statNumber}>15.4K</Text>
-                <Text style={styles.statLabel}>Reach</Text>
               </VStack>
             </HStack>
           </Box>
@@ -269,7 +255,7 @@ export default function ProfileScreen() {
                 <InfoRow label="Address" value={address} editing={editing} onChangeText={setAddress} multiline />
               </VStack>
               <Button size="lg" onPress={handleSave} isDisabled={saving} style={styles.saveBtn}>
-                {saving ? <ActivityIndicator color="#fff" /> : <ButtonText style={{ fontWeight: "700" }}>Save Changes</ButtonText>}
+                {saving ? <ActivityIndicator color="#fff" /> : <ButtonText style={{ fontWeight: "700", color: "white" }}>Save Changes</ButtonText>}
               </Button>
             </Box>
           )}
@@ -285,7 +271,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   header: {
     backgroundColor: "#0052d4",
-    paddingBottom: 4,
+    paddingBottom: 0,
   },
   scroll: {
     padding: 16,
@@ -350,36 +336,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 11,
     fontWeight: "700",
-  },
-  statsCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    paddingVertical: 14,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  statColumn: {
-    flex: 1,
-  },
-  statNumber: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#0f172a",
-  },
-  statLabel: {
-    fontSize: 11,
-    color: "#64748b",
-    marginTop: 2,
-    fontWeight: "500",
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: "#e2e8f0",
   },
   menuRow: {
     backgroundColor: "#ffffff",

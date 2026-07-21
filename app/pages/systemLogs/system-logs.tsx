@@ -16,6 +16,7 @@ import { Heading } from "@/components/ui/heading";
 import { LinearGradient } from "expo-linear-gradient";
 import { listSystemLogs, SystemLog } from "./system-logs.api";
 import { Calendar } from "react-native-calendars";
+import { router } from "expo-router";
 import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
 
 const LOG_TABLE_COLUMNS: HtmlTableColumn[] = [
@@ -96,13 +97,13 @@ export default function SystemLogsScreen() {
 
         const res = await listSystemLogs(queryParams.toString());
         const items = Array.isArray(res) ? res : res?.data || [];
-        
+
         if (reset) {
           setLogs(items);
         } else {
           setLogs((prev) => [...prev, ...items]);
         }
-        
+
         const lastPage = res?.pagination?.lastPage || 1;
         setHasMore(pg < lastPage);
         setPage(pg);
@@ -133,10 +134,15 @@ export default function SystemLogsScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
+    <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
-      <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
+      <LinearGradient colors={["#2563EB", "#1D4ED8"]} style={styles.header}>
         <Box className="px-5 pt-14 pb-4">
+          <HStack className="justify-between items-center mb-2">
+            <TouchableOpacity onPress={() => router.back()}>
+              <Text className="text-white text-sm font-medium">← Back</Text>
+            </TouchableOpacity>
+          </HStack>
           <Heading size="xl" style={{ color: "#fff" }}>
             System Logs
           </Heading>

@@ -137,8 +137,8 @@ export default function GeneralAccessScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
-      <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
+    <Box className="flex-1 bg-[#f8fafc]">
+      <LinearGradient colors={["#2563EB", "#1D4ED8"]} style={styles.header}>
         <HStack className="justify-between items-center px-5 pt-14 pb-5">
           <VStack space="xs">
             <TouchableOpacity onPress={() => router.back()}>

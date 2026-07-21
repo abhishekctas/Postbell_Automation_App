@@ -8,17 +8,18 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
+  View
 } from "react-native";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { Heading } from "@/components/ui/heading";
-import { Button, ButtonText } from "@/components/ui/button";
 import { LinearGradient } from "expo-linear-gradient";
-import { listCustomers, createCustomer, updateCustomer, deleteCustomer, Customer } from "./customers.api";
+import { listCustomers, createCustomer, updateCustomer, deleteCustomer, type Customer } from "./customers.api";
 import { router } from "expo-router";
-import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+import HtmlTable, { type HtmlTableColumn } from "@/components/HtmlTable";
+import { Feather } from "@expo/vector-icons";
 
 const CUSTOMER_TABLE_COLUMNS: HtmlTableColumn[] = [
   {
@@ -62,6 +63,30 @@ const CUSTOMER_ROW_ACTIONS = [
   { label: "Delete", action: "delete", style: "danger" },
 ];
 
+const AVATAR_COLORS = [
+  { bg: "#dbeafe", text: "#1d4ed8" },
+  { bg: "#ede9fe", text: "#6d28d9" },
+  { bg: "#ffedd5", text: "#c2410c" },
+  { bg: "#f3e8ff", text: "#7e22ce" },
+  { bg: "#ccfbf1", text: "#0f766e" },
+  { bg: "#fef9c3", text: "#a16207" },
+];
+
+const getAvatarColor = (seed: string) => {
+  let hash = 0;
+  for (let i = 0; i < (seed || "").length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const idx = Math.abs(hash) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[idx];
+};
+
+const getGenderLabelStatic = (g?: number) => {
+  if (g === 1) return "Male";
+  if (g === 2) return "Female";
+  return "Other";
+};
+
 export default function CustomersScreen() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +107,7 @@ export default function CustomersScreen() {
   const [gender, setGender] = useState<number>(1); // 1 = Male, 2 = Female, 3 = Other
   const [dob, setDob] = useState("");
   const [status, setStatus] = useState<number>(1); // 1 = Active, 0 = Inactive
+  const [showPassword, setShowPassword] = useState(false);
 
   const fetchCustomersList = useCallback(
     async (pg = 1, reset = true) => {
@@ -103,7 +129,7 @@ export default function CustomersScreen() {
         if (reset) {
           setCustomers(items);
         } else {
-          setCustomers((prev) => [...prev, ...items]);
+          setCustomers((prev: any) => [...prev, ...items]);
         }
 
         setHasMore(items.length >= 10);
@@ -134,6 +160,7 @@ export default function CustomersScreen() {
     setLastName("");
     setEmail("");
     setPassword("");
+    setShowPassword(false);
     setContactNo("");
     setGender(1);
     setDob("");
@@ -147,6 +174,7 @@ export default function CustomersScreen() {
     setLastName(customer.last_name || "");
     setEmail(customer.email || "");
     setPassword("");
+    setShowPassword(false);
     setContactNo(customer.contact_no ? String(customer.contact_no) : "");
     setGender(customer.gender || 1);
     setDob(customer.dob || "");
@@ -209,7 +237,7 @@ export default function CustomersScreen() {
           try {
             await deleteCustomer(id);
             Alert.alert("Success", "Customer deleted successfully.");
-            setCustomers((prev) => prev.filter((c) => (c._id || c.id) !== id));
+            setCustomers((prev: any) => prev.filter((c: any) => (c._id || c.id) !== id));
           } catch (e: any) {
             Alert.alert("Error", e.message || "Failed to delete customer.");
           }
@@ -225,10 +253,10 @@ export default function CustomersScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
-      <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
-        <Box className="px-5 pt-14 pb-4">
-          <HStack className="justify-between items-center mb-2">
+    <Box className="flex-1 bg-[#f8fafc]">
+      <LinearGradient colors={["#2563EB", "#1D4ED8"]} style={styles.header}>
+        <Box className="px-5 pt-14 pb-6">
+          <HStack className="justify-between items-center mb-3">
             <TouchableOpacity onPress={() => router.back()}>
               <Text className="text-white text-sm font-medium">← Back</Text>
             </TouchableOpacity>
@@ -236,26 +264,46 @@ export default function CustomersScreen() {
               <Text style={styles.addBtnText}>+ Add Customer</Text>
             </TouchableOpacity>
           </HStack>
-          <Heading size="xl" style={{ color: "#fff" }}>
-            Customer Directory
-          </Heading>
-          <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
-            Manage client accounts, registrations, and demographic records
-          </Text>
+          <HStack className="justify-between items-start">
+            <VStack style={{ flex: 1 }}>
+              <Heading size="xl" style={{ color: "#fff" }}>
+                Customer
+              </Heading>
+              <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 }}>
+                Manage client accounts, registrations, and demographic records
+              </Text>
+            </VStack>
+            <Box style={styles.headerIconBox}>
+              <Feather name="users" size={26} color="#fff" />
+            </Box>
+          </HStack>
         </Box>
       </LinearGradient>
 
       {/* Search Input */}
       <Box style={styles.filterSection}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search customers..."
-          placeholderTextColor="#94a3b8"
-          value={search}
-          onChangeText={setSearch}
-        />
+        <HStack space="sm" className="items-center">
+          <Box style={{ flex: 1, position: "relative", justifyContent: "center" }}>
+            <View pointerEvents="none" style={styles.searchIcon}>
+              <Feather
+                name="search"
+                size={16}
+                color="#94a3b8"
+              />
+            </View>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search customers..."
+              placeholderTextColor="#94a3b8"
+              value={search}
+              onChangeText={setSearch}
+            />
+          </Box>
+          <TouchableOpacity style={styles.filterBtn}>
+            <Feather name="sliders" size={16} color="#2563EB" />
+          </TouchableOpacity>
+        </HStack>
       </Box>
-
       {loading ? (
         <Box className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#193867" />
@@ -273,23 +321,141 @@ export default function CustomersScreen() {
               <Text className="text-typography-400 text-base">No customers found</Text>
             </Box>
           ) : (
-            <HtmlTable
-              columns={CUSTOMER_TABLE_COLUMNS}
-              data={customers}
-              rowActions={CUSTOMER_ROW_ACTIONS}
-              onRowAction={(action, rowId) => {
-                if (action === "edit") {
-                  const c = customers.find((x) => (x._id || x.id) === rowId);
-                  if (c) handleOpenEdit(c);
-                } else if (action === "delete") {
-                  const c = customers.find((x) => (x._id || x.id) === rowId);
-                  if (c) handleDelete(c);
-                }
-              }}
-            />
+            // Horizontal scroll so all 6 columns fit on mobile without squeezing
+            <ScrollView horizontal showsHorizontalScrollIndicator={true} style={{ marginHorizontal: -16 }}>
+              <Box style={[styles.tableCard, { width: 780, marginHorizontal: 16 }]}>
+                {/* Header row — one column per field, screenshot-style caps labels */}
+                <HStack style={styles.tableHeaderRow}>
+                  <Text style={[styles.tableHeaderText, { width: 190 }]}>CUSTOMER</Text>
+                  <Text style={[styles.tableHeaderText, { width: 190 }]}>EMAIL</Text>
+                  <Text style={[styles.tableHeaderText, { width: 120 }]}>CONTACT</Text>
+                  <Text style={[styles.tableHeaderText, { width: 90 }]}>GENDER</Text>
+                  <Text style={[styles.tableHeaderText, { width: 100 }]}>STATUS</Text>
+                  <Text style={[styles.tableHeaderText, { textAlign: "center" }]}>
+                    ACTIONS
+                  </Text>
+                </HStack>
+
+                {customers.map((c) => {
+                  const id = c._id || c.id || "";
+                  const initials = `${(c.first_name || "").charAt(0)}${(c.last_name || "").charAt(
+                    0,
+                  )}`.toUpperCase();
+                  const isActive = c.status === 1;
+                  const avatarColor = getAvatarColor(id || c.email || c.first_name || "x");
+
+                  return (
+                    <HStack key={id} style={styles.customerRow}>
+                      {/* Column 1: Avatar + Name */}
+                      <HStack space="sm" className="items-center" style={{ width: 190 }}>
+                        <Box style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
+                          <Text style={[styles.avatarText, { color: avatarColor.text }]}>
+                            {initials}
+                          </Text>
+                        </Box>
+                        <Text style={styles.customerName} numberOfLines={1}>
+                          {c.first_name} {c.last_name}
+                        </Text>
+                      </HStack>
+
+                      {/* Column 2: Email */}
+                      <Text style={[styles.cellText, { width: 190 }]} numberOfLines={1}>
+                        {c.email}
+                      </Text>
+
+                      {/* Column 3: Contact */}
+                      <Text style={[styles.cellText, { width: 120 }]} numberOfLines={1}>
+                        {c.contact_no ? String(c.contact_no) : "—"}
+                      </Text>
+
+                      {/* Column 4: Gender */}
+                      <Text style={[styles.cellText, { width: 90 }]} numberOfLines={1}>
+                        {getGenderLabel(c.gender)}
+                      </Text>
+
+                      {/* Column 5: Status pill — screenshot style */}
+                      <Box style={{ width: 100 }}>
+                        <HStack
+                          style={[
+                            styles.statusPill,
+                            { backgroundColor: isActive ? "#dcfce7" : "#fee2e2" },
+                          ]}
+                        >
+                          <Box
+                            style={[
+                              styles.statusDot,
+                              { backgroundColor: isActive ? "#16a34a" : "#dc2626" },
+                            ]}
+                          />
+                          <Text
+                            style={[
+                              styles.statusPillText,
+                              { color: isActive ? "#15803d" : "#dc2626" },
+                            ]}
+                          >
+                            {isActive ? "Active" : "Inactive"}
+                          </Text>
+                        </HStack>
+                      </Box>
+
+                      {/* Column 6: Actions — rounded icon buttons */}
+                      <HStack space="xs" style={{ justifyContent: "center" }}>
+                        <TouchableOpacity
+                          style={styles.iconBtnEdit}
+                          onPress={() => handleOpenEdit(c)}
+                        >
+                          <Feather name="edit-2" size={14} color="#2563EB" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.iconBtnDelete}
+                          onPress={() => handleDelete(c)}
+                        >
+                          <Feather name="trash-2" size={14} color="#dc2626" />
+                        </TouchableOpacity>
+                      </HStack>
+                    </HStack>
+                  );
+                })}
+              </Box>
+            </ScrollView>
           )}
           {loadingMore && (
             <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
+          )}
+
+          {customers.length > 0 && (
+            <HStack style={styles.paginationBar} space="xs">
+              <TouchableOpacity
+                style={[styles.pageArrowBtn, page <= 1 && styles.pageBtnDisabled]}
+                disabled={page <= 1}
+                onPress={() => fetchCustomersList(page - 1, true)}
+              >
+                <Feather name="chevron-left" size={16} color={page <= 1 ? "#cbd5e1" : "#2563EB"} />
+              </TouchableOpacity>
+
+              {/* {Array.from({ length: totalPages }).map((_, i) => {
+                const p = i + 1;
+                return (
+                  <TouchableOpacity
+                    key={p}
+                    style={[styles.pageNumBtn, page === p && styles.pageNumBtnActive]}
+                    onPress={() => fetchCustomersList(p, true)}
+                  >
+                    <Text style={[styles.pageNumText, page === p && styles.pageNumTextActive]}>
+                      {p}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })} */}
+
+              <TouchableOpacity
+                style={[styles.pageArrowBtn, !hasMore && styles.pageBtnDisabled]}
+                disabled={!hasMore}
+                onPress={() => fetchCustomersList(page + 1, true)}
+              >
+                <Feather name="chevron-right" size={16} color={!hasMore ? "#cbd5e1" : "#2563EB"} />
+              </TouchableOpacity>
+            </HStack>
           )}
         </ScrollView>
       )}
@@ -298,54 +464,117 @@ export default function CustomersScreen() {
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <Box style={styles.modalOverlay}>
           <Box style={styles.modalContainer}>
-            <Heading size="md" className="mb-4">
-              {editingCustomer ? "Edit Customer" : "Add Customer"}
-            </Heading>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+            {/* Modal header, blue accent like screenshot */}
+            <HStack className="items-center mb-1" space="sm">
+              <Box style={styles.modalHeaderIcon}>
+                <Feather name={editingCustomer ? "edit-2" : "user-plus"} size={16} color="#fff" />
+              </Box>
+              <VStack>
+                <Heading size="md" style={{ color: "#1e3a8a" }}>
+                  {editingCustomer ? "Edit Customer" : "Add Customer"}
+                </Heading>
+                <Text style={{ fontSize: 12, color: "#64748b" }}>
+                  {editingCustomer
+                    ? "Update customer account details"
+                    : "Create a new customer account and add details"}
+                </Text>
+              </VStack>
+            </HStack>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420, marginTop: 12 }}>
               <VStack space="md">
                 <HStack space="md">
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>First Name *</Text>
-                    <TextInput style={styles.modalInput} value={firstName} onChangeText={setFirstName} placeholder="First Name" />
+                    <HStack style={styles.inputWrap}>
+                      <View pointerEvents="none" style={styles.inputIcon}>
+                        <Feather name="user" size={15} color="#2563EB" />
+                      </View>
+                      <TextInput
+                        style={styles.modalInput}
+                        value={firstName}
+                        onChangeText={setFirstName}
+                        placeholder="First Name"
+                        placeholderTextColor="#94a3b8"
+                      />
+                    </HStack>
                   </VStack>
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>Last Name *</Text>
-                    <TextInput style={styles.modalInput} value={lastName} onChangeText={setLastName} placeholder="Last Name" />
+                    <HStack style={styles.inputWrap}>
+                      <View pointerEvents="none" style={styles.inputIcon}>
+                        <Feather name="user" size={15} color="#2563EB" />
+                      </View>
+                      <TextInput
+                        style={styles.modalInput}
+                        value={lastName}
+                        onChangeText={setLastName}
+                        placeholder="Last Name"
+                        placeholderTextColor="#94a3b8"
+                      />
+                    </HStack>
                   </VStack>
                 </HStack>
 
                 <VStack space="xs">
                   <Text style={styles.label}>Email *</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    placeholder="Email Address"
-                    editable={!editingCustomer}
-                  />
+                  <HStack style={styles.inputWrap}>
+                    <View pointerEvents="none" style={styles.inputIcon}>
+                      <Feather name="mail" size={15} color="#2563EB" />
+                    </View>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      placeholder="Email Address"
+                      placeholderTextColor="#94a3b8"
+                      editable={!editingCustomer}
+                    />
+                  </HStack>
                 </VStack>
+
                 <VStack space="xs">
                   <Text style={styles.label}>{editingCustomer ? "Reset Password" : "Password *"}</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    placeholder={editingCustomer ? "Leave blank to keep same" : "Account Password"}
-                  />
+                  <HStack style={styles.inputWrap}>
+                    <View pointerEvents="none" style={styles.inputIcon}>
+                      <Feather name="lock" size={15} color="#2563EB" />
+                    </View>
+                    <TextInput
+                      style={[styles.modalInput, { flex: 1 }]}
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      placeholder={editingCustomer ? "Leave blank to keep same" : "Account Password"}
+                      placeholderTextColor="#94a3b8"
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword((s: any) => !s)}
+                      style={{ paddingHorizontal: 10 }}
+                    >
+                      <Feather name={showPassword ? "eye-off" : "eye"} size={16} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </HStack>
                 </VStack>
+
                 <VStack space="xs">
                   <Text style={styles.label}>Contact Number</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={contactNo}
-                    onChangeText={setContactNo}
-                    keyboardType="phone-pad"
-                    placeholder="Phone number"
-                  />
+                  <HStack style={styles.inputWrap}>
+                    <View pointerEvents="none" style={styles.inputIcon}>
+                      <Feather name="phone" size={15} color="#2563EB" />
+                    </View>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={contactNo}
+                      onChangeText={setContactNo}
+                      keyboardType="phone-pad"
+                      placeholder="Phone number"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </HStack>
                 </VStack>
+
                 <HStack space="md">
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>Gender</Text>
@@ -357,17 +586,29 @@ export default function CustomersScreen() {
                           onPress={() => setGender(g)}
                         >
                           <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>
-                            {g === 1 ? "M" : g === 2 ? "F" : "O"}
+                            {g === 1 ? "Male" : g === 2 ? "Female" : "Other"}
                           </Text>
                         </TouchableOpacity>
                       ))}
                     </HStack>
                   </VStack>
-                  <VStack space="xs" style={{ flex: 1 }}>
-                    <Text style={styles.label}>DOB (YYYY-MM-DD)</Text>
-                    <TextInput style={styles.modalInput} value={dob} onChangeText={setDob} placeholder="e.g. 1995-10-24" />
-                  </VStack>
                 </HStack>
+
+                <VStack space="xs">
+                  <Text style={styles.label}>DOB (YYYY-MM-DD)</Text>
+                  <HStack style={styles.inputWrap}>
+                    <View pointerEvents="none" style={styles.inputIcon}>
+                      <Feather name="calendar" size={15} color="#2563EB" />
+                    </View>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={dob}
+                      onChangeText={setDob}
+                      placeholder="e.g. 1995-10-24"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </HStack>
+                </VStack>
 
                 <VStack space="xs">
                   <Text style={styles.label}>Status *</Text>
@@ -386,15 +627,27 @@ export default function CustomersScreen() {
                     </TouchableOpacity>
                   </HStack>
                 </VStack>
+
+                <HStack style={styles.infoBox} space="sm">
+                  <Feather name="info" size={14} color="#2563EB" />
+                  <Text style={{ fontSize: 12, color: "#1e40af", flex: 1 }}>
+                    All fields marked with * are required.
+                  </Text>
+                </HStack>
               </VStack>
             </ScrollView>
 
             <HStack space="sm" className="mt-6">
-              <Button style={{ flex: 1 }} className="bg-primary-700 rounded-xl" onPress={handleSave}>
-                <ButtonText>Save</ButtonText>
-              </Button>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                <View pointerEvents="none" style={{ marginRight: 8 }}>
+                  <Feather name="save" size={15} color="#fff" />
+                </View>
+                <Text style={styles.saveBtnText}>
+                  {editingCustomer ? "Save Changes" : "Save Customer"}
+                </Text>
               </TouchableOpacity>
             </HStack>
           </Box>
@@ -406,6 +659,14 @@ export default function CustomersScreen() {
 
 const styles = StyleSheet.create({
   header: { paddingBottom: 4 },
+  headerIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   addBtn: {
     backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 12,
@@ -414,54 +675,117 @@ const styles = StyleSheet.create({
   },
   addBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
   filterSection: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
+  searchIcon: { position: "absolute", left: 12, zIndex: 1 },
   searchInput: {
     borderWidth: 1,
     borderColor: "#e2e8f0",
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingLeft: 36,
+    paddingVertical: 10,
     fontSize: 14,
     color: "#1e293b",
     backgroundColor: "#f8fafc",
   },
+  filterBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f8fafc",
+  },
   listContent: { padding: 16, paddingBottom: 40 },
-  card: {
+  tableCard: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
   },
-  badge: {
-    backgroundColor: "#f1f5f9",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  tableHeaderRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#f8fafc",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  tableHeaderText: { fontSize: 11, fontWeight: "700", color: "#64748b", letterSpacing: 0.5 },
+  customerRow: {
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontSize: 12, fontWeight: "700" },
+  customerName: { fontSize: 13, fontWeight: "700", color: "#1e293b", flexShrink: 1 },
+  cellText: { fontSize: 13, color: "#475569" },
+  statusPill: {
+    alignItems: "center",
     alignSelf: "flex-start",
-  },
-  badgeText: { fontSize: 10, fontWeight: "600", color: "#475569" },
-  statusBadge: {
-    borderRadius: 8,
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
-  actionBtn: {
-    backgroundColor: "#f0f7ff",
+  statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 5 },
+  statusPillText: { fontSize: 12, fontWeight: "700" },
+  iconBtnEdit: {
+    width: 30,
+    height: 30,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#eff6ff",
     borderWidth: 1,
     borderColor: "#bfdbfe",
   },
-  actionBtnDanger: {
-    backgroundColor: "#fff5f5",
+  iconBtnDelete: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
     borderColor: "#fecaca",
   },
-  actionBtnText: { fontSize: 12, fontWeight: "600", color: "#193867" },
+  paginationBar: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+  },
+  pageArrowBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  pageBtnDisabled: { opacity: 0.5 },
+  pageNumBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f5f9",
+  },
+  pageNumBtnActive: { backgroundColor: "#2563EB" },
+  pageNumText: { fontSize: 13, fontWeight: "600", color: "#475569" },
+  pageNumTextActive: { color: "#fff" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -476,33 +800,47 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 400,
   },
-  label: { fontSize: 11, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 },
-  modalInput: {
+  modalHeaderIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: "#2563EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  label: { fontSize: 11, fontWeight: "700", color: "#2563EB", textTransform: "uppercase", letterSpacing: 0.5 },
+  inputWrap: {
     borderWidth: 1.5,
     borderColor: "#e2e8f0",
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+  },
+  inputIcon: { marginRight: 6 },
+  modalInput: {
+    flex: 1,
+    paddingHorizontal: 4,
+    paddingVertical: 10,
     fontSize: 14,
     color: "#1e293b",
-    backgroundColor: "#f8fafc",
   },
   genderBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 10,
     backgroundColor: "#f1f5f9",
     borderWidth: 1.5,
     borderColor: "#e2e8f0",
   },
   genderBtnActive: {
-    backgroundColor: "#e0f2fe",
-    borderColor: "#7dd3fc",
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB",
   },
   genderText: { fontSize: 13, fontWeight: "600", color: "#64748b" },
-  genderTextActive: { color: "#0369a1" },
+  genderTextActive: { color: "#fff" },
   statusToggleBtn: {
     flex: 1,
     alignItems: "center",
@@ -524,12 +862,30 @@ const styles = StyleSheet.create({
   statusToggleText: { fontSize: 13, fontWeight: "600", color: "#64748b" },
   statusToggleTextActive: { color: "#15803d" },
   statusToggleTextActiveDanger: { color: "#dc2626" },
+  infoBox: {
+    backgroundColor: "#eff6ff",
+    borderRadius: 10,
+    padding: 10,
+    alignItems: "center",
+    marginTop: 4,
+  },
   cancelBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#f1f5f9",
     borderRadius: 12,
+    paddingVertical: 12,
   },
   cancelBtnText: { color: "#475569", fontWeight: "700", fontSize: 14 },
+  saveBtn: {
+    flex: 1.4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2563EB",
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });

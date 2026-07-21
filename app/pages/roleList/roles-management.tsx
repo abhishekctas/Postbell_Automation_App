@@ -123,7 +123,7 @@ export default function RolesManagementScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
+    <Box className="flex-1 bg-[#f8fafc]">
       <Box style={styles.headerWrap}>
         <Text style={styles.headerText}>Manage roles and permission groups for your staff.</Text>
       </Box>

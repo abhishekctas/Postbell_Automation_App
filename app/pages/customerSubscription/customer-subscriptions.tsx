@@ -172,8 +172,8 @@ export default function CustomerSubscriptionsScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
-      <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
+    <Box className="flex-1 bg-[#f8fafc]">
+      <LinearGradient colors={["#2563EB", "#1D4ED8"]} style={styles.header}>
         <Box className="px-5 pt-14 pb-4">
           <TouchableOpacity onPress={() => router.back()} className="mb-2">
             <Text className="text-white text-sm font-medium">← Back</Text>

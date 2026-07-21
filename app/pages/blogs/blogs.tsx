@@ -32,41 +32,10 @@ import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
 
 const BLOG_TABLE_COLUMNS: HtmlTableColumn[] = [
   {
-    key: "title",
-    label: "Title",
-    width: "200px",
-  },
-  {
-    key: "slug",
-    label: "Slug",
-    width: "150px",
-  },
-  {
-    key: "status",
-    label: "Status",
-    width: "110px",
-    render: (v) => {
-      const isPub = v === 1;
-      const bg = isPub ? "#dcfce7" : "#fef9c3";
-      const color = isPub ? "#15803d" : "#a16207";
-      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${bg};color:${color};">${isPub ? "Published" : "Draft"}</span>`;
-    },
-  },
-  {
-    key: "createdAt",
-    label: "Date",
-    width: "120px",
-    render: (v) => {
-      if (!v) return "—";
-      const d = new Date(v);
-      return !isNaN(d.getTime()) ? d.toLocaleDateString("en-IN") : String(v);
-    },
-  },
-  {
     key: "excerpt",
     label: "Excerpt",
-    width: "200px",
-    render: (v) => (v ? String(v).substring(0, 50) + (String(v).length > 50 ? "..." : "") : "—"),
+    width: "100%",
+    render: (v) => (v ? String(v).substring(0, 80) + (String(v).length > 80 ? "..." : "") : "—"),
   },
 ];
 
@@ -248,8 +217,8 @@ export default function BlogsScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
-      <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
+    <Box className="flex-1 bg-[#f8fafc]">
+      <LinearGradient colors={["#2563EB", "#1D4ED8"]} style={styles.header}>
         <Box className="px-5 pt-14 pb-4">
           <HStack className="justify-between items-center mb-2">
             <TouchableOpacity onPress={() => router.back()}>
@@ -259,12 +228,22 @@ export default function BlogsScreen() {
               <Text style={styles.addBtnText}>+ Add Blog</Text>
             </TouchableOpacity>
           </HStack>
-          <Heading size="xl" style={{ color: "#fff" }}>
-            Blog Management
-          </Heading>
-          <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
-            Create and edit articles, guidelines, and content pages
-          </Text>
+          <HStack className="justify-between items-start">
+            <VStack style={{ flex: 1, paddingRight: 12 }}>
+              <Heading size="xl" style={{ color: "#fff" }}>
+                Blog Management
+              </Heading>
+              <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
+                Create and edit articles, guidelines, and content pages
+              </Text>
+            </VStack>
+            <Box style={styles.headerIllustration}>
+              <Text style={{ fontSize: 30 }}>📝</Text>
+              <Text style={styles.sparkleTopLeft}>✨</Text>
+              <Text style={styles.sparkleBottomRight}>✨</Text>
+              <Text style={styles.bubbleTopRight}>💬</Text>
+            </Box>
+          </HStack>
         </Box>
       </LinearGradient>
 
@@ -447,6 +426,33 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  headerIllustration: {
+    width: 70,
+    height: 70,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  sparkleTopLeft: {
+    position: "absolute",
+    top: -4,
+    left: 2,
+    fontSize: 12,
+    opacity: 0.8,
+  },
+  sparkleBottomRight: {
+    position: "absolute",
+    bottom: 0,
+    right: 4,
+    fontSize: 12,
+    opacity: 0.8,
+  },
+  bubbleTopRight: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    fontSize: 16,
+  },
   filterSection: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
   searchInput: {
     borderWidth: 1,
@@ -464,7 +470,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: "#000",
+    shadowColor: "#2563EB",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,

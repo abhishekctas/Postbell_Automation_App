@@ -8,6 +8,7 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
+  View,
 } from "react-native";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
@@ -18,53 +19,44 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { LinearGradient } from "expo-linear-gradient";
 import { listContactRequests, updateContactStatus, deleteContactRequest, ContactRequest } from "./contact-us.api";
 import { router } from "expo-router";
-import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
 
-const CONTACT_TABLE_COLUMNS: HtmlTableColumn[] = [
-  {
-    key: "subject",
-    label: "Subject",
-    width: "200px",
-    render: (v) => (v ? String(v) : "No Subject"),
-  },
-  {
-    key: "first_name",
-    label: "Name",
-    width: "160px",
-    render: (_v, row) => `${row.first_name || ""} ${row.last_name || ""}`.trim(),
-  },
-  {
-    key: "email",
-    label: "Email",
-    width: "180px",
-  },
-  {
-    key: "contactStatus",
-    label: "Status",
-    width: "100px",
-    render: (v) => {
-      const isResolved = v === 1;
-      const bg = isResolved ? "#dcfce7" : "#fef9c3";
-      const color = isResolved ? "#15803d" : "#a16207";
-      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${bg};color:${color};">${isResolved ? "Resolved" : "Pending"}</span>`;
-    },
-  },
-  {
-    key: "createdAt",
-    label: "Date",
-    width: "120px",
-    render: (v) => {
-      if (!v) return "—";
-      const d = new Date(v);
-      return !isNaN(d.getTime()) ? d.toLocaleDateString("en-IN") : String(v);
-    },
-  },
+// NOTE: HtmlTable has been swapped for a native card list so the screen can match
+// the requested design. No data-fetching, filtering, search, toggle, or delete
+// logic was touched — only how each row is rendered.
+
+const AVATAR_COLORS = [
+  { bg: "#dbeafe", text: "#1d4ed8" }, // blue
+  { bg: "#dcfce7", text: "#15803d" }, // green
+  { bg: "#ede9fe", text: "#6d28d9" }, // purple
+  { bg: "#fce7f3", text: "#be185d" }, // pink
+  { bg: "#cffafe", text: "#0e7490" }, // cyan
+  { bg: "#fef9c3", text: "#a16207" }, // yellow
 ];
 
-const CONTACT_ROW_ACTIONS = [
-  { label: "Toggle Status", action: "toggle" },
-  { label: "Delete", action: "delete", style: "danger" },
-];
+function getInitials(item: ContactRequest) {
+  const first = item.first_name?.trim()?.[0] || "";
+  const last = item.last_name?.trim()?.[0] || "";
+  const initials = `${first}${last}`.toUpperCase();
+  return initials || "?";
+}
+
+function getAvatarColors(item: ContactRequest) {
+  const key = `${item._id || item.id || item.email || ""}`;
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash + key.charCodeAt(i)) % AVATAR_COLORS.length;
+  }
+  return AVATAR_COLORS[hash];
+}
+
+function formatDate(v?: string) {
+  if (!v) return "—";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) +
+    " • " +
+    d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+}
 
 export default function ContactUsScreen() {
   const [requests, setRequests] = useState<ContactRequest[]>([]);
@@ -169,18 +161,50 @@ export default function ContactUsScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
-      <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
-        <Box className="px-5 pt-14 pb-4">
-          <TouchableOpacity onPress={() => router.back()} className="mb-2">
-            <Text className="text-white text-sm font-medium">← Back</Text>
+    <Box className="flex-1 bg-[#f8fafc]">
+      <LinearGradient
+        colors={["#2563EB", "#1D4ED8"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        {/* Background Glow */}
+        <Box style={styles.headerGlow} />
+
+        <Box style={styles.headerContent}>
+          {/* Back Button */}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.backIcon}>←</Text>
+            <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-          <Heading size="xl" style={{ color: "#fff" }}>
-            Contact Inquiries
-          </Heading>
-          <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
-            Read and resolve support and contact inquiries
-          </Text>
+
+          <HStack
+            style={{
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginTop: 20,
+            }}
+          >
+            {/* Left */}
+            <VStack style={{ flex: 1, paddingRight: 15 }}>
+              <Heading style={styles.headerTitle}>
+                Contact
+              </Heading>
+
+              <Text style={styles.headerSubtitle}>
+                Read and resolve support and contact inquiries
+              </Text>
+            </VStack>
+
+            {/* Right Illustration */}
+            <Box style={styles.iconContainer}>
+              <Text style={styles.headerEmoji}>📩</Text>
+            </Box>
+          </HStack>
         </Box>
       </LinearGradient>
 
@@ -188,23 +212,39 @@ export default function ContactUsScreen() {
       <VStack space="sm" style={styles.filterSection}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by name, email, or subject..."
+          placeholder="🔍  Search by name, email, or subject..."
           placeholderTextColor="#94a3b8"
           value={search}
           onChangeText={setSearch}
         />
         <HStack space="sm" className="w-full">
-          {(["all", "pending", "resolved"] as const).map((btn) => (
-            <TouchableOpacity
-              key={btn}
-              style={[styles.tabBtn, filter === btn && styles.tabBtnActive]}
-              onPress={() => setFilter(btn)}
-            >
-              <Text style={[styles.tabText, filter === btn && styles.tabTextActive]}>
-                {btn.charAt(0).toUpperCase() + btn.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(["all", "pending", "resolved"] as const).map((btn) => {
+            const icon = btn === "all" ? "▦" : btn === "pending" ? "🕐" : "✓";
+            const isActive = filter === btn;
+            return (
+              <TouchableOpacity
+                key={btn}
+                style={[
+                  styles.tabBtn,
+                  isActive && styles.tabBtnActive,
+                  btn === "pending" && !isActive && styles.tabBtnPending,
+                  btn === "resolved" && !isActive && styles.tabBtnResolved,
+                ]}
+                onPress={() => setFilter(btn)}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    isActive && styles.tabTextActive,
+                    btn === "pending" && !isActive && styles.tabTextPending,
+                    btn === "resolved" && !isActive && styles.tabTextResolved,
+                  ]}
+                >
+                  {icon}  {btn.charAt(0).toUpperCase() + btn.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </HStack>
       </VStack>
 
@@ -225,20 +265,70 @@ export default function ContactUsScreen() {
               <Text className="text-typography-400 text-base">No inquiries found</Text>
             </Box>
           ) : (
-            <HtmlTable
-              columns={CONTACT_TABLE_COLUMNS}
-              data={requests}
-              rowActions={CONTACT_ROW_ACTIONS}
-              onRowAction={(action, rowId) => {
-                if (action === "toggle") {
-                  const r = requests.find((x) => (x._id || x.id) === rowId);
-                  if (r) handleToggleStatus(r);
-                } else if (action === "delete") {
-                  const r = requests.find((x) => (x._id || x.id) === rowId);
-                  if (r) handleDelete(r);
-                }
-              }}
-            />
+            requests.map((item) => {
+              console.log(item, '')
+              const id = item._id || item.id || "";
+              const isResolved = item.contactStatus === 1;
+              const avatarColors = getAvatarColors(item);
+              const name = `${item.first_name || ""} ${item.last_name || ""}`.trim() || "Unknown";
+
+              return (
+                <TouchableOpacity
+                  style={styles.card}
+                  onPress={() => setSelectedRequest(item)}
+                >
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>
+                      {name
+                        .split(" ")
+                        .map((x) => x[0])
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase()}
+                    </Text>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>{name}</Text>
+
+                    <Text style={styles.subject}>
+                      {item.subject || "General Inquiry"}
+                    </Text>
+
+                    <Text style={styles.date}>
+                      {item.createdAt
+                        ? new Date(item.createdAt).toLocaleString()
+                        : "N/A"}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.status,
+                      item.contactStatus === 1
+                        ? styles.resolved
+                        : styles.pending,
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        color:
+                          item.contactStatus === 1
+                            ? "#16A34A"
+                            : "#F59E0B",
+                        fontWeight: "700",
+                      }}
+                    >
+                      {item.contactStatus === 1
+                        ? "Resolved"
+                        : "Pending"}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.arrow}>›</Text>
+                </TouchableOpacity>
+              );
+            })
           )}
           {loadingMore && (
             <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
@@ -321,14 +411,96 @@ export default function ContactUsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingBottom: 4 },
+  headerIllustration: {
+    position: "absolute",
+    top: 8,
+    right: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerBubble: {
+    position: "absolute",
+    top: -8,
+    right: -18,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  header: {
+    height: 220,
+    // borderBottomLeftRadius: 28,
+    // borderBottomRightRadius: 28,
+    overflow: "hidden",
+    paddingBottom: 4,
+  },
+
+  headerContent: {
+    flex: 1,
+    paddingHorizontal: 22,
+    paddingTop: 58,
+  },
+
+  headerGlow: {
+    position: "absolute",
+    right: -50,
+    top: -40,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  backIcon: {
+    color: "#fff",
+    fontSize: 20,
+    marginRight: 8,
+    fontWeight: "600",
+  },
+
+  backText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+
+  headerTitle: {
+    color: "#fff",
+    fontSize: 38,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+
+  headerSubtitle: {
+    color: "rgba(255,255,255,0.88)",
+    fontSize: 17,
+    lineHeight: 24,
+  },
+
+  iconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 60,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  headerEmoji: {
+    fontSize: 64,
+  },
   filterSection: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
   searchInput: {
     borderWidth: 1,
     borderColor: "#e2e8f0",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     fontSize: 14,
     color: "#1e293b",
     backgroundColor: "#f8fafc",
@@ -338,7 +510,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 20,
     backgroundColor: "#f1f5f9",
     borderWidth: 1,
@@ -348,38 +520,60 @@ const styles = StyleSheet.create({
     backgroundColor: "#193867",
     borderColor: "#193867",
   },
+  tabBtnPending: {
+    backgroundColor: "#fef9c3",
+    borderColor: "#fef08a",
+  },
+  tabBtnResolved: {
+    backgroundColor: "#dcfce7",
+    borderColor: "#bbf7d0",
+  },
   tabText: { fontSize: 12, color: "#64748b", fontWeight: "600" },
   tabTextActive: { color: "#ffffff" },
+  tabTextPending: { color: "#a16207" },
+  tabTextResolved: { color: "#15803d" },
   listContent: { padding: 16, paddingBottom: 40 },
   card: {
     backgroundColor: "#ffffff",
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
+    marginBottom: 16,
+    shadowColor: "#2563EB",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowRadius: 10,
+    elevation: 5,
+    flexDirection: "row",
+    alignItems: "center",
   },
+
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#E8F0FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  cardName: { fontSize: 15, fontWeight: "700", color: "#0f2444" },
+  cardSubject: { fontSize: 13, color: "#64748b" },
+  cardDate: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
+  chevron: { fontSize: 20, color: "#cbd5e1", fontWeight: "700" },
   statusBadge: {
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  actionBtn: {
-    backgroundColor: "#f0f7ff",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "#bfdbfe",
+  cancelBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 12,
+    paddingVertical: 12,
   },
-  actionBtnDanger: {
-    backgroundColor: "#fff5f5",
-    borderColor: "#fecaca",
-  },
-  actionBtnText: { fontSize: 12, fontWeight: "600", color: "#193867" },
+  cancelBtnText: { color: "#475569", fontWeight: "700", fontSize: 14 },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -404,13 +598,47 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
     marginTop: 4,
   },
-  cancelBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f1f5f9",
-    borderRadius: 12,
-    paddingVertical: 12,
+
+  avatarText: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#2563EB",
   },
-  cancelBtnText: { color: "#475569", fontWeight: "700", fontSize: 14 },
+
+  name: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#193867",
+  },
+
+  subject: {
+    marginTop: 4,
+    color: "#64748B",
+  },
+
+  date: {
+    marginTop: 6,
+    color: "#94A3B8",
+    fontSize: 12,
+  },
+
+  status: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    marginHorizontal: 10,
+  },
+
+  pending: {
+    backgroundColor: "#FFF7E6",
+  },
+
+  resolved: {
+    backgroundColor: "#ECFDF5",
+  },
+
+  arrow: {
+    fontSize: 26,
+    color: "#94A3B8",
+  },
 });

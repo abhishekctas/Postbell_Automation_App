@@ -13,6 +13,7 @@ export interface Customer {
   gender?: number; // 1 - MALE, 2 - FEMALE, 3 - OTHER
   status?: number; // 0 inactive, 1 active, 2 deleted
   createdAt?: string;
+  totalPages?: number;
 }
 
 export const listCustomers = async (

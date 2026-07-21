@@ -270,8 +270,8 @@ export default function FeaturesScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-background-50">
-      <LinearGradient colors={["#0f2444", "#193867"]} style={styles.header}>
+    <Box className="flex-1 bg-[#f8fafc]">
+      <LinearGradient colors={["#2563EB", "#1D4ED8"]} style={styles.header}>
         <Box className="px-5 pt-14 pb-4">
           <HStack className="justify-between items-center mb-2">
             <TouchableOpacity onPress={() => router.back()}>
@@ -282,7 +282,7 @@ export default function FeaturesScreen() {
             </TouchableOpacity>
           </HStack>
           <Heading size="xl" style={{ color: "#fff" }}>
-            Features CMS
+            Features
           </Heading>
           <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
             Manage features and highlights displayed on frontend portals
@@ -447,6 +447,71 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  headerIllustration: {
+    width: 90,
+    height: 80,
+    marginTop: 4,
+  },
+  illustrationWindow: {
+    width: 78,
+    height: 62,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 10,
+    padding: 8,
+  },
+  illustrationDots: {
+    gap: 3,
+  },
+  illustrationDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#cbd5e1",
+  },
+  illustrationCircle: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#193867",
+  },
+  illustrationLine: {
+    width: 34,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#cbd5e1",
+  },
+  illustrationLineWide: {
+    width: "100%",
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#e2e8f0",
+    marginTop: 8,
+  },
+  illustrationStarBadge: {
+    position: "absolute",
+    right: 0,
+    bottom: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: "#3b82f6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sparkleTopLeft: {
+    position: "absolute",
+    top: -6,
+    left: -10,
+    fontSize: 12,
+    opacity: 0.8,
+  },
+  sparkleTopRight: {
+    position: "absolute",
+    top: 8,
+    right: -6,
+    fontSize: 12,
+    opacity: 0.8,
+  },
   filterSection: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
   searchInput: {
     borderWidth: 1,

@@ -22,6 +22,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useAuth } from "@/context/AuthContext";
 import { listPosts, createPost, updatePost, deletePost, publishPostNow, Post } from "./posts.api";
 import { Feather, FontAwesome } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 const STATUS_META: Record<string, { bg: string; color: string; label: string }> = {
@@ -167,6 +168,8 @@ function PostCard({
 // ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 export default function PostsScreen() {
   const { user } = useAuth();
+  const { action } = useLocalSearchParams<{ action?: string }>();
+  const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -279,6 +282,13 @@ export default function PostsScreen() {
     }
     setEditorVisible(true);
   };
+
+  useEffect(() => {
+    if (action === "add") {
+      handleOpenEditor();
+      router.setParams({ action: undefined as any });
+    }
+  }, [action]);
 
   const handleDateChange = (_event: unknown, selectedDate?: Date) => {
     if (Platform.OS === "android") setShowDatePicker(false);

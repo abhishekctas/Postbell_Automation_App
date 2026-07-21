@@ -1171,15 +1171,14 @@ export default function FestivalAutoPostScreen() {
 
             <HStack space="sm" style={styles.modalFooter}>
               <Button
-                style={{ flex: 1 }}
-                className="bg-[#193867] rounded-xl"
+                style={{ flex: 1, backgroundColor: "#0052d4", borderRadius: 12 }}
                 onPress={handleSave}
                 disabled={saving}
               >
                 {saving ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <ButtonText>{isCreate ? "Create Event" : "Save Changes"}</ButtonText>
+                  <ButtonText style={{ color: "white" }}>{isCreate ? "Create Event" : "Save Changes"}</ButtonText>
                 )}
               </Button>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => !saving && setModalVisible(false)} disabled={saving}>
@@ -1415,7 +1414,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   modalHeader: {
-    backgroundColor: "#193867",
+    backgroundColor: "#0b5cf8",
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
