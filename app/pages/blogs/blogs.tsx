@@ -30,12 +30,84 @@ import {
 import { router } from "expo-router";
 import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
 
-const BLOG_TABLE_COLUMNS: HtmlTableColumn[] = [
+const BLOG_TABLE_COLUMNS: HtmlTableColumn<BlogPost>[] = [
+  {
+    key: "createdAt",
+    label: "Created At",
+    width: "150px",
+    render: (v) => {
+      if (!v) return "—";
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return String(v);
+      const dateStr = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const timeStr = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+      return (
+        <VStack style={{ justifyContent: "center" }}>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#1e293b" }}>{dateStr}</Text>
+          <Text style={{ fontSize: 11, color: "#64748b" }}>{timeStr}</Text>
+        </VStack>
+      );
+    },
+  },
+  {
+    key: "title",
+    label: "Title",
+    width: "220px",
+    render: (_v, row) => {
+      const title = row.title || "Untitled Blog";
+      const initials = title.split(" ").filter(Boolean).slice(0, 2).map((w: string) => w.charAt(0).toUpperCase()).join("") || "BL";
+      const bgColors = ["#dbeafe", "#e9d5ff", "#ffedd5", "#ccfbf1", "#fef3c7"];
+      const textColors = ["#1e40af", "#6b21a8", "#c2410c", "#0f766e", "#b45309"];
+      const charCode = title.charCodeAt(0) || 0;
+      const colorIdx = charCode % bgColors.length;
+      return (
+        <HStack space="sm" className="items-center">
+          <Box style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: bgColors[colorIdx], alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ color: textColors[colorIdx], fontWeight: "700", fontSize: 13 }}>{initials}</Text>
+          </Box>
+          <VStack style={{ justifyContent: "center" }}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: "#1e293b" }} numberOfLines={1}>{title}</Text>
+            {row.slug ? <Text style={{ fontSize: 11, color: "#64748b" }} numberOfLines={1}>/{row.slug}</Text> : null}
+          </VStack>
+        </HStack>
+      );
+    },
+  },
+  {
+    key: "category",
+    label: "Category",
+    width: "140px",
+    render: (v) => {
+      const catTitle = typeof v === "object" && v ? (v as any).title : typeof v === "string" ? v : "General";
+      return (
+        <Box style={{ alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: "#e5f0ff", borderWidth: 1, borderColor: "#193867" }}>
+          <Text style={{ color: "#193867", fontWeight: "700", fontSize: 12 }} numberOfLines={1}>{catTitle}</Text>
+        </Box>
+      );
+    },
+  },
   {
     key: "excerpt",
     label: "Excerpt",
-    width: "100%",
-    render: (v) => (v ? String(v).substring(0, 80) + (String(v).length > 80 ? "..." : "") : "—"),
+    width: "220px",
+    render: (v) => <Text style={{ fontSize: 13, color: "#475569" }} numberOfLines={2}>{v || "—"}</Text>,
+  },
+  {
+    key: "status",
+    label: "Status",
+    width: "130px",
+    render: (v) => {
+      const isPublished = Number(v) === 1;
+      const label = isPublished ? "Published" : "Draft";
+      const bg = isPublished ? "#dcfce7" : "#fef9c3";
+      const color = isPublished ? "#15803d" : "#a16207";
+      const border = isPublished ? "#bbf7d0" : "#fef08a";
+      return (
+        <Box style={{ alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: bg, borderWidth: 1, borderColor: border }}>
+          <Text style={{ color: color, fontWeight: "700", fontSize: 11 }}>• {label}</Text>
+        </Box>
+      );
+    },
   },
 ];
 
@@ -126,26 +198,15 @@ export default function BlogsScreen() {
   };
 
   const handleOpenAdd = () => {
-    setEditingBlog(null);
-    setTitle("");
-    setSlug("");
-    setExcerpt("");
-    setBody("");
-    setSelectedTag(tags[0] || null);
-    setStatus(1);
-    setModalVisible(true);
+    router.push("/pages/blogs/blog-editor");
   };
 
   const handleOpenEdit = (blog: BlogPost) => {
-    setEditingBlog(blog);
-    setTitle(blog.title || "");
-    setSlug(blog.slug || "");
-    setExcerpt(blog.excerpt || "");
-    setBody(blog.body || "");
-    const matchingTag = tags.find((t) => t._id === blog.category || t.id === blog.category);
-    setSelectedTag(matchingTag || null);
-    setStatus(blog.status ?? 1);
-    setModalVisible(true);
+    const blogId = blog._id || blog.id || "";
+    router.push({
+      pathname: "/pages/blogs/blog-editor",
+      params: { id: blogId },
+    });
   };
 
   const handleSave = async () => {
@@ -224,9 +285,11 @@ export default function BlogsScreen() {
             <TouchableOpacity onPress={() => router.back()}>
               <Text className="text-white text-sm font-medium">← Back</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
-              <Text style={styles.addBtnText}>+ Add Blog</Text>
-            </TouchableOpacity>
+            <HStack space="xs">
+              <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
+                <Text style={styles.addBtnText}>+ Add Blog</Text>
+              </TouchableOpacity>
+            </HStack>
           </HStack>
           <HStack className="justify-between items-start">
             <VStack style={{ flex: 1, paddingRight: 12 }}>
@@ -281,13 +344,18 @@ export default function BlogsScreen() {
               rowActions={BLOG_ROW_ACTIONS}
               onRowAction={(action, rowId) => {
                 if (action === "edit") {
-                  const b = blogs.find((x) => (x._id || x.id) === rowId);
+                  const b = blogs.find((x) => String(x._id || x.id) === String(rowId));
                   if (b) handleOpenEdit(b);
                 } else if (action === "delete") {
-                  const b = blogs.find((x) => (x._id || x.id) === rowId);
+                  const b = blogs.find((x) => String(x._id || x.id) === String(rowId));
                   if (b) handleDelete(b);
                 }
               }}
+              iconOnlyActions={true}
+              tableContainerStyle={{ borderWidth: 0, shadowColor: "transparent", backgroundColor: "transparent", elevation: 0, marginHorizontal: 0, marginVertical: 0 }}
+              headerRowStyle={{ backgroundColor: "#f8fafc", borderBottomWidth: 1.5, borderBottomColor: "#e2e8f0" }}
+              headerCellTextStyle={{ color: "#1e3a8a", fontWeight: "700", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}
+              rowStyle={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#ffffff" }}
             />
           )}
           {loadingMore && (
@@ -394,7 +462,7 @@ export default function BlogsScreen() {
             </Heading>
             <FlatList
               data={tags}
-              keyExtractor={(t) => t._id || t.id}
+              keyExtractor={(t, idx) => t._id || t.id || String(idx)}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.selectItem}
@@ -464,7 +532,7 @@ const styles = StyleSheet.create({
     color: "#1e293b",
     backgroundColor: "#f8fafc",
   },
-  listContent: { padding: 16, paddingBottom: 40 },
+  listContent: { padding: 16, paddingBottom: 90 },
   card: {
     backgroundColor: "#ffffff",
     borderRadius: 16,

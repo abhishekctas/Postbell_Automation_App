@@ -18,42 +18,167 @@ import { listSystemLogs, SystemLog } from "./system-logs.api";
 import { Calendar } from "react-native-calendars";
 import { router } from "expo-router";
 import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+import { Feather } from "@expo/vector-icons";
 
-const LOG_TABLE_COLUMNS: HtmlTableColumn[] = [
+function getPageNumbers(currentPage: number, lastPage: number) {
+  const pages: number[] = [];
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(lastPage, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+  return pages;
+}
+
+const LOG_TABLE_COLUMNS: HtmlTableColumn<SystemLog>[] = [
+  // 1. 📅 CREATED AT
+  {
+    key: "createdAt",
+    label: "Created At",
+    width: "150px",
+    render: (v) => {
+      if (!v) return "—";
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return String(v);
+      const dateStr = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const timeStr = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+      return (
+        <VStack style={{ justifyContent: "center" }}>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#1e293b" }}>{dateStr}</Text>
+          <Text style={{ fontSize: 11, color: "#64748b" }}>{timeStr}</Text>
+        </VStack>
+      );
+    },
+  },
+
+  // 2. ⚡ OPERATION
   {
     key: "operation",
     label: "Operation",
-    width: "130px",
-    render: (v) => `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;background:#eff6ff;color:#1d4ed8;">${String(v || "—")}</span>`,
+    width: "140px",
+    render: (v) => {
+      const op = String(v || "—").toUpperCase();
+      let bg = "#eff6ff";
+      let color = "#2563eb";
+      let border = "#bfdbfe";
+
+      if (op.includes("CREATE") || op.includes("ADD") || op.includes("POST")) {
+        bg = "#dcfce7";
+        color = "#15803d";
+        border = "#86efac";
+      } else if (op.includes("DELETE") || op.includes("REMOVE") || op.includes("CANCEL")) {
+        bg = "#ffe4e6";
+        color = "#be123c";
+        border = "#fca5a5";
+      } else if (op.includes("AUTH") || op.includes("LOGIN")) {
+        bg = "#f3e8ff";
+        color = "#6b21a8";
+        border = "#d8b4fe";
+      }
+
+      return (
+        <Box
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 12,
+            backgroundColor: bg,
+            borderWidth: 1,
+            borderColor: border,
+          }}
+        >
+          <Text style={{ color: color, fontWeight: "700", fontSize: 11 }}>
+            • {op}
+          </Text>
+        </Box>
+      );
+    },
   },
+
+  // 3. 👤 USER
   {
     key: "first_name",
     label: "User",
-    width: "180px",
-    render: (_v, row) => `${row.first_name || ""} ${row.last_name || ""} (${row.role_name || "User"})`,
+    width: "200px",
+    render: (_v, row) => {
+      const name = `${row.first_name || ""} ${row.last_name || ""}`.trim() || row.operation_by || "System User";
+      const role = row.role_name || "User";
+      const initials =
+        name
+          .split(" ")
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((w) => w.charAt(0).toUpperCase())
+          .join("") || "SU";
+
+      const bgColors = ["#dbeafe", "#e9d5ff", "#ffedd5", "#ccfbf1", "#fef3c7"];
+      const textColors = ["#1e40af", "#6b21a8", "#c2410c", "#0f766e", "#b45309"];
+      const charCode = name.charCodeAt(0) || 0;
+      const colorIdx = charCode % bgColors.length;
+
+      return (
+        <HStack space="sm" className="items-center">
+          <Box
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: bgColors[colorIdx],
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: textColors[colorIdx], fontWeight: "700", fontSize: 13 }}>
+              {initials}
+            </Text>
+          </Box>
+          <VStack style={{ justifyContent: "center" }}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: "#1e293b" }} numberOfLines={1}>
+              {name}
+            </Text>
+            <Text style={{ fontSize: 11, color: "#64748b" }} numberOfLines={1}>
+              {role}
+            </Text>
+          </VStack>
+        </HStack>
+      );
+    },
   },
+
+  // 4. 🔑 KEY
+  {
+    key: "key",
+    label: "Key",
+    width: "140px",
+    render: (v) => (
+      <Text style={{ fontSize: 13, color: "#475569", fontWeight: "500" }} numberOfLines={1}>
+        {v ? String(v) : "—"}
+      </Text>
+    ),
+  },
+
+  // 5. 🌐 IP ADDRESS
   {
     key: "ip_address",
     label: "IP Address",
     width: "130px",
-    render: (v) => (v ? String(v) : "—"),
-  },
-  {
-    key: "createdAt",
-    label: "Date",
-    width: "160px",
-    render: (v) => {
-      if (!v) return "—";
-      const d = new Date(v);
-      return !isNaN(d.getTime())
-        ? d.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-        : String(v);
-    },
+    render: (v) => (
+      <Text style={{ fontSize: 13, color: "#475569", fontFamily: "monospace", fontWeight: "600" }}>
+        {v ? String(v) : "—"}
+      </Text>
+    ),
   },
 ];
 
 const LOG_ROW_ACTIONS = [
-  { label: "View Details", action: "view" },
+  { label: "View Details", action: "view", style: "normal" },
 ];
 
 export default function SystemLogsScreen() {
@@ -64,8 +189,8 @@ export default function SystemLogsScreen() {
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   const [selectedLog, setSelectedLog] = useState<SystemLog | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<"from" | "to" | null>(null);
@@ -76,7 +201,7 @@ export default function SystemLogsScreen() {
       try {
         const queryParams = new URLSearchParams({
           page: pg.toString(),
-          limit: "15",
+          limit: "10",
         });
 
         if (search.trim()) {
@@ -98,13 +223,10 @@ export default function SystemLogsScreen() {
         const res = await listSystemLogs(queryParams.toString());
         const items = Array.isArray(res) ? res : res?.data || [];
 
-        if (reset) {
-          setLogs(items);
-        } else {
-          setLogs((prev) => [...prev, ...items]);
-        }
+        setLogs(items);
 
-        const lastPage = res?.pagination?.lastPage || 1;
+        const lastPage = res?.pagination?.lastPage || (items.length >= 10 ? pg + 1 : pg);
+        setTotalPages(Math.max(1, lastPage));
         setHasMore(pg < lastPage);
         setPage(pg);
       } catch (error) {
@@ -112,7 +234,6 @@ export default function SystemLogsScreen() {
       } finally {
         setLoading(false);
         setRefreshing(false);
-        setLoadingMore(false);
       }
     },
     [search, dateFrom, dateTo]
@@ -186,7 +307,7 @@ export default function SystemLogsScreen() {
         </HStack>
       </VStack>
 
-      {/* List */}
+      {/* Content */}
       {loading ? (
         <Box className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#193867" />
@@ -210,24 +331,66 @@ export default function SystemLogsScreen() {
               </Text>
             </Box>
           ) : (
-            <HtmlTable
-              columns={LOG_TABLE_COLUMNS}
-              data={logs}
-              rowActions={LOG_ROW_ACTIONS}
-              onRowAction={(action, rowId) => {
-                if (action === "view") {
-                  const l = logs.find((x) => x._id === rowId);
-                  if (l) setSelectedLog(l);
-                }
-              }}
-            />
-          )}
-          {loadingMore && (
-            <ActivityIndicator
-              size="small"
-              color="#193867"
-              style={{ marginVertical: 20 }}
-            />
+            <React.Fragment>
+              <HtmlTable
+                columns={LOG_TABLE_COLUMNS}
+                data={logs}
+                rowActions={LOG_ROW_ACTIONS}
+                onRowAction={(action, rowId) => {
+                  if (action === "view") {
+                    const l = logs.find((x) => String(x._id) === String(rowId));
+                    if (l) setSelectedLog(l);
+                  }
+                }}
+                iconOnlyActions={true}
+                tableContainerStyle={{ borderWidth: 0, shadowColor: "transparent", backgroundColor: "transparent", elevation: 0, marginHorizontal: 0, marginVertical: 0 }}
+                headerRowStyle={{ backgroundColor: "#f8fafc", borderBottomWidth: 1.5, borderBottomColor: "#e2e8f0" }}
+                headerCellTextStyle={{ color: "#1e3a8a", fontWeight: "700", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}
+                rowStyle={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#ffffff" }}
+              />
+
+              {/* Pagination Controls */}
+              {totalPages > 0 && (
+                <Box style={styles.paginationWrapper}>
+                  <HStack space="xs" className="items-center justify-center">
+                    <TouchableOpacity
+                      style={[styles.pageNavBtn, page === 1 && styles.pageNavBtnDisabled]}
+                      disabled={page === 1}
+                      onPress={() => {
+                        if (page > 1) fetchLogs(page - 1, true);
+                      }}
+                    >
+                      <Text style={[styles.pageNavText, page === 1 && styles.pageNavTextDisabled]}>‹</Text>
+                    </TouchableOpacity>
+
+                    {getPageNumbers(page, totalPages).map((p) => {
+                      const isActive = p === page;
+                      return (
+                        <TouchableOpacity
+                          key={p}
+                          style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
+                          onPress={() => fetchLogs(p, true)}
+                        >
+                          <Text style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}>
+                            {p}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    <TouchableOpacity
+                      style={[styles.pageNavBtn, page >= totalPages && styles.pageNavBtnDisabled]}
+                      disabled={page >= totalPages}
+                      onPress={() => {
+                        if (page < totalPages) fetchLogs(page + 1, true);
+                      }}
+                    >
+                      <Text style={[styles.pageNavText, page >= totalPages && styles.pageNavTextDisabled]}>›</Text>
+                    </TouchableOpacity>
+                  </HStack>
+                </Box>
+              )}
+            </React.Fragment>
           )}
         </ScrollView>
       )}
@@ -279,9 +442,17 @@ export default function SystemLogsScreen() {
       >
         <Box style={styles.modalOverlay}>
           <Box style={styles.detailsContainer}>
-            <Heading size="md" className="mb-4">
-              Log Details
-            </Heading>
+            <Box style={styles.closeIconContainer}>
+              <Heading size="md" className="">
+                Log Details
+              </Heading>
+              <TouchableOpacity
+                style={[styles.closeModalBtn]}
+                onPress={() => setSelectedLog(null)}
+              >
+                <Feather name="x" size={20} color="#193867" />
+              </TouchableOpacity>
+            </Box>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
               <VStack space="md">
                 <Box>
@@ -314,12 +485,6 @@ export default function SystemLogsScreen() {
                 </Box>
               </VStack>
             </ScrollView>
-            <TouchableOpacity
-              style={[styles.closeModalBtn, { backgroundColor: "#193867", marginTop: 20 }]}
-              onPress={() => setSelectedLog(null)}
-            >
-              <Text style={[styles.closeModalBtnText, { color: "#fff" }]}>Close Details</Text>
-            </TouchableOpacity>
           </Box>
         </Box>
       </Modal>
@@ -362,26 +527,68 @@ const styles = StyleSheet.create({
     borderColor: "#fca5a5",
   },
   clearBtnText: { color: "#dc2626", fontSize: 12, fontWeight: "600" },
-  listContent: { padding: 16, paddingBottom: 40 },
-  logCard: {
+  listContent: { padding: 16, paddingBottom: 90 },
+  tableCard: {
     backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
     elevation: 2,
+    marginBottom: 20,
   },
-  opBadge: {
+  paginationWrapper: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  pageNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: "#eff6ff",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 3,
   },
-  opBadgeText: { fontSize: 11, fontWeight: "700", color: "#1d4ed8" },
-  dateText: { fontSize: 11, color: "#94a3b8" },
+  pageNavBtnDisabled: {
+    backgroundColor: "#f8fafc",
+    opacity: 0.5,
+  },
+  pageNavText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#2563eb",
+  },
+  pageNavTextDisabled: {
+    color: "#94a3b8",
+  },
+  pageNumberBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 2,
+  },
+  pageNumberBtnActive: {
+    backgroundColor: "#2563eb",
+  },
+  pageNumberText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  pageNumberTextActive: {
+    color: "#ffffff",
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -403,13 +610,19 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 500,
   },
+  closeIconContainer: {
+    justifyContent: "space-between",
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    marginBottom: 12
+  },
   closeModalBtn: {
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
+    padding: 8,
     borderRadius: 12,
     backgroundColor: "#f1f5f9",
-    marginTop: 12,
   },
   closeModalBtnText: { fontSize: 14, fontWeight: "700", color: "#475569" },
   detailLabel: { fontSize: 10, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase" },

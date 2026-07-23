@@ -5,6 +5,7 @@ import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { Heading } from "@/components/ui/heading";
 import { LinearGradient } from "expo-linear-gradient";
+import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import UsersManagementScreen from "./users-management";
 import RolesManagementScreen from "../roleList/roles-management";
@@ -17,26 +18,58 @@ export default function UserAccessScreen() {
       <LinearGradient colors={["#2563EB", "#1D4ED8"]} style={styles.header}>
         <Box className="px-5 pt-14 pb-4">
           <HStack className="justify-between items-center mb-2">
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text className="text-white text-sm font-medium">← Back</Text>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <HStack className="items-center space-x-1">
+                <Feather name="arrow-left" size={16} color="#fff" />
+                <Text style={styles.backBtnText}>Back</Text>
+              </HStack>
             </TouchableOpacity>
           </HStack>
+
           <Heading size="xl" style={{ color: "#fff" }}>
             Users & Access
           </Heading>
-          <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
             Manage staff members and assign permission roles
           </Text>
         </Box>
       </LinearGradient>
 
-      <Box style={styles.tabRow}>
-        <TouchableOpacity style={[styles.tab, activeTab === "users" && styles.tabActive]} onPress={() => setActiveTab("users")}>
-          <Text style={[styles.tabText, activeTab === "users" && styles.tabTextActive]}>Users</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, activeTab === "roles" && styles.tabActive]} onPress={() => setActiveTab("roles")}>
-          <Text style={[styles.tabText, activeTab === "roles" && styles.tabTextActive]}>Roles</Text>
-        </TouchableOpacity>
+      {/* Segmented Tab Bar */}
+      <Box style={styles.tabContainer}>
+        <HStack style={styles.tabRow}>
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === "users" && styles.tabBtnActive]}
+            onPress={() => setActiveTab("users")}
+          >
+            <HStack className="items-center space-x-2">
+              <Feather
+                name="users"
+                size={15}
+                color={activeTab === "users" ? "#2563EB" : "#64748b"}
+              />
+              <Text style={[styles.tabText, activeTab === "users" && styles.tabTextActive]}>
+                Staff Users
+              </Text>
+            </HStack>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === "roles" && styles.tabBtnActive]}
+            onPress={() => setActiveTab("roles")}
+          >
+            <HStack className="items-center space-x-2">
+              <Feather
+                name="shield"
+                size={15}
+                color={activeTab === "roles" ? "#2563EB" : "#64748b"}
+              />
+              <Text style={[styles.tabText, activeTab === "roles" && styles.tabTextActive]}>
+                Permission Roles
+              </Text>
+            </HStack>
+          </TouchableOpacity>
+        </HStack>
       </Box>
 
       {activeTab === "users" ? <UsersManagementScreen /> : <RolesManagementScreen />}
@@ -46,23 +79,40 @@ export default function UserAccessScreen() {
 
 const styles = StyleSheet.create({
   header: { paddingBottom: 4 },
-  tabRow: {
-    flexDirection: "row",
-    gap: 8,
+  backBtn: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  backBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  tabContainer: {
+    backgroundColor: "#ffffff",
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-    backgroundColor: "#fff",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
   },
-  tab: {
-    paddingHorizontal: 14,
+  tabRow: {
+    backgroundColor: "#f1f5f9",
+    borderRadius: 12,
+    padding: 4,
+  },
+  tabBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    backgroundColor: "#f8fafc",
+    borderRadius: 9,
   },
-  tabActive: { backgroundColor: "#193867", borderColor: "#193867" },
-  tabText: { color: "#475569", fontSize: 13, fontWeight: "700" },
-  tabTextActive: { color: "#fff" },
+  tabBtnActive: {
+    backgroundColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  tabText: { fontSize: 13, fontWeight: "600", color: "#64748b" },
+  tabTextActive: { color: "#2563EB", fontWeight: "700" },
 });

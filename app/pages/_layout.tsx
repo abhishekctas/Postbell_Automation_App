@@ -1,6 +1,7 @@
 import React from "react";
 import { Stack, usePathname, Redirect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
+import GlobalTabBar from "@/components/GlobalTabBar";
 
 export default function PagesLayout() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -29,5 +30,10 @@ export default function PagesLayout() {
     }
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }} />
+      <GlobalTabBar />
+    </>
+  );
 }

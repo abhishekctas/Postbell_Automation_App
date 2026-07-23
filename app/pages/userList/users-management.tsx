@@ -9,62 +9,34 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
+  View,
 } from "react-native";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { Heading } from "@/components/ui/heading";
-import { Button, ButtonText } from "@/components/ui/button";
 import { listUsers, createUser, updateUser, deleteUser, User } from "./user-access.api";
 import { getRoles, Role } from "../roleList/roles-management.api";
-import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+import { Feather } from "@expo/vector-icons";
 
-const USER_TABLE_COLUMNS: HtmlTableColumn[] = [
-  {
-    key: "first_name",
-    label: "Name",
-    width: "180px",
-    render: (_v, row) => `${row.first_name || ""} ${row.last_name || ""}`.trim(),
-  },
-  {
-    key: "email",
-    label: "Email",
-    width: "180px",
-  },
-  {
-    key: "contact_no",
-    label: "Contact",
-    width: "120px",
-    render: (v) => (v ? String(v) : "—"),
-  },
-  {
-    key: "role_name",
-    label: "Role",
-    width: "120px",
-    render: (v) => v ? `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#eff6ff;color:#1d4ed8;">${escapeHtmlUser(String(v))}</span>` : "No Role",
-  },
-  {
-    key: "status",
-    label: "Status",
-    width: "100px",
-    render: (v) => {
-      const isAct = v === 1;
-      const bg = isAct ? "#dcfce7" : "#fee2e2";
-      const color = isAct ? "#15803d" : "#dc2626";
-      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${bg};color:${color};">${isAct ? "Active" : "Inactive"}</span>`;
-    },
-  },
+const AVATAR_COLORS = [
+  { bg: "#dbeafe", text: "#1d4ed8" },
+  { bg: "#ede9fe", text: "#6d28d9" },
+  { bg: "#ffedd5", text: "#c2410c" },
+  { bg: "#f3e8ff", text: "#7e22ce" },
+  { bg: "#ccfbf1", text: "#0f766e" },
+  { bg: "#fef9c3", text: "#a16207" },
 ];
 
-function escapeHtmlUser(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-const USER_ROW_ACTIONS = [
-  { label: "Edit", action: "edit" },
-  { label: "Delete", action: "delete", style: "danger" },
-];
+const getAvatarColor = (seed: string) => {
+  let hash = 0;
+  for (let i = 0; i < (seed || "").length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const idx = Math.abs(hash) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[idx];
+};
 
 export default function UsersManagementScreen() {
   const [users, setUsers] = useState<User[]>([]);
@@ -75,12 +47,15 @@ export default function UsersManagementScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Form State
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [contactNo, setContactNo] = useState("");
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [showRoleSelect, setShowRoleSelect] = useState(false);
@@ -126,7 +101,7 @@ export default function UsersManagementScreen() {
         setLoadingMore(false);
       }
     },
-    [search],
+    [search]
   );
 
   useEffect(() => {
@@ -139,12 +114,19 @@ export default function UsersManagementScreen() {
     fetchUsersList(1, true);
   };
 
+  const loadMore = () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    fetchUsersList(page + 1, false);
+  };
+
   const handleOpenAdd = () => {
     setEditingUser(null);
     setFirstName("");
     setLastName("");
     setEmail("");
     setPassword("");
+    setShowPassword(false);
     setContactNo("");
     setSelectedRole(roles[0] || null);
     setStatus(1);
@@ -157,10 +139,19 @@ export default function UsersManagementScreen() {
     setLastName(user.last_name || "");
     setEmail(user.email || "");
     setPassword("");
+    setShowPassword(false);
     setContactNo(user.contact_no ? String(user.contact_no) : "");
-    const matchingRole = roles.find((r) => r.name === user.role_name || r._id === user.role_id);
-    setSelectedRole(matchingRole || null);
-    setStatus(user.status ?? 1);
+
+    const userRoleId = (user as any).role_id || (user as any).roleId;
+    const foundRole =
+      roles.find(
+        (r) =>
+          (r._id || r.id) === userRoleId ||
+          (r.name || r.role_name || "").toLowerCase() === (user.role_name || "").toLowerCase()
+      ) || null;
+
+    setSelectedRole(foundRole || (user.role_name ? ({ name: user.role_name } as any) : roles[0] || null));
+    setStatus(user.status !== undefined ? Number(user.status) : 1);
     setModalVisible(true);
   };
 
@@ -179,46 +170,56 @@ export default function UsersManagementScreen() {
     }
 
     try {
+      const roleId = selectedRole?._id || selectedRole?.id || "";
       const payload: any = {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         email: email.trim(),
         contact_no: contactNo.trim(),
         status,
-        role_id: selectedRole?._id,
       };
 
+      if (roleId) {
+        payload.role_id = roleId;
+        payload.roleId = roleId;
+      }
+      if (selectedRole?.name) {
+        payload.role_name = selectedRole.name;
+      }
       if (password.trim()) {
-        payload.password = password;
+        payload.password = password.trim();
       }
 
       if (editingUser) {
-        await updateUser(editingUser._id || editingUser.id || "", payload);
-        Alert.alert("Success", "User updated successfully!");
+        const userId = editingUser._id || editingUser.id || "";
+        await updateUser(userId, payload);
+        Alert.alert("Success", "User updated successfully.");
       } else {
         await createUser(payload);
-        Alert.alert("Success", "User created successfully!");
+        Alert.alert("Success", "User created successfully.");
       }
 
       setModalVisible(false);
       fetchUsersList(1, true);
-    } catch (err: any) {
-      Alert.alert("Error", err.message || "Failed to save user.");
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Failed to save user.");
     }
   };
 
   const handleDelete = (user: User) => {
-    const id = user._id || user.id || "";
-    Alert.alert("Delete User", `Are you sure you want to delete ${user.first_name}?`, [
+    const userId = user._id || user.id || "";
+    const name = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "User";
+
+    Alert.alert("Delete User", `Are you sure you want to delete "${name}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteUser(id);
+            await deleteUser(userId);
             Alert.alert("Success", "User deleted successfully.");
-            setUsers((prev) => prev.filter((u) => (u._id || u.id) !== id));
+            setUsers((prev) => prev.filter((u) => (u._id || u.id) !== userId));
           } catch (e: any) {
             Alert.alert("Error", e.message || "Failed to delete user.");
           }
@@ -227,118 +228,232 @@ export default function UsersManagementScreen() {
     ]);
   };
 
+  const renderItem = ({ item }: { item: User }) => {
+    const userId = item._id || item.id || "";
+    const fullName = `${item.first_name || ""} ${item.last_name || ""}`.trim() || "User";
+    const initials = `${(item.first_name || "").charAt(0)}${(item.last_name || "").charAt(0)}`.toUpperCase() || "U";
+    const isActive = Number(item.status) === 1;
+    const avatarColor = getAvatarColor(userId || item.email || fullName);
+
+    return (
+      <Box style={styles.card}>
+        <HStack className="justify-between items-start">
+          <HStack space="md" style={{ flex: 1, marginRight: 8 }} className="items-center">
+            <Box style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
+              <Text style={[styles.avatarText, { color: avatarColor.text }]}>{initials}</Text>
+            </Box>
+            <VStack space="xs" style={{ flex: 1 }}>
+              <Text style={styles.userNameText}>{fullName}</Text>
+              <Text style={styles.userEmailText}>{item.email}</Text>
+              {item.contact_no ? (
+                <Text style={styles.userContactText}>Contact: {item.contact_no}</Text>
+              ) : null}
+
+              {item.role_name ? (
+                <Box style={styles.roleChip}>
+                  <Text style={styles.roleChipText}>{item.role_name}</Text>
+                </Box>
+              ) : (
+                <Text style={styles.noRoleText}>No Role Assigned</Text>
+              )}
+            </VStack>
+          </HStack>
+
+          <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
+            <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
+              {isActive ? "Active" : "Inactive"}
+            </Text>
+          </Box>
+        </HStack>
+
+        <HStack space="sm" className="mt-4 justify-end">
+          <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
+            <HStack className="items-center space-x-1">
+              <Feather name="edit-2" size={12} color="#2563EB" />
+              <Text style={styles.actionBtnText}>Edit</Text>
+            </HStack>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionBtn, styles.actionBtnDanger]}
+            onPress={() => handleDelete(item)}
+          >
+            <HStack className="items-center space-x-1">
+              <Feather name="trash-2" size={12} color="#dc2626" />
+              <Text style={[styles.actionBtnText, { color: "#dc2626" }]}>Delete</Text>
+            </HStack>
+          </TouchableOpacity>
+        </HStack>
+      </Box>
+    );
+  };
+
   return (
     <Box className="flex-1 bg-[#f8fafc]">
+      {/* Top Search & Filter Bar */}
       <Box style={styles.filterSection}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name or email..."
-          placeholderTextColor="#94a3b8"
-          value={search}
-          onChangeText={setSearch}
-        />
+        <HStack className="justify-between items-center mb-3">
+          <Text style={styles.sectionHeaderTitle}>Users Management</Text>
+          <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
+            <Text style={styles.addBtnText}>+ Add User</Text>
+          </TouchableOpacity>
+        </HStack>
+
+        <HStack style={styles.searchBoxContainer}>
+          <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search staff users..."
+            placeholderTextColor="#94a3b8"
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search ? (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Feather name="x" size={16} color="#94a3b8" />
+            </TouchableOpacity>
+          ) : null}
+        </HStack>
       </Box>
 
       {loading ? (
         <Box className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#193867" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </Box>
       ) : (
-        <ScrollView
+        <FlatList
+          data={users}
+          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#193867" />}
-        >
-          {users.length === 0 ? (
-            <Box className="items-center justify-center py-20">
-              <Text className="text-typography-400 text-base">No users found</Text>
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListEmptyComponent={
+            <Box className="items-center justify-center py-16">
+              <Feather name="users" size={40} color="#cbd5e1" />
+              <Text className="text-typography-400 text-base mt-2">No staff users found</Text>
             </Box>
-          ) : (
-            <HtmlTable
-              columns={USER_TABLE_COLUMNS}
-              data={users}
-              rowActions={USER_ROW_ACTIONS}
-              onRowAction={(action, rowId) => {
-                if (action === "edit") {
-                  const u = users.find((x) => (x._id || x.id) === rowId);
-                  if (u) handleOpenEdit(u);
-                } else if (action === "delete") {
-                  const u = users.find((x) => (x._id || x.id) === rowId);
-                  if (u) handleDelete(u);
-                }
-              }}
-            />
-          )}
-          {loadingMore && (
-            <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
-          )}
-        </ScrollView>
+          }
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator size="small" color="#2563EB" style={{ marginVertical: 20 }} /> : null
+          }
+          renderItem={renderItem}
+        />
       )}
 
+      {/* Add / Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <Box style={styles.modalOverlay}>
           <Box style={styles.modalContainer}>
             <Heading size="md" className="mb-4">
               {editingUser ? "Edit User" : "Add User"}
             </Heading>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
               <VStack space="md">
+                <HStack space="md">
+                  <VStack space="xs" style={{ flex: 1 }}>
+                    <Text style={styles.label}>First Name *</Text>
+                    <TextInput style={styles.modalInput} value={firstName} onChangeText={setFirstName} placeholder="John" />
+                  </VStack>
+                  <VStack space="xs" style={{ flex: 1 }}>
+                    <Text style={styles.label}>Last Name *</Text>
+                    <TextInput style={styles.modalInput} value={lastName} onChangeText={setLastName} placeholder="Doe" />
+                  </VStack>
+                </HStack>
+
                 <VStack space="xs">
-                  <Text style={styles.label}>First Name *</Text>
-                  <TextInput style={styles.modalInput} value={firstName} onChangeText={setFirstName} placeholder="First Name" />
-                </VStack>
-                <VStack space="xs">
-                  <Text style={styles.label}>Last Name *</Text>
-                  <TextInput style={styles.modalInput} value={lastName} onChangeText={setLastName} placeholder="Last Name" />
-                </VStack>
-                <VStack space="xs">
-                  <Text style={styles.label}>Email *</Text>
+                  <Text style={styles.label}>Email Address *</Text>
                   <TextInput
                     style={styles.modalInput}
                     value={email}
                     onChangeText={setEmail}
+                    placeholder="john@company.com"
                     keyboardType="email-address"
                     autoCapitalize="none"
-                    placeholder="Email address"
-                    editable={!editingUser}
                   />
                 </VStack>
+
                 <VStack space="xs">
-                  <Text style={styles.label}>{editingUser ? "Reset Password" : "Password *"}</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    placeholder={editingUser ? "Leave blank to keep same" : "Account password"}
-                  />
+                  <Text style={styles.label}>
+                    {editingUser ? "Password (Leave blank to keep)" : "Password *"}
+                  </Text>
+                  <HStack style={{ position: "relative", alignItems: "center" }}>
+                    <TextInput
+                      style={[styles.modalInput, { flex: 1, paddingRight: 40 }]}
+                      value={password}
+                      onChangeText={setPassword}
+                      placeholder="••••••••"
+                      secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                      style={{ position: "absolute", right: 12 }}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Feather name={showPassword ? "eye-off" : "eye"} size={16} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </HStack>
                 </VStack>
+
                 <VStack space="xs">
                   <Text style={styles.label}>Contact Number</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={contactNo}
-                    onChangeText={setContactNo}
-                    keyboardType="phone-pad"
-                    placeholder="Contact number"
-                  />
+                  <TextInput style={styles.modalInput} value={contactNo} onChangeText={setContactNo} placeholder="+1234567890" keyboardType="phone-pad" />
                 </VStack>
 
+                {/* Role Dropdown */}
                 <VStack space="xs">
-                  <Text style={styles.label}>Role *</Text>
-                  <TouchableOpacity style={styles.roleSelectBtn} onPress={() => setShowRoleSelect(true)}>
-                    <Text style={styles.roleSelectText}>{selectedRole ? selectedRole.name : "Select Role"}</Text>
+                  <Text style={styles.label}>Assign Role</Text>
+                  <TouchableOpacity
+                    style={styles.roleSelectBtn}
+                    onPress={() => setShowRoleSelect(!showRoleSelect)}
+                  >
+                    <Text style={styles.roleSelectBtnText}>
+                      {selectedRole?.name || selectedRole?.role_name || "Select Role"}
+                    </Text>
+                    <Feather name={showRoleSelect ? "chevron-up" : "chevron-down"} size={16} color="#64748b" />
                   </TouchableOpacity>
+
+                  {showRoleSelect ? (
+                    <Box style={styles.roleDropdownList}>
+                      {roles.map((r) => {
+                        const rName = r.name || r.role_name || "";
+                        const isSel = (r._id || r.id) === (selectedRole?._id || selectedRole?.id);
+                        return (
+                          <TouchableOpacity
+                            key={r._id || r.id}
+                            style={[styles.roleItemOption, isSel && styles.roleItemOptionActive]}
+                            onPress={() => {
+                              setSelectedRole(r);
+                              setShowRoleSelect(false);
+                            }}
+                          >
+                            <Text style={[styles.roleItemText, isSel && styles.roleItemTextActive]}>
+                              {rName}
+                            </Text>
+                            {isSel ? <Feather name="check" size={14} color="#2563EB" /> : null}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </Box>
+                  ) : null}
                 </VStack>
 
                 <VStack space="xs">
-                  <Text style={styles.label}>Status *</Text>
-                  <HStack space="sm">
-                    <TouchableOpacity style={[styles.statusToggleBtn, status === 1 && styles.statusToggleBtnActive]} onPress={() => setStatus(1)}>
-                      <Text style={[styles.statusToggleText, status === 1 && styles.statusToggleTextActive]}>Active</Text>
+                  <Text style={styles.label}>Status</Text>
+                  <HStack space="xs">
+                    <TouchableOpacity
+                      style={[styles.statusToggleBtn, status === 1 && styles.statusToggleActive]}
+                      onPress={() => setStatus(1)}
+                    >
+                      <Text style={[styles.statusToggleText, status === 1 && styles.statusTextActive]}>Active</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.statusToggleBtn, status === 0 && styles.statusToggleBtnActiveDanger]} onPress={() => setStatus(0)}>
-                      <Text style={[styles.statusToggleText, status === 0 && styles.statusToggleTextActiveDanger]}>Inactive</Text>
+                    <TouchableOpacity
+                      style={[styles.statusToggleBtn, status === 0 && styles.statusToggleInactive]}
+                      onPress={() => setStatus(0)}
+                    >
+                      <Text style={[styles.statusToggleText, status === 0 && styles.statusTextInactive]}>Inactive</Text>
                     </TouchableOpacity>
                   </HStack>
                 </VStack>
@@ -346,9 +461,9 @@ export default function UsersManagementScreen() {
             </ScrollView>
 
             <HStack space="sm" className="mt-6">
-              <Button style={{ flex: 1 }} className="bg-primary-700 rounded-xl" onPress={handleSave}>
-                <ButtonText>Save</ButtonText>
-              </Button>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                <Text style={styles.saveBtnText}>Save</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
@@ -356,155 +471,170 @@ export default function UsersManagementScreen() {
           </Box>
         </Box>
       </Modal>
-
-      <Modal visible={showRoleSelect} transparent animationType="fade" onRequestClose={() => setShowRoleSelect(false)}>
-        <Box style={styles.modalOverlay}>
-          <Box style={[styles.modalContainer, { maxWidth: 300 }]}>
-            <Heading size="sm" className="mb-4">
-              Select Role
-            </Heading>
-            <FlatList
-              data={roles}
-              keyExtractor={(r) => r._id || r.id || `role-${Math.random()}`}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.roleSelectItem}
-                  onPress={() => {
-                    setSelectedRole(item);
-                    setShowRoleSelect(false);
-                  }}
-                >
-                  <Text style={styles.roleSelectText}>{item.name}</Text>
-                </TouchableOpacity>
-              )}
-            />
-            <TouchableOpacity style={styles.closeSelectBtn} onPress={() => setShowRoleSelect(false)}>
-              <Text style={{ fontWeight: "700", color: "#64748b" }}>Close</Text>
-            </TouchableOpacity>
-          </Box>
-        </Box>
-      </Modal>
-
-      <Box style={styles.fabWrap}>
-        <TouchableOpacity style={styles.fab} onPress={handleOpenAdd}>
-          <Text style={styles.fabText}>+ Add User</Text>
-        </TouchableOpacity>
-      </Box>
     </Box>
   );
 }
 
 const styles = StyleSheet.create({
   filterSection: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
-  searchInput: {
+  sectionHeaderTitle: { fontSize: 16, fontWeight: "700", color: "#0f172a" },
+  addBtn: {
+    backgroundColor: "#2563EB",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  searchBoxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#e2e8f0",
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#1e293b",
+    paddingVertical: 8,
     backgroundColor: "#f8fafc",
   },
-  listContent: { padding: 16, paddingBottom: 100 },
-  userCard: {
-    backgroundColor: "#fff",
+  searchInput: { flex: 1, fontSize: 14, color: "#1e293b", padding: 0 },
+  listContent: { padding: 16, paddingBottom: 40 },
+  card: {
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 2,
   },
-  roleBadge: { alignSelf: "flex-start", backgroundColor: "#eff6ff", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginTop: 6 },
-  roleBadgeText: { color: "#1d4ed8", fontWeight: "700", fontSize: 11 },
-  statusBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
-  actionBtn: {
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontSize: 14, fontWeight: "700" },
+  userNameText: { fontSize: 15, fontWeight: "700", color: "#0f172a" },
+  userEmailText: { fontSize: 12, color: "#64748b" },
+  userContactText: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
+  roleChip: {
+    alignSelf: "flex-start",
+    backgroundColor: "#eff6ff",
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 10,
+    borderColor: "#bfdbfe",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  roleChipText: { fontSize: 10, fontWeight: "700", color: "#2563EB" },
+  noRoleText: { fontSize: 10, color: "#94a3b8", fontStyle: "italic", marginTop: 2 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  badgeActive: { backgroundColor: "#dcfce7" },
+  badgeInactive: { backgroundColor: "#fee2e2" },
+  statusText: { fontSize: 10, fontWeight: "700" },
+  textActive: { color: "#15803d" },
+  textInactive: { color: "#dc2626" },
+  actionBtn: {
+    backgroundColor: "#f0f7ff",
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
   },
-  actionBtnDanger: { backgroundColor: "#fef2f2", borderColor: "#fecaca" },
-  actionBtnText: { color: "#334155", fontSize: 12, fontWeight: "700" },
+  actionBtnDanger: { backgroundColor: "#fff5f5", borderColor: "#fecaca" },
+  actionBtnText: { fontSize: 12, fontWeight: "600", color: "#2563EB" },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 16,
+    padding: 20,
   },
   modalContainer: {
-    width: "100%",
-    maxWidth: 460,
     backgroundColor: "#fff",
     borderRadius: 20,
     padding: 20,
-    maxHeight: "85%",
+    width: "100%",
+    maxWidth: 400,
   },
   label: { fontSize: 11, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 },
   modalInput: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#e2e8f0",
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     fontSize: 14,
     color: "#1e293b",
     backgroundColor: "#f8fafc",
   },
   roleSelectBtn: {
-    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 1.5,
     borderColor: "#e2e8f0",
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: "#f8fafc",
-  },
-  roleSelectText: { color: "#1e293b", fontWeight: "600" },
-  statusToggleBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 12,
     paddingVertical: 10,
-    alignItems: "center",
     backgroundColor: "#f8fafc",
   },
-  statusToggleBtnActive: { backgroundColor: "#dcfce7", borderColor: "#86efac" },
-  statusToggleBtnActiveDanger: { backgroundColor: "#fee2e2", borderColor: "#fda4af" },
-  statusToggleText: { color: "#64748b", fontWeight: "700" },
-  statusToggleTextActive: { color: "#15803d" },
-  statusToggleTextActiveDanger: { color: "#dc2626" },
-  cancelBtn: {
-    flex: 1,
+  roleSelectBtnText: { fontSize: 14, fontWeight: "600", color: "#1e293b" },
+  roleDropdownList: {
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: "#cbd5e1",
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+    marginTop: 4,
+    overflow: "hidden",
   },
-  cancelBtnText: { color: "#475569", fontWeight: "700" },
-  roleSelectItem: {
-    paddingVertical: 12,
+  roleItemOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#f1f5f9",
   },
-  closeSelectBtn: {
-    marginTop: 12,
-    paddingVertical: 10,
+  roleItemOptionActive: { backgroundColor: "#eff6ff" },
+  roleItemText: { fontSize: 13, color: "#334155" },
+  roleItemTextActive: { color: "#2563EB", fontWeight: "700" },
+  statusToggleBtn: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
   },
-  fabWrap: { position: "absolute", right: 16, bottom: 16 },
-  fab: { backgroundColor: "#193867", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999 },
-  fabText: { color: "#fff", fontWeight: "700" },
+  statusToggleActive: { backgroundColor: "#dcfce7", borderColor: "#86efac" },
+  statusToggleInactive: { backgroundColor: "#fee2e2", borderColor: "#fca5a5" },
+  statusToggleText: { fontSize: 12, fontWeight: "600", color: "#64748b" },
+  statusTextActive: { color: "#15803d" },
+  statusTextInactive: { color: "#dc2626" },
+  saveBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2563EB",
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  cancelBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  cancelBtnText: { color: "#475569", fontWeight: "700", fontSize: 14 },
 });

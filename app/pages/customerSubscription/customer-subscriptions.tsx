@@ -7,6 +7,9 @@ import {
   Alert,
   StyleSheet,
   ScrollView,
+  Image,
+  Modal,
+  View,
 } from "react-native";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
@@ -15,57 +18,338 @@ import { Text } from "@/components/ui/text";
 import { Heading } from "@/components/ui/heading";
 import { LinearGradient } from "expo-linear-gradient";
 import { listSubscriptions, cancelSubscription, Subscription } from "./customer-subscriptions.api";
+import { getCustomerDetails, Customer } from "../customers/customers.api";
 import { router } from "expo-router";
 import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
+import {
+  Calendar,
+  CreditCard,
+  X,
+  User,
+  CheckCircle,
+  TrendingUp,
+  Package,
+  Clock,
+  BarChart3,
+  Sparkles,
+  Zap,
+} from "lucide-react-native";
 
-const SUB_TABLE_COLUMNS: HtmlTableColumn[] = [
+const formatDate = (raw?: string) => {
+  if (!raw) return "—";
+  const date = new Date(raw);
+  if (isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
+function renderStatusChip(v: any) {
+  const normalizedStatus = typeof v === "string" ? v.toLowerCase().trim() : v;
+
+  const isActive = normalizedStatus === "active" || normalizedStatus === 1;
+  const isExpired = normalizedStatus === "expired" || normalizedStatus === 0;
+  const isCancelled = normalizedStatus === "cancelled" || normalizedStatus === 2;
+
+  let label = "Unknown";
+  let bg = "#f1f5f9";
+  let border = "#64748b";
+  let color = "#64748b";
+
+  if (isActive) {
+    label = "Active";
+    bg = "#dcfce7";
+    color = "#15803d";
+    border = "#bbf7d0";
+  } else if (isExpired) {
+    label = "Expired";
+    bg = "#f1f5f9";
+    border = "#e2e8f0";
+    color = "#64748b";
+  } else if (isCancelled) {
+    label = "Cancelled";
+    bg = "#fee2e2";
+    border = "#fca5a5";
+    color = "#dc2626";
+  }
+
+  return (
+    <Box
+      style={{
+        alignSelf: "flex-start",
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        backgroundColor: bg,
+        borderWidth: 1,
+        borderColor: border,
+      }}
+    >
+      <Text style={{ color: color, fontWeight: "700", fontSize: 11 }}>
+        • {label}
+      </Text>
+    </Box>
+  );
+}
+
+function MetaItem({
+  icon,
+  label,
+  value,
+  valueColor,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  valueColor?: string;
+}) {
+  return (
+    <Box style={{ width: "48%", marginVertical: 6 }}>
+      <HStack space="xs" className="items-center mb-1">
+        {icon}
+        <Text
+          style={{
+            fontSize: 10,
+            fontWeight: "600",
+            color: "#64748b",
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
+          {label}
+        </Text>
+      </HStack>
+      <Text style={{ fontSize: 13, fontWeight: "700", color: valueColor || "#1e293b" }}>
+        {value}
+      </Text>
+    </Box>
+  );
+}
+
+const SUB_TABLE_COLUMNS: HtmlTableColumn<Subscription>[] = [
+  // 👤 USER
   {
-    key: "customer_id",
-    label: "Customer",
-    width: "180px",
+    key: "user_name",
+    label: "User",
+    width: "220px",
     render: (_v, row) => {
-      if (row.customer_id) return `${row.customer_id.first_name || ""} ${row.customer_id.last_name || ""}`.trim();
-      return row.customerEmail || "Unknown";
+      let name =
+        row.user_name ||
+        row.customerName ||
+        "";
+
+      if (!name && row.customer_id && typeof row.customer_id === "object") {
+        name = `${row.customer_id.first_name || ""} ${row.customer_id.last_name || ""}`.trim();
+      }
+
+      if (!name && (row as any).user_id && typeof (row as any).user_id === "object") {
+        const u = (row as any).user_id;
+        name = `${u.first_name || u.name || ""} ${u.last_name || ""}`.trim();
+      }
+
+      if (!name) {
+        name = row.user_email || row.customerEmail || row.customer_id?.email || "—";
+      }
+
+      const email = row.user_email || row.customerEmail || row.customer_id?.email || "—";
+      const avatarUrl = row.user_avatar || row.customer_id?.avatar;
+      const initials =
+        name !== "—"
+          ? name
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((w) => w.charAt(0).toUpperCase())
+            .join("")
+          : "—";
+
+      return (
+        <HStack space="sm" className="items-center">
+          {avatarUrl ? (
+            <Image
+              source={{ uri: avatarUrl }}
+              style={{ width: 36, height: 36, borderRadius: 18 }}
+            />
+          ) : (
+            <Box
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: "#25376a",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 13 }}>
+                {initials}
+              </Text>
+            </Box>
+          )}
+          <VStack style={{ justifyContent: "center" }}>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: "#1e293b" }} numberOfLines={1}>
+              {name}
+            </Text>
+            <Text style={{ fontSize: 11, color: "#64748b" }} numberOfLines={1}>
+              {email}
+            </Text>
+          </VStack>
+        </HStack>
+      );
     },
   },
+
+  // 📦 PLAN
   {
-    key: "plan_id",
+    key: "plan_name",
     label: "Plan",
-    width: "160px",
+    width: "130px",
     render: (_v, row) => {
-      const name = row.plan_id?.name || "Standard Plan";
-      const price = row.plan_price ?? row.plan_id?.price_per_month ?? 0;
-      const cycle = row.plan_id?.billing_cycle || "monthly";
-      return `${name} (₹${price}/${cycle})`;
+      const planName = row.plan_name || row.plan_id?.name || "Standard Plan";
+      return (
+        <Box
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 8,
+            backgroundColor: "#e5f0ff",
+            borderWidth: 1,
+            borderColor: "#193867",
+          }}
+        >
+          <Text style={{ color: "#193867", fontWeight: "700", fontSize: 12 }}>
+            {planName}
+          </Text>
+        </Box>
+      );
     },
   },
+
+  // 💳 BILLING
   {
-    key: "starts_at",
-    label: "Period",
-    width: "180px",
+    key: "billing_cycle",
+    label: "Billing",
+    width: "110px",
     render: (_v, row) => {
-      const start = row.starts_at ? new Date(row.starts_at).toLocaleDateString("en-IN") : "—";
-      const end = row.ends_at ? new Date(row.ends_at).toLocaleDateString("en-IN") : "—";
-      return `${start} to ${end}`;
+      const cycle = (row.billing_cycle || row.plan_id?.billing_cycle || "monthly").toLowerCase();
+      const isMonthly = cycle === "monthly";
+      return (
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "600",
+            color: isMonthly ? "#2563eb" : "#059669",
+            textTransform: "capitalize",
+          }}
+        >
+          {cycle === "annual" || cycle === "yearly" ? "Annual" : "Monthly"}
+        </Text>
+      );
     },
   },
+
+  // 📊 STATUS
   {
     key: "status",
     label: "Status",
-    width: "100px",
-    render: (v) => {
-      const val = typeof v === "string" ? v.toLowerCase() : "active";
-      const map: Record<string, { bg: string; color: string; text: string }> = {
-        active: { bg: "#dcfce7", color: "#15803d", text: "Active" },
-        cancelled: { bg: "#fee2e2", color: "#dc2626", text: "Cancelled" },
-      };
-      const meta = map[val] || { bg: "#f1f5f9", color: "#64748b", text: val };
-      return `<span style="display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;background:${meta.bg};color:${meta.color};">${meta.text}</span>`;
+    width: "120px",
+    render: (v) => renderStatusChip(v),
+  },
+
+  // 🔄 AUTO RENEW
+  {
+    key: "auto_renew",
+    label: "Auto Renew",
+    width: "110px",
+    render: (_v, row) => {
+      const isAutoRenew = row.auto_renew !== false;
+      return (
+        <Box
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 8,
+            backgroundColor: isAutoRenew ? "#e8f5e9" : "#f1f5f9",
+            borderWidth: 1,
+            borderColor: isAutoRenew ? "#193867" : "#839cbe",
+          }}
+        >
+          <Text
+            style={{
+              color: isAutoRenew ? "#193867" : "#839cbe",
+              fontWeight: "700",
+              fontSize: 12,
+            }}
+          >
+            {isAutoRenew ? "Yes" : "No"}
+          </Text>
+        </Box>
+      );
+    },
+  },
+
+  // 📅 START DATE
+  {
+    key: "start_date",
+    label: "Start",
+    width: "130px",
+    render: (_v, row) => {
+      const dateStr = formatDate(row.start_date || row.starts_at);
+      return (
+        <HStack space="xs" className="items-center">
+          <Calendar size={14} color="#64748b" />
+          <Text style={{ fontSize: 13, fontWeight: "500", color: "#334155" }}>
+            {dateStr}
+          </Text>
+        </HStack>
+      );
+    },
+  },
+
+  // 📅 END DATE
+  {
+    key: "end_date",
+    label: "End",
+    width: "130px",
+    render: (_v, row) => {
+      const isCancelled = row.status === 2 || row.status === "cancelled";
+      const raw = isCancelled && row.cancelled_at ? row.cancelled_at : (row.end_date || row.ends_at);
+      const dateStr = formatDate(raw);
+      return (
+        <HStack space="xs" className="items-center">
+          <Calendar size={14} color="#64748b" />
+          <Text style={{ fontSize: 13, fontWeight: "500", color: "#334155" }}>
+            {dateStr}
+          </Text>
+        </HStack>
+      );
+    },
+  },
+
+  // 🕒 CREATED
+  {
+    key: "createdAt",
+    label: "Created",
+    width: "130px",
+    render: (_v, row) => {
+      const dateStr = formatDate(row.createdAt || row.updatedAt);
+      return (
+        <HStack space="xs" className="items-center">
+          <Calendar size={14} color="#64748b" />
+          <Text style={{ fontSize: 13, fontWeight: "500", color: "#334155" }}>
+            {dateStr}
+          </Text>
+        </HStack>
+      );
     },
   },
 ];
 
 const SUB_ROW_ACTIONS = [
+  { label: "View Details", action: "view", style: "normal" },
   { label: "Cancel", action: "cancel", style: "danger" },
 ];
 
@@ -78,6 +362,12 @@ export default function CustomerSubscriptionsScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // View Subscription Details Modal States
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
+  const [customerDetails, setCustomerDetails] = useState<Customer | null>(null);
+  const [loadingCustomer, setLoadingCustomer] = useState(false);
 
   const fetchSubscriptionsList = useCallback(
     async (pg = 1, reset = true) => {
@@ -97,7 +387,6 @@ export default function CustomerSubscriptionsScreen() {
         }
 
         const res = await listSubscriptions(queryParams.toString());
-        // Backend returns either direct array or { data, pagination }
         const items = Array.isArray(res) ? res : res?.data || [];
 
         if (reset) {
@@ -128,12 +417,38 @@ export default function CustomerSubscriptionsScreen() {
     fetchSubscriptionsList(1, true);
   };
 
+  const handleViewSubscriptionDetails = async (sub: Subscription) => {
+    setSelectedSubscription(sub);
+    setCustomerDetails(null);
+    setViewDialogOpen(true);
+    setLoadingCustomer(true);
+
+    try {
+      const uId =
+        (typeof (sub as any).user_id === "object" ? (sub as any).user_id?._id || (sub as any).user_id?.id : (sub as any).user_id) ||
+        (typeof sub.customer_id === "object" ? sub.customer_id?._id || (sub.customer_id as any)?.id : sub.customer_id) ||
+        sub._id ||
+        sub.id ||
+        "";
+
+      if (uId) {
+        const data = await getCustomerDetails(uId);
+        setCustomerDetails(data);
+      }
+    } catch (e: any) {
+      console.log("Error fetching customer details for modal:", e);
+    } finally {
+      setLoadingCustomer(false);
+    }
+  };
+
   const handleCancelSubscription = (item: Subscription) => {
     const id = item._id || item.id || "";
     const customerName =
-      item.customer_id
+      item.user_name ||
+      (item.customer_id
         ? `${item.customer_id.first_name} ${item.customer_id.last_name}`
-        : item.customerEmail || "Customer";
+        : item.customerEmail || "Customer");
 
     Alert.alert(
       "Cancel Subscription",
@@ -157,18 +472,6 @@ export default function CustomerSubscriptionsScreen() {
         },
       ],
     );
-  };
-
-  const getStatusStyle = (status: any) => {
-    const val = typeof status === "string" ? status.toLowerCase() : "active";
-    switch (val) {
-      case "active":
-        return { bg: "#dcfce7", color: "#15803d" };
-      case "cancelled":
-        return { bg: "#fee2e2", color: "#dc2626" };
-      default:
-        return { bg: "#f1f5f9", color: "#64748b" };
-    }
   };
 
   return (
@@ -233,11 +536,20 @@ export default function CustomerSubscriptionsScreen() {
               data={subscriptions}
               rowActions={SUB_ROW_ACTIONS}
               onRowAction={(action, rowId) => {
-                if (action === "cancel") {
-                  const s = subscriptions.find((x) => (x._id || x.id) === rowId);
-                  if (s) handleCancelSubscription(s);
+                const s = subscriptions.find((x) => String(x._id || x.id) === String(rowId));
+                if (!s) return;
+
+                if (action === "view") {
+                  handleViewSubscriptionDetails(s);
+                } else if (action === "cancel") {
+                  handleCancelSubscription(s);
                 }
               }}
+              iconOnlyActions={true}
+              tableContainerStyle={{ borderWidth: 0, shadowColor: "transparent", backgroundColor: "transparent", elevation: 0, marginHorizontal: 0, marginVertical: 0 }}
+              headerRowStyle={{ backgroundColor: "#f8fafc", borderBottomWidth: 1.5, borderBottomColor: "#e2e8f0" }}
+              headerCellTextStyle={{ color: "#1e3a8a", fontWeight: "700", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}
+              rowStyle={{ borderBottomWidth: 1, borderBottomColor: "#f1f5f9", backgroundColor: "#ffffff" }}
             />
           )}
           {loadingMore && (
@@ -245,6 +557,193 @@ export default function CustomerSubscriptionsScreen() {
           )}
         </ScrollView>
       )}
+
+      {/* ── Subscription Details Modal Popup ─────────────────────────── */}
+      <Modal
+        visible={viewDialogOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setViewDialogOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Header Banner */}
+            <View style={styles.modalHeader}>
+              <HStack space="sm" className="items-center">
+                <Box style={styles.headerIconBg}>
+                  <CreditCard size={20} color="#193867" />
+                </Box>
+                <VStack>
+                  <Text style={styles.modalTitle}>Subscription Details</Text>
+                  <Text style={styles.modalSubtitle}>Full plan & usage information</Text>
+                </VStack>
+              </HStack>
+
+              <TouchableOpacity onPress={() => setViewDialogOpen(false)} style={styles.closeBtn}>
+                <X size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Content Body */}
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {loadingCustomer ? (
+                <Box className="py-10 items-center justify-center">
+                  <ActivityIndicator size="large" color="#193867" />
+                  <Text style={{ marginTop: 10, color: "#64748b", fontSize: 13 }}>
+                    Loading customer details...
+                  </Text>
+                </Box>
+              ) : (
+                <VStack space="md" style={{ paddingBottom: 24 }}>
+                  {/* User info card */}
+                  {customerDetails && (
+                    <Box style={styles.detailsCard}>
+                      <HStack space="md" className="items-center">
+                        <Box style={styles.avatarCircle}>
+                          <User size={22} color="#193867" />
+                        </Box>
+                        <VStack>
+                          <Text style={{ fontSize: 15, fontWeight: "700", color: "#1e293b" }}>
+                            {customerDetails.first_name || ""} {customerDetails.last_name || ""}
+                          </Text>
+                          <Text style={{ fontSize: 13, color: "#64748b" }}>
+                            {customerDetails.email || "No email"}
+                          </Text>
+                        </VStack>
+                      </HStack>
+                    </Box>
+                  )}
+
+                  {/* Active plan card */}
+                  {selectedSubscription && (
+                    <Box style={styles.detailsCard}>
+                      <VStack space="sm">
+                        <HStack className="items-center justify-between">
+                          <Text style={{ fontSize: 17, fontWeight: "700", color: "#1e293b" }}>
+                            {selectedSubscription.plan_name || selectedSubscription.plan_id?.name || "Standard Plan"}
+                          </Text>
+                          {renderStatusChip(selectedSubscription.status)}
+                        </HStack>
+
+                        <Text style={{ fontSize: 13, color: "#64748b", textTransform: "capitalize" }}>
+                          {(selectedSubscription.billing_cycle || selectedSubscription.plan_id?.billing_cycle || "monthly")} plan
+                          {(selectedSubscription.plan_price || selectedSubscription.plan_id?.price_per_month) ? (
+                            ` · ₹${selectedSubscription.plan_price || selectedSubscription.plan_id?.price_per_month}/${selectedSubscription.billing_cycle === 'annual' ? 'year' : 'month'}`
+                          ) : ""}
+                        </Text>
+                      </VStack>
+
+                      <View style={styles.divider} />
+
+                      {/* Metadata Grid */}
+                      <View style={styles.metaGrid}>
+                        <MetaItem
+                          icon={<User size={14} color="#94a3b8" />}
+                          label="Full Name"
+                          value={
+                            customerDetails
+                              ? `${customerDetails.first_name || ""} ${customerDetails.last_name || ""}`.trim()
+                              : selectedSubscription.user_name || "N/A"
+                          }
+                        />
+
+                        <MetaItem
+                          icon={<CreditCard size={14} color="#94a3b8" />}
+                          label="Contact No"
+                          value={customerDetails?.contact_no ? String(customerDetails.contact_no) : "N/A"}
+                        />
+
+                        <MetaItem
+                          icon={<CheckCircle size={14} color="#94a3b8" />}
+                          label="Email Verified"
+                          value={customerDetails?.is_email_verified ? "Yes" : "No"}
+                          valueColor={customerDetails?.is_email_verified ? "#059669" : "#dc2626"}
+                        />
+
+                        <MetaItem
+                          icon={<TrendingUp size={14} color="#94a3b8" />}
+                          label="Status"
+                          value={customerDetails?.status === 1 ? "Active" : "Deactive"}
+                          valueColor={customerDetails?.status === 1 ? "#059669" : "#dc2626"}
+                        />
+
+                        <MetaItem
+                          icon={<Package size={14} color="#94a3b8" />}
+                          label="Social Accounts"
+                          value={String(customerDetails?.social_accounts_count ?? 0)}
+                        />
+
+                        <MetaItem
+                          icon={<Calendar size={14} color="#94a3b8" />}
+                          label="Start Date"
+                          value={formatDate(selectedSubscription.start_date || selectedSubscription.starts_at)}
+                        />
+
+                        <MetaItem
+                          icon={<Clock size={14} color="#94a3b8" />}
+                          label="End Date"
+                          value={formatDate(selectedSubscription.end_date || selectedSubscription.ends_at)}
+                        />
+
+                        {customerDetails?.address && (
+                          <MetaItem
+                            icon={<User size={14} color="#94a3b8" />}
+                            label="Address"
+                            value={
+                              `${customerDetails.address.address_line_1 || ''}${customerDetails.address.city ? ', ' + customerDetails.address.city : ''
+                                }`.trim() || "N/A"
+                            }
+                          />
+                        )}
+
+                        <MetaItem
+                          icon={<Calendar size={14} color="#94a3b8" />}
+                          label="Created On"
+                          value={formatDate(customerDetails?.createdAt || selectedSubscription.createdAt)}
+                        />
+                      </View>
+                    </Box>
+                  )}
+
+                  {/* Usage Statistics Card */}
+                  {customerDetails?.postUsage && (
+                    <Box style={styles.detailsCard}>
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: "#1e293b", marginBottom: 10 }}>
+                        Usage Statistics
+                      </Text>
+                      <View style={styles.metaGrid}>
+                        <MetaItem
+                          icon={<Package size={14} color="#94a3b8" />}
+                          label="Posts This Month"
+                          value={`${customerDetails.postUsage.posts_used_this_month || 0}/${customerDetails.postUsage.plan_snapshot?.posts_per_month || 0}`}
+                        />
+
+                        <MetaItem
+                          icon={<BarChart3 size={14} color="#94a3b8" />}
+                          label="Posts Today"
+                          value={`${customerDetails.postUsage.posts_used_today || 0}/${customerDetails.postUsage.plan_snapshot?.posts_per_day || 0}`}
+                        />
+
+                        <MetaItem
+                          icon={<Sparkles size={14} color="#94a3b8" />}
+                          label="AI Content Today"
+                          value={`${customerDetails.postUsage.ai_content_used_today || 0}/${customerDetails.postUsage.plan_snapshot?.ai_content_generation_limit || 0}`}
+                        />
+
+                        <MetaItem
+                          icon={<Zap size={14} color="#94a3b8" />}
+                          label="Plan Snapshot"
+                          value={customerDetails.postUsage.plan_snapshot?.name || "N/A"}
+                        />
+                      </View>
+                    </Box>
+                  )}
+                </VStack>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </Box>
   );
 }
@@ -279,38 +778,89 @@ const styles = StyleSheet.create({
   },
   tabText: { fontSize: 11, color: "#64748b", fontWeight: "600" },
   tabTextActive: { color: "#ffffff" },
-  listContent: { padding: 16, paddingBottom: 40 },
-  card: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
+  listContent: { padding: 16, paddingBottom: 90 },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
-    marginBottom: 12,
+  },
+  modalContainer: {
+    width: "100%",
+    maxHeight: "85%",
+    backgroundColor: "#f8fafc",
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    backgroundColor: "#193867",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerIconBg: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: "#eff6ff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    color: "rgba(255, 255, 255, 0.7)",
+  },
+  closeBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+  },
+  modalBody: {
+    padding: 16,
+  },
+  detailsCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.07)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  statusBadge: {
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#eff6ff",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  planSection: {
-    backgroundColor: "#f8fafc",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    marginTop: 8,
+  divider: {
+    height: 1,
+    backgroundColor: "#e2e8f0",
+    marginVertical: 12,
   },
-  cancelBtn: {
-    backgroundColor: "#fff5f5",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "#fecaca",
+  metaGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
-  cancelBtnText: { fontSize: 12, fontWeight: "600", color: "#dc2626" },
 });

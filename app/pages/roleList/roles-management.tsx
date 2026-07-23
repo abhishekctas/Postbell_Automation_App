@@ -1,50 +1,31 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
+  FlatList,
+  RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
   Alert,
-  Modal,
   StyleSheet,
-  ScrollView,
+  View,
 } from "react-native";
 import { Box } from "@/components/ui/box";
 import { VStack } from "@/components/ui/vstack";
 import { HStack } from "@/components/ui/hstack";
 import { Text } from "@/components/ui/text";
 import { Heading } from "@/components/ui/heading";
-import { Button, ButtonText } from "@/components/ui/button";
-import { getRoles, createRole, updateRole, deleteRole, Role } from "../roleList/roles-management.api";
-import HtmlTable, { HtmlTableColumn } from "@/components/HtmlTable";
-
-const ROLE_TABLE_COLUMNS: HtmlTableColumn[] = [
-  {
-    key: "name",
-    label: "Role Name",
-    width: "200px",
-  },
-  {
-    key: "description",
-    label: "Description",
-    width: "300px",
-    render: (v) => (v ? String(v) : "No description provided."),
-  },
-];
-
-const ROLE_ROW_ACTIONS = [
-  { label: "Edit", action: "edit" },
-  { label: "Delete", action: "delete", style: "danger" },
-];
+import { getRoles, deleteRole, Role } from "./roles-management.api";
+import { useRouter, useFocusEffect } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 
 export default function RolesManagementScreen() {
+  const router = useRouter();
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
-  const [roleName, setRoleName] = useState("");
-  const [roleDescription, setRoleDescription] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
 
-  const fetchRoles = async () => {
+  const fetchRolesList = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getRoles();
@@ -53,67 +34,51 @@ export default function RolesManagementScreen() {
       Alert.alert("Error", error.message || "Failed to load roles.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchRoles();
   }, []);
 
+  useEffect(() => {
+    fetchRolesList();
+  }, [fetchRolesList]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchRolesList();
+    }, [fetchRolesList])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchRolesList();
+  };
+
   const handleOpenAdd = () => {
-    setEditingRole(null);
-    setRoleName("");
-    setRoleDescription("");
-    setModalVisible(true);
+    router.push("/pages/roleList/role-editor");
   };
 
   const handleOpenEdit = (role: Role) => {
-    setEditingRole(role);
-    setRoleName(role.name || "");
-    setRoleDescription((role as any).description || "");
-    setModalVisible(true);
-  };
-
-  const handleSave = async () => {
-    if (!roleName.trim()) {
-      Alert.alert("Validation Error", "Role name is required.");
-      return;
-    }
-
-    try {
-      const payload: Partial<Role> & { description?: string } = {
-        name: roleName.trim(),
-        description: roleDescription.trim(),
-      };
-
-      if (editingRole) {
-        const roleId = editingRole._id || editingRole.id || "";
-        await updateRole(roleId, payload);
-        Alert.alert("Success", "Role updated successfully.");
-      } else {
-        await createRole(payload);
-        Alert.alert("Success", "Role created successfully.");
-      }
-
-      setModalVisible(false);
-      fetchRoles();
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to save role.");
-    }
+    const roleId = role._id || role.id || "";
+    router.push({
+      pathname: "/pages/roleList/role-editor",
+      params: { id: roleId },
+    });
   };
 
   const handleDelete = (role: Role) => {
-    Alert.alert("Delete Role", `Delete the role “${role.name}”?`, [
+    const roleId = role._id || role.id || "";
+    const roleName = role.name || role.role_name || "Role";
+
+    Alert.alert("Delete Role", `Are you sure you want to delete "${roleName}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
           try {
-            const roleId = role._id || role.id || "";
             await deleteRole(roleId);
             Alert.alert("Success", "Role deleted successfully.");
-            setRoles((prev) => prev.filter((item) => (item._id || item.id || "") !== roleId));
+            setRoles((prev) => prev.filter((item) => (item._id || item.id) !== roleId));
           } catch (error: any) {
             Alert.alert("Error", error.message || "Failed to delete role.");
           }
@@ -122,151 +87,184 @@ export default function RolesManagementScreen() {
     ]);
   };
 
+  const filteredRoles = roles.filter((r) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase().trim();
+    const nameStr = (r.name || r.role_name || "").toLowerCase();
+    const descStr = (r.description || "").toLowerCase();
+    return nameStr.includes(q) || descStr.includes(q);
+  });
+
+  const renderItem = ({ item }: { item: Role }) => {
+    const roleId = item._id || item.id || "";
+    const roleName = item.name || item.role_name || "Untitled Role";
+    const isActive = item.status !== 0;
+    const permsCount = item.sectionMatrix?.length || item.section_list?.length || 0;
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => handleOpenEdit(item)}
+      >
+        <Box style={styles.card}>
+          <HStack className="justify-between items-start">
+            <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
+              <HStack className="items-center space-x-2">
+                <Text style={styles.roleNameText}>{roleName}</Text>
+                {permsCount > 0 ? (
+                  <Box style={styles.permsBadge}>
+                    <Text style={styles.permsBadgeText}>{permsCount} Modules</Text>
+                  </Box>
+                ) : null}
+              </HStack>
+
+              <Text style={styles.roleDescText} numberOfLines={2}>
+                {item.description || "No description provided for this role."}
+              </Text>
+            </VStack>
+
+            <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
+              <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
+                {isActive ? "Active" : "Inactive"}
+              </Text>
+            </Box>
+          </HStack>
+
+          <HStack space="sm" className="mt-4 justify-end">
+            <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
+              <HStack className="items-center space-x-1">
+                <Feather name="edit-2" size={12} color="#2563EB" />
+                <Text style={styles.actionBtnText}>Edit Role</Text>
+              </HStack>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnDanger]}
+              onPress={() => handleDelete(item)}
+            >
+              <HStack className="items-center space-x-1">
+                <Feather name="trash-2" size={12} color="#dc2626" />
+                <Text style={[styles.actionBtnText, { color: "#dc2626" }]}>Delete</Text>
+              </HStack>
+            </TouchableOpacity>
+          </HStack>
+        </Box>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <Box className="flex-1 bg-[#f8fafc]">
-      <Box style={styles.headerWrap}>
-        <Text style={styles.headerText}>Manage roles and permission groups for your staff.</Text>
+      {/* Top Search & Action Bar */}
+      <Box style={styles.filterSection}>
+        <HStack className="justify-between items-center mb-3">
+          <Text style={styles.sectionHeaderTitle}>Role Management</Text>
+          <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
+            <Text style={styles.addBtnText}>+ Add Role</Text>
+          </TouchableOpacity>
+        </HStack>
+
+        <HStack style={styles.searchBoxContainer}>
+          <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search roles by name..."
+            placeholderTextColor="#94a3b8"
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search ? (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Feather name="x" size={16} color="#94a3b8" />
+            </TouchableOpacity>
+          ) : null}
+        </HStack>
       </Box>
 
       {loading ? (
         <Box className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#193867" />
+          <ActivityIndicator size="large" color="#2563EB" />
         </Box>
       ) : (
-        <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-          {roles.length === 0 ? (
-            <Box className="items-center justify-center py-20">
-              <Text className="text-typography-400 text-base">No roles found</Text>
+        <FlatList
+          data={filteredRoles}
+          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
+          }
+          ListEmptyComponent={
+            <Box className="items-center justify-center py-16">
+              <Feather name="shield" size={40} color="#cbd5e1" />
+              <Text className="text-typography-400 text-base mt-2">No roles found</Text>
             </Box>
-          ) : (
-            <HtmlTable
-              columns={ROLE_TABLE_COLUMNS}
-              data={roles}
-              rowActions={ROLE_ROW_ACTIONS}
-              onRowAction={(action, rowId) => {
-                if (action === "edit") {
-                  const r = roles.find((x) => (x._id || x.id) === rowId);
-                  if (r) handleOpenEdit(r);
-                } else if (action === "delete") {
-                  const r = roles.find((x) => (x._id || x.id) === rowId);
-                  if (r) handleDelete(r);
-                }
-              }}
-            />
-          )}
-        </ScrollView>
+          }
+          renderItem={renderItem}
+        />
       )}
-
-      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
-        <Box style={styles.modalOverlay}>
-          <Box style={styles.modalContainer}>
-            <Heading size="md" className="mb-4">
-              {editingRole ? "Edit Role" : "Add Role"}
-            </Heading>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
-              <VStack space="md">
-                <VStack space="xs">
-                  <Text style={styles.label}>Role Name *</Text>
-                  <TextInput style={styles.input} value={roleName} onChangeText={setRoleName} placeholder="e.g. Admin" />
-                </VStack>
-                <VStack space="xs">
-                  <Text style={styles.label}>Description</Text>
-                  <TextInput
-                    style={[styles.input, { minHeight: 80 }]}
-                    value={roleDescription}
-                    onChangeText={setRoleDescription}
-                    multiline
-                    placeholder="Short description of the role"
-                  />
-                </VStack>
-              </VStack>
-            </ScrollView>
-
-            <HStack space="sm" className="mt-6">
-              <Button style={{ flex: 1 }} className="bg-primary-700 rounded-xl" onPress={handleSave}>
-                <ButtonText>Save</ButtonText>
-              </Button>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-            </HStack>
-          </Box>
-        </Box>
-      </Modal>
-
-      <Box style={styles.fabWrap}>
-        <TouchableOpacity style={styles.fab} onPress={handleOpenAdd}>
-          <Text style={styles.fabText}>+ Add Role</Text>
-        </TouchableOpacity>
-      </Box>
     </Box>
   );
 }
 
 const styles = StyleSheet.create({
-  headerWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  headerText: { color: "#64748b", fontSize: 13 },
-  listContent: { padding: 16, paddingBottom: 100 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+  filterSection: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
+  sectionHeaderTitle: { fontSize: 16, fontWeight: "700", color: "#0f172a" },
+  addBtn: {
+    backgroundColor: "#2563EB",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
-  actionBtn: {
+  addBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  searchBoxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#e2e8f0",
     borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#f8fafc",
+  },
+  searchInput: { flex: 1, fontSize: 14, color: "#1e293b", padding: 0 },
+  listContent: { padding: 16, paddingBottom: 40 },
+  card: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  roleNameText: { fontSize: 16, fontWeight: "700", color: "#0f172a" },
+  permsBadge: {
+    backgroundColor: "#eff6ff",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+  },
+  permsBadgeText: { fontSize: 10, fontWeight: "700", color: "#2563EB" },
+  roleDescText: { fontSize: 13, color: "#64748b", marginTop: 4, lineHeight: 18 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  badgeActive: { backgroundColor: "#dcfce7" },
+  badgeInactive: { backgroundColor: "#fee2e2" },
+  statusText: { fontSize: 10, fontWeight: "700" },
+  textActive: { color: "#15803d" },
+  textInactive: { color: "#dc2626" },
+  actionBtn: {
+    backgroundColor: "#f0f7ff",
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: "#f8fafc",
-  },
-  actionBtnDanger: { backgroundColor: "#fef2f2", borderColor: "#fecaca" },
-  actionBtnText: { color: "#334155", fontSize: 12, fontWeight: "700" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
-  },
-  modalContainer: {
-    width: "100%",
-    maxWidth: 460,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 20,
-    maxHeight: "85%",
-  },
-  label: { fontSize: 11, fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 },
-  input: {
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#1e293b",
-    backgroundColor: "#f8fafc",
+    borderColor: "#bfdbfe",
   },
-  cancelBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelBtnText: { color: "#475569", fontWeight: "700" },
-  fabWrap: { position: "absolute", right: 16, bottom: 16 },
-  fab: { backgroundColor: "#193867", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999 },
-  fabText: { color: "#fff", fontWeight: "700" },
+  actionBtnDanger: { backgroundColor: "#fff5f5", borderColor: "#fecaca" },
+  actionBtnText: { fontSize: 12, fontWeight: "600", color: "#2563EB" },
 });

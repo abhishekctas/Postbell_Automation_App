@@ -1,7 +1,7 @@
 import React from "react";
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableData } from "@/components/ui/table";
-import { Pencil, Trash2, Info } from "lucide-react-native";
+import { Pencil, Trash2, Info, Eye, XCircle } from "lucide-react-native";
 
 export interface HtmlTableColumn<T = any> {
   key: string;
@@ -205,6 +205,10 @@ export default function HtmlTable({
                                     <Pencil size={14} color={isDanger ? "#dc2626" : "#2563eb"} style={!iconOnlyActions && { marginRight: 4 }} />
                                   ) : actionInfo.action === "delete" ? (
                                     <Trash2 size={14} color="#dc2626" style={!iconOnlyActions && { marginRight: 4 }} />
+                                  ) : actionInfo.action === "view" || actionInfo.action === "details" ? (
+                                    <Eye size={14} color={isDanger ? "#dc2626" : "#2563eb"} style={!iconOnlyActions && { marginRight: 4 }} />
+                                  ) : actionInfo.action === "cancel" ? (
+                                    <XCircle size={14} color={isDanger ? "#dc2626" : "#2563eb"} style={!iconOnlyActions && { marginRight: 4 }} />
                                   ) : null}
                                   {!iconOnlyActions && (
                                     <Text
