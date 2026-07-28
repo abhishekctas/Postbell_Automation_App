@@ -146,7 +146,7 @@ const toastDescriptionStyle = tva({
   parentVariants: {
     variant: {
       solid: 'text-typography-50',
-      outline: 'text-typography-900',
+      outline: 'text-typography-100',
     },
   },
 });

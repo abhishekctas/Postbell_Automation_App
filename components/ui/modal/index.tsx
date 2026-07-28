@@ -61,13 +61,13 @@ const modalBackdropStyle = tva({
 });
 
 const modalContentStyle = tva({
-  base: 'bg-background-0 rounded-md overflow-hidden border border-outline-100 shadow-hard-2 p-6',
+  base: 'bg-background-0 rounded-xl overflow-hidden border border-outline-100 shadow-2xl p-6',
   parentVariants: {
     size: {
       xs: 'w-[60%] max-w-[360px]',
       sm: 'w-[70%] max-w-[420px]',
       md: 'w-[80%] max-w-[510px]',
-      lg: 'w-[90%] max-w-[640px]',
+      lg: 'w-[90%] max-w-[720px]',
       full: 'w-full',
     },
   },
