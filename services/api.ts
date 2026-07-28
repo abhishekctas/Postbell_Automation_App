@@ -79,10 +79,7 @@ export const API_ENDPOINTS = {
 };
 
 // Generic authenticated fetch helper using native fetch (compatible with React Native)
-export async function fetchWithAuth(
-  url: string,
-  options: RequestInit = {},
-): Promise<any> {
+export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<any> {
   const method = (options.method || 'GET').toUpperCase();
 
   let token = await AsyncStorage.getItem('jwt_access_token');
@@ -90,18 +87,56 @@ export async function fetchWithAuth(
     token = token.replace(/['"]+/g, '');
   }
 
+  const { getCurrentUserId } = await import('@/utils/storage');
+  const loggedInUserId = await getCurrentUserId();
+
+  const authUrls = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+    '/auth/change-password',
+    '/auth/sign-in-with-token',
+    '/auth/otp/request',
+    '/auth/otp/verify',
+    '/auth/otp/resend',
+    '/customers/login-customer',
+    '/customers/customer-forgot-password',
+    '/customers/reset-customer-password',
+    '/customers/register-customer',
+    '/customers/verify-email',
+    '/customers/refresh-tokens',
+    '/customers/sign-in-with-token',
+    '/ai-logo',
+  ];
+
+  const isAuthUrl = authUrls.some((authUrl) => url.includes(authUrl));
+
+  let finalUrl = url;
+
+  if (loggedInUserId && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && !isAuthUrl) {
+    if (!url.includes(`/${loggedInUserId}`)) {
+      if (url.includes('?')) {
+        const [base, query] = url.split('?');
+        finalUrl = `${base}/${loggedInUserId}?${query}`;
+      } else {
+        finalUrl = `${url}/${loggedInUserId}`;
+      }
+    }
+  }
+
   const isFormData = options.body instanceof FormData;
   const headers: HeadersInit = {
     ...(!isFormData && { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(loggedInUserId && !isAuthUrl ? { 'X-User-Id': loggedInUserId } : {}),
     ...(options.headers || {}),
   };
 
   const config: RequestInit = { ...options, headers };
-  console.log(config, "config");
 
   try {
-    const response = await fetch(url, config);
+    const response = await fetch(finalUrl, config);
 
     // Check for updated token in response headers
     const newToken = response.headers.get('New-Access-Token');
@@ -117,7 +152,7 @@ export async function fetchWithAuth(
 
     return await response.json();
   } catch (err: any) {
-    console.error('API Request Failed', { url, method, message: err?.message });
+    console.error('API Request Failed', { url: finalUrl, method, message: err?.message });
     return {
       success: false,
       statusCode: 503,

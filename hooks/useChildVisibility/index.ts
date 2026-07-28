@@ -1,6 +1,6 @@
-import { useEffect, useContext } from "react";
-import { Dimensions } from "react-native";
-import { WeatherTabContext } from "@/context/WeatherTabContext";
+import { useEffect, useContext } from 'react';
+import { Dimensions } from 'react-native';
+import { WeatherTabContext } from '@/context/WeatherTabContext';
 
 const useChildVisibility = () => {
   const { scrollViewRef, childRefs, setChildRefs, selectedTabIndex }: any =
@@ -15,18 +15,17 @@ const useChildVisibility = () => {
           childRef.ref.current.measureLayout(
             scrollViewRef.current,
             (x: any, y: any, width: any, height: any) => {
-              const windowHeight = Dimensions.get("window").height;
+              const windowHeight = Dimensions.get('window').height;
               //@ts-ignore
               const scrollY = scrollViewRef.current?._scrollY || 0;
-              const isVisible =
-                y >= scrollY && y <= scrollY + windowHeight - height;
+              const isVisible = y >= scrollY && y <= scrollY + windowHeight - height;
 
               if (childRef.isVisible === false && isVisible) {
                 childRef.isVisible = isVisible;
                 flag = true;
               }
             },
-            () => console.log("Measurement failed")
+            () => console.log('Measurement failed')
           );
         }
         return childRef;

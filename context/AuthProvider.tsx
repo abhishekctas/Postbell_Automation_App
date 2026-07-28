@@ -7,11 +7,7 @@ import {
   fetchWithAuth,
   AUTH_ENDPOINTS,
 } from '@/services/api';
-import {
-  storeUserAfterLogin,
-  clearSecureUserData,
-  getSecureUserData,
-} from '@/utils/storage';
+import { storeUserAfterLogin, clearSecureUserData, getSecureUserData } from '@/utils/storage';
 
 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 function atobPolyfill(input: string): string {
@@ -20,8 +16,9 @@ function atobPolyfill(input: string): string {
   for (
     let bc = 0, bs = 0, buffer, idx = 0;
     (buffer = str.charAt(idx++));
-    ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer),
-      bc++ % 4) ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6)))) : 0
+    ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4)
+      ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))))
+      : 0
   ) {
     buffer = chars.indexOf(buffer);
   }
@@ -114,29 +111,22 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   // ── Request OTP ───────────────────────────────────────────────────────────
-  const requestOtp = useCallback(
-    async (email: string, loginType: 'user' | 'customer' = 'user') => {
-      const response = await fetchWithAuth(AUTH_ENDPOINTS.requestOtp, {
-        method: 'POST',
-        body: JSON.stringify({ email, loginType }),
-      });
+  const requestOtp = useCallback(async (email: string, loginType: 'user' | 'customer' = 'user') => {
+    const response = await fetchWithAuth(AUTH_ENDPOINTS.requestOtp, {
+      method: 'POST',
+      body: JSON.stringify({ email, loginType }),
+    });
 
-      const status = response?.status || response?.statusCode || response?.code;
-      if (status >= 400 || response?.success === false) {
-        throw { status: status || 500, message: response?.message || 'Failed to request OTP' };
-      }
-      return response;
-    },
-    [],
-  );
+    const status = response?.status || response?.statusCode || response?.code;
+    if (status >= 400 || response?.success === false) {
+      throw { status: status || 500, message: response?.message || 'Failed to request OTP' };
+    }
+    return response;
+  }, []);
 
   // ── Resend OTP ────────────────────────────────────────────────────────────
   const resendOtp = useCallback(
-    async (payload: {
-      email: string;
-      loginType: 'user' | 'customer';
-      requestId?: string;
-    }) => {
+    async (payload: { email: string; loginType: 'user' | 'customer'; requestId?: string }) => {
       const response = await fetchWithAuth(AUTH_ENDPOINTS.resendOtp, {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -148,7 +138,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       }
       return response;
     },
-    [],
+    []
   );
 
   // ── Verify OTP & Sign In ──────────────────────────────────────────────────
@@ -201,7 +191,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
       return data;
     },
-    [],
+    []
   );
 
   // ── Sign Out ──────────────────────────────────────────────────────────────
@@ -228,12 +218,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       signOut,
       updateUser,
     }),
-    [authState, requestOtp, resendOtp, verifyOtp, signOut, updateUser],
+    [authState, requestOtp, resendOtp, verifyOtp, signOut, updateUser]
   );
 
-  return (
-    <AuthContext value={contextValue}>
-      {children}
-    </AuthContext>
-  );
+  return <AuthContext value={contextValue}>{children}</AuthContext>;
 }

@@ -1,4 +1,4 @@
-import { fetchWithAuth, API_BASE_URL } from "@/services/api";
+import { fetchWithAuth, API_BASE_URL } from '@/services/api';
 
 const BASE = `${API_BASE_URL}/generated-posts`;
 const SOCIAL_BASE = `${API_BASE_URL}/social-post`;
@@ -9,7 +9,7 @@ export interface PostContent {
   link?: string;
   comment?: string;
   media?: {
-    type: "image" | "video";
+    type: 'image' | 'video';
     url: string;
     name?: string;
     size?: number;
@@ -23,7 +23,7 @@ export interface PlatformSpecificContent {
   caption?: string;
   post_url?: string;
   media_url?: string;
-  content_type?: "image" | "video" | "text";
+  content_type?: 'image' | 'video' | 'text';
   post_id?: string;
   posted_at?: string;
   post_status?: string;
@@ -35,14 +35,19 @@ export interface Post {
   id?: string;
   title?: string;
   companyName?: string;
+  company_name?: string;
   companyEmail?: string;
+  company_email?: string;
+  company_phone?: string;
+  company_website?: string;
   caption?: string;
   hashtags?: string[];
   image_url?: string;
+  image_path?: string;
   generalContent?: PostContent;
   platformSpecificContent?: Record<string, PlatformSpecificContent[]> | PlatformSpecificContent[];
   selectedNetworks?: string[];
-  selectedAccounts?: string[];
+  selectedAccounts?: string[] | Record<string, string[]>;
   post_status?: string;
   scheduled_at?: string;
   publishedAt?: string;
@@ -51,14 +56,20 @@ export interface Post {
   festivalName?: string;
   origin?: string;
   isFestivalGenerated?: boolean;
+  isDraft?: boolean;
+  isScheduled?: boolean;
 }
 
 export interface SocialAccount {
   account_id: string;
   account_name: string;
-  username: string;
+  username?: string;
   platform: string;
   page_id?: string;
+  waba_id?: string;
+  instagram_business_account_id?: string;
+  first_name?: string;
+  last_name?: string;
   is_default?: boolean;
 }
 
@@ -105,10 +116,10 @@ export interface PaginatedPosts {
 }
 
 // === List Posts ===
-export const listPosts = async (params = ""): Promise<any> => {
+export const listPosts = async (params = ''): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/get-generated-posts?${params}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch posts");
+    throw new Error(res.message || 'Failed to fetch posts');
   }
   return res;
 };
@@ -117,7 +128,7 @@ export const listPosts = async (params = ""): Promise<any> => {
 export const getPost = async (postId: string): Promise<Post> => {
   const res = await fetchWithAuth(`${BASE}/get-generated-post/${postId}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch post details");
+    throw new Error(res.message || 'Failed to fetch post details');
   }
   return res?.data || res;
 };
@@ -126,7 +137,7 @@ export const getPost = async (postId: string): Promise<Post> => {
 export const getPostDetails = async (postId: string): Promise<PostDetails> => {
   const res = await fetchWithAuth(`${SOCIAL_BASE}/get-post-details/${postId}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch post details");
+    throw new Error(res.message || 'Failed to fetch post details');
   }
   return res?.data || res;
 };
@@ -134,12 +145,12 @@ export const getPostDetails = async (postId: string): Promise<PostDetails> => {
 // === Create Post ===
 export const createPost = async (payload: Partial<Post>): Promise<any> => {
   const data = await fetchWithAuth(`${BASE}/create-generated-post`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (data && data.success === false) {
-    throw new Error(data.message || "Failed to create post");
+    throw new Error(data.message || 'Failed to create post');
   }
   return data;
 };
@@ -147,12 +158,12 @@ export const createPost = async (payload: Partial<Post>): Promise<any> => {
 // === Update Post ===
 export const updatePost = async (postId: string, payload: Partial<Post>): Promise<any> => {
   const data = await fetchWithAuth(`${BASE}/update-generated-post/${postId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (data && data.success === false) {
-    throw new Error(data.message || "Failed to update post");
+    throw new Error(data.message || 'Failed to update post');
   }
   return data;
 };
@@ -160,20 +171,20 @@ export const updatePost = async (postId: string, payload: Partial<Post>): Promis
 // === Delete Post ===
 export const deletePost = async (postId: string): Promise<void> => {
   const res = await fetchWithAuth(`${BASE}/delete-generated-post/${postId}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to delete post");
+    throw new Error(res.message || 'Failed to delete post');
   }
 };
 
 // === Publish Post Now ===
 export const publishPostNow = async (postId: string): Promise<any> => {
   const data = await fetchWithAuth(`${BASE}/publish-generated-post/${postId}`, {
-    method: "POST",
+    method: 'POST',
   });
   if (data && data.success === false) {
-    throw new Error(data.message || "Failed to publish post");
+    throw new Error(data.message || 'Failed to publish post');
   }
   return data;
 };
@@ -182,40 +193,118 @@ export const publishPostNow = async (postId: string): Promise<any> => {
 export const getAllSocialAccountsForPost = async (): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/get-active-social-accounts-post`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch social accounts");
+    throw new Error(res.message || 'Failed to fetch social accounts');
   }
   return res?.data || res;
 };
 
 // === Upload Post Image ===
-export const uploadPostImage = async (formData: FormData): Promise<any> => {
+export const uploadPostImage = async (
+  fileUriOrFormData: string | FormData,
+  fileName?: string,
+  mimeType?: string
+): Promise<any> => {
+  let body: any;
+  if (typeof fileUriOrFormData === 'string') {
+    body = new FormData();
+    const name = fileName || `post-${Date.now()}.jpg`;
+    const type = mimeType || 'image/jpeg';
+    body.append('image', {
+      uri: fileUriOrFormData,
+      name,
+      type,
+    } as any);
+  } else {
+    body = fileUriOrFormData;
+  }
+
   const res = await fetchWithAuth(`${BASE}/upload-post-image`, {
-    method: "POST",
-    body: formData,
+    method: 'POST',
+    body,
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to upload image");
+    throw new Error(res.message || 'Failed to upload image');
   }
   return res;
 };
 
 // === Generate AI Post ===
-export const generateSocialMediaPost = async (
-  payload: {
-    prompt: string;
-    provider?: string;
-    platform?: string;
-    tone?: string;
-  }
-): Promise<any> => {
-  const path = payload.provider === "gemini" ? "generate-post/gemini" : payload.provider === "openai" ? "generate-post/openai" : "generate-post";
+export const generateSocialMediaPost = async (payload: {
+  prompt: string;
+  provider?: string;
+  platform?: string;
+  tone?: string;
+}): Promise<any> => {
+  const path =
+    payload.provider === 'gemini'
+      ? 'generate-post/gemini'
+      : payload.provider === 'openai'
+        ? 'generate-post/openai'
+        : 'generate-post';
   const res = await fetchWithAuth(`${AI_BASE}/${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "AI Post generation failed");
+    throw new Error(res.message || 'AI Post generation failed');
+  }
+  return res?.data || res;
+};
+
+// === Generate Marketing Image From Reference ===
+export const generateMarketingImageFromReference = async (
+  fileUri: string,
+  options: {
+    prompt?: string;
+    platform?: string;
+    company_name?: string;
+    company_website?: string;
+    company_email?: string;
+    provider?: 'auto' | 'gemini' | 'openai';
+  } = {}
+): Promise<any> => {
+  const formData = new FormData();
+  formData.append('file', {
+    uri: fileUri,
+    name: `ref-${Date.now()}.jpg`,
+    type: 'image/jpeg',
+  } as any);
+
+  if (options.prompt) formData.append('prompt', options.prompt);
+  if (options.platform) formData.append('platform', options.platform);
+  if (options.company_name) formData.append('company_name', options.company_name);
+  if (options.company_website) formData.append('company_website', options.company_website);
+  if (options.company_email) formData.append('company_email', options.company_email);
+  if (options.provider) formData.append('provider', options.provider);
+
+  const res = await fetchWithAuth(`${BASE}/generate-marketing-image-from-reference`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (res && res.success === false) {
+    throw new Error(res.message || 'Failed to generate marketing image from reference');
+  }
+  return res?.data || res;
+};
+
+// === Analyze Reference Media ===
+export const analyzeReferenceMedia = async (fileUri: string): Promise<any> => {
+  const formData = new FormData();
+  formData.append('reference_image', {
+    uri: fileUri,
+    name: `ref-${Date.now()}.jpg`,
+    type: 'image/jpeg',
+  } as any);
+
+  const res = await fetchWithAuth(`${AI_BASE}/reference-media/analyze`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (res && res.success === false) {
+    throw new Error(res.message || 'Failed to analyze reference media');
   }
   return res?.data || res;
 };

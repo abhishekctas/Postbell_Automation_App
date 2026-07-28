@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { usePathname, router } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
+import React, { useEffect, useState } from 'react';
+import { usePathname, router } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 import {
   StyleSheet,
   Platform,
@@ -11,11 +11,11 @@ import {
   TouchableOpacity,
   Pressable,
   DeviceEventEmitter,
-} from "react-native";
-import { Box } from "@/components/ui/box";
-import { HStack } from "@/components/ui/hstack";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather, Ionicons } from "@expo/vector-icons";
+} from 'react-native';
+import { Box } from '@/components/ui/box';
+import { HStack } from '@/components/ui/hstack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather, Ionicons } from '@expo/vector-icons';
 
 export interface MenuItem {
   label: string;
@@ -26,63 +26,69 @@ export interface MenuItem {
 
 const MENU_ITEMS: MenuItem[] = [
   {
-    label: "Festival Auto Posts",
-    path: "/pages/festivalAutoPost/festival-auto-post",
-    icon: "calendar",
+    label: 'Festival Auto Posts',
+    path: '/pages/festivalAutoPost/festival-auto-post',
+    icon: 'calendar',
     customerAllowed: true,
   },
   {
-    label: "Blog Management",
-    path: "/pages/blogs/blogs",
-    icon: "edit-3",
+    label: 'Blog Management',
+    path: '/pages/blogs/blogs',
+    icon: 'edit-3',
     customerAllowed: false,
   },
   {
-    label: "Features",
-    path: "/pages/features/features",
-    icon: "zap",
+    label: 'Features',
+    path: '/pages/features/features',
+    icon: 'zap',
     customerAllowed: false,
   },
   {
-    label: "Subscription Plans",
-    path: "/pages/subscriptionPlans/subscription-plans",
-    icon: "credit-card",
+    label: 'Subscription Plans',
+    path: '/pages/subscriptionPlans/subscription-plans',
+    icon: 'credit-card',
     customerAllowed: false,
   },
   {
-    label: "Customers",
-    path: "/pages/customers/customers",
-    icon: "users",
+    label: 'Customers',
+    path: '/pages/customers/customers',
+    icon: 'users',
     customerAllowed: false,
   },
   {
-    label: "Customer Subscriptions",
-    path: "/pages/customerSubscription/customer-subscriptions",
-    icon: "package",
+    label: 'Customer Subscriptions',
+    path: '/pages/customerSubscription/customer-subscriptions',
+    icon: 'package',
     customerAllowed: false,
   },
   {
-    label: "Contact",
-    path: "/pages/contactUs/contact-us",
-    icon: "inbox",
-    customerAllowed: false,
-  },
-  {
-    label: "Users & Access",
-    path: "/pages/userList/user-access",
-    icon: "shield",
-    customerAllowed: false,
-  },
-  {
-    label: "General Settings",
-    path: "/pages/generalSetting/general-settings",
-    icon: "settings",
+    label: 'My Subscription',
+    path: '/pages/MySubscriptionPage/my-subscription',
+    icon: 'package',
     customerAllowed: true,
   },
   {
-    label: "System Logs",
-    path: "/pages/systemLogs/system-logs",
-    icon: "activity",
+    label: 'Contact',
+    path: '/pages/contactUs/contact-us',
+    icon: 'inbox',
+    customerAllowed: false,
+  },
+  {
+    label: 'Users & Access',
+    path: '/pages/userList/user-access',
+    icon: 'shield',
+    customerAllowed: false,
+  },
+  {
+    label: 'General Settings',
+    path: '/pages/generalSetting/general-settings',
+    icon: 'settings',
+    customerAllowed: true,
+  },
+  {
+    label: 'System Logs',
+    path: '/pages/systemLogs/system-logs',
+    icon: 'activity',
     customerAllowed: false,
   },
 ];
@@ -94,7 +100,7 @@ export default function GlobalTabBar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener("toggleDrawer", () => {
+    const sub = DeviceEventEmitter.addListener('toggleDrawer', () => {
       setDrawerOpen((prev) => !prev);
     });
     return () => sub.remove();
@@ -102,14 +108,14 @@ export default function GlobalTabBar() {
 
   const handleTabPress = (tabIndex: number) => {
     if (tabIndex === 0) {
-      router.push("/(tabs)");
+      router.push('/(tabs)');
     } else if (tabIndex === 1) {
-      router.push("/(tabs)/posts");
+      router.push('/(tabs)/posts');
     } else if (tabIndex === 2) {
       // Plus button redirects to Add Post page directly
-      router.push("/pages/posts/post-editor");
+      router.push('/pages/posts/post-editor');
     } else if (tabIndex === 3) {
-      router.push("/(tabs)/profile");
+      router.push('/(tabs)/profile');
     } else if (tabIndex === 4) {
       // Open drawer menu
       setDrawerOpen(true);
@@ -119,24 +125,24 @@ export default function GlobalTabBar() {
   const getIsActive = (tabIndex: number) => {
     if (tabIndex === 0) {
       return (
-        pathname === "/" ||
-        pathname === "/(tabs)" ||
-        pathname === "/(tabs)/index" ||
-        pathname.includes("/dashboard")
+        pathname === '/' ||
+        pathname === '/(tabs)' ||
+        pathname === '/(tabs)/index' ||
+        pathname.includes('/dashboard')
       );
     }
     if (tabIndex === 1) {
       return (
-        (pathname.includes("/posts") || pathname === "/(tabs)/posts") &&
-        !pathname.includes("post-editor") &&
-        !pathname.includes("post-details")
+        (pathname.includes('/posts') || pathname === '/(tabs)/posts') &&
+        !pathname.includes('post-editor') &&
+        !pathname.includes('post-details')
       );
     }
     if (tabIndex === 2) {
-      return pathname.includes("post-editor");
+      return pathname.includes('post-editor');
     }
     if (tabIndex === 3) {
-      return pathname.includes("/profile");
+      return pathname.includes('/profile');
     }
     if (tabIndex === 4) {
       return drawerOpen;
@@ -149,14 +155,80 @@ export default function GlobalTabBar() {
     router.push(path as any);
   };
 
-  const isHideTabBar = pathname.includes("editor") || pathname.includes("details");
-  const activeColor = "#0b53f8";
-  const inactiveColor = "#80889B";
+  const isHideTabBar = pathname.includes('editor') || pathname.includes('details');
+  const activeColor = '#0b53f8';
+  const inactiveColor = '#80889B';
 
-  const isCustomer = user?.loginType === "customer";
-  const visibleMenuItems = MENU_ITEMS.filter(
-    (item) => !isCustomer || item.customerAllowed
-  );
+  const isCustomer = user?.loginType === 'customer';
+  const isSuperAdmin = user?.isSuperAdmin === true;
+
+  const visibleMenuItems = MENU_ITEMS.filter((item) => {
+    // "My Subscription" is strictly for Customer login only
+    if (
+      item.label === 'My Subscription' ||
+      item.path.includes('MySubscriptionPage') ||
+      item.path.includes('my-subscription')
+    ) {
+      return isCustomer;
+    }
+    if (isCustomer) {
+      return item.customerAllowed;
+    }
+    if (isSuperAdmin) {
+      return true;
+    }
+
+    const sectionList = user?.section_list || user?.roleData?.section_list;
+    const sectionMatrix = user?.sectionMatrix || user?.role_id?.sectionMatrix;
+
+    const folderName = item.path.split('/')[2]?.toLowerCase() || '';
+    const fileName = item.path.split('/').pop()?.toLowerCase() || '';
+    const labelName = item.label.toLowerCase();
+
+    const checkMatch = (sectionName: string, sectionTitle: string = '') => {
+      const sName = sectionName.toLowerCase();
+      const sTitle = sectionTitle.toLowerCase();
+      return (
+        (sName &&
+          (sName.includes(folderName) ||
+            folderName.includes(sName) ||
+            sName.includes(fileName) ||
+            fileName.includes(sName))) ||
+        (sTitle &&
+          (sTitle.includes(folderName) || sTitle.includes(labelName) || labelName.includes(sTitle)))
+      );
+    };
+
+    if (sectionList && Array.isArray(sectionList) && sectionList.length > 0) {
+      const hasAccess = sectionList.some((sec: any) => {
+        const isAccessable = sec.isAccessable !== false && sec.status !== 0;
+        const viewPerm = sec.permissions ? sec.permissions.view !== false : true;
+        return (
+          isAccessable && viewPerm && checkMatch(String(sec.name || ''), String(sec.title || ''))
+        );
+      });
+      return hasAccess;
+    }
+
+    if (sectionMatrix && Array.isArray(sectionMatrix) && sectionMatrix.length > 0) {
+      const hasAccess = sectionMatrix.some((matrix: any) => {
+        const secName = String(
+          matrix.section_name ||
+            matrix.sectionId?.name ||
+            matrix.sectionId?.title ||
+            matrix.sectionId ||
+            ''
+        );
+        const secTitle = String(matrix.sectionId?.title || '');
+        const perms = matrix.permissions || [];
+        const canView = Array.isArray(perms) ? perms.length === 0 || perms.includes('view') : true;
+        return canView && checkMatch(secName, secTitle);
+      });
+      return hasAccess;
+    }
+
+    return true;
+  });
 
   return (
     <>
@@ -166,8 +238,8 @@ export default function GlobalTabBar() {
           style={[
             styles.tabBarContainer,
             {
-              bottom: Platform.OS === "ios" ? insets.bottom / 2 + 8 : 4,
-              paddingBottom: Platform.OS === "ios" ? insets.bottom / 2 : 0,
+              bottom: Platform.OS === 'ios' ? insets.bottom / 2 + 8 : 4,
+              paddingBottom: Platform.OS === 'ios' ? insets.bottom / 2 : 0,
             },
           ]}
         >
@@ -178,15 +250,12 @@ export default function GlobalTabBar() {
             activeOpacity={0.7}
           >
             <Ionicons
-              name={getIsActive(0) ? "home" : "home-outline"}
+              name={getIsActive(0) ? 'home' : 'home-outline'}
               size={22}
               color={getIsActive(0) ? activeColor : inactiveColor}
             />
             <Text
-              style={[
-                styles.tabLabel,
-                { color: getIsActive(0) ? activeColor : inactiveColor },
-              ]}
+              style={[styles.tabLabel, { color: getIsActive(0) ? activeColor : inactiveColor }]}
             >
               Dashboard
             </Text>
@@ -204,10 +273,7 @@ export default function GlobalTabBar() {
               color={getIsActive(1) ? activeColor : inactiveColor}
             />
             <Text
-              style={[
-                styles.tabLabel,
-                { color: getIsActive(1) ? activeColor : inactiveColor },
-              ]}
+              style={[styles.tabLabel, { color: getIsActive(1) ? activeColor : inactiveColor }]}
             >
               Posts
             </Text>
@@ -230,16 +296,9 @@ export default function GlobalTabBar() {
             onPress={() => handleTabPress(3)}
             activeOpacity={0.7}
           >
-            <Feather
-              name="user"
-              size={21}
-              color={getIsActive(3) ? activeColor : inactiveColor}
-            />
+            <Feather name="user" size={21} color={getIsActive(3) ? activeColor : inactiveColor} />
             <Text
-              style={[
-                styles.tabLabel,
-                { color: getIsActive(3) ? activeColor : inactiveColor },
-              ]}
+              style={[styles.tabLabel, { color: getIsActive(3) ? activeColor : inactiveColor }]}
             >
               Profile
             </Text>
@@ -251,16 +310,9 @@ export default function GlobalTabBar() {
             onPress={() => handleTabPress(4)}
             activeOpacity={0.7}
           >
-            <Feather
-              name="menu"
-              size={22}
-              color={getIsActive(4) ? activeColor : inactiveColor}
-            />
+            <Feather name="menu" size={22} color={getIsActive(4) ? activeColor : inactiveColor} />
             <Text
-              style={[
-                styles.tabLabel,
-                { color: getIsActive(4) ? activeColor : inactiveColor },
-              ]}
+              style={[styles.tabLabel, { color: getIsActive(4) ? activeColor : inactiveColor }]}
             >
               Menu
             </Text>
@@ -276,34 +328,24 @@ export default function GlobalTabBar() {
         onRequestClose={() => setDrawerOpen(false)}
       >
         <Box style={styles.modalOverlay}>
-          <Pressable
-            style={styles.modalBackdropTouch}
-            onPress={() => setDrawerOpen(false)}
-          />
+          <Pressable style={styles.modalBackdropTouch} onPress={() => setDrawerOpen(false)} />
           <Box
             style={[
               styles.drawerContainer,
               {
                 paddingBottom: 16,
-                marginBottom:
-                  Platform.OS === "ios" ? 85 + insets.bottom : 75,
+                marginBottom: Platform.OS === 'ios' ? 85 + insets.bottom : 75,
               },
             ]}
           >
             <Box style={styles.drawerHeader}>
               <Text style={styles.drawerTitle}>Navigation Menu</Text>
-              <TouchableOpacity
-                onPress={() => setDrawerOpen(false)}
-                style={styles.closeButton}
-              >
+              <TouchableOpacity onPress={() => setDrawerOpen(false)} style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </Box>
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              style={styles.drawerList}
-            >
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.drawerList}>
               {visibleMenuItems.map((item) => (
                 <TouchableOpacity
                   key={item.path}
@@ -313,11 +355,7 @@ export default function GlobalTabBar() {
                 >
                   <HStack space="md" className="items-center">
                     <Box style={styles.menuIconBox}>
-                      <Feather
-                        name={item.icon as any}
-                        size={18}
-                        color="#0b53f8"
-                      />
+                      <Feather name={item.icon as any} size={18} color="#0b53f8" />
                     </Box>
                     <Text style={styles.drawerItemText}>{item.label}</Text>
                   </HStack>
@@ -334,16 +372,16 @@ export default function GlobalTabBar() {
 
 const styles = StyleSheet.create({
   tabBarContainer: {
-    flexDirection: "row",
-    backgroundColor: "#ffffff",
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
     height: 70,
     borderRadius: 16,
-    position: "absolute",
+    position: 'absolute',
     left: 12,
     right: 12,
-    alignItems: "center",
-    justifyContent: "space-around",
-    shadowColor: "#0f172a",
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -351,30 +389,30 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   tabButton: {
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     flex: 1,
   },
   tabLabel: {
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: '700',
     marginTop: 4,
   },
   plusButtonOuter: {
     width: 68,
     height: 50,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: -5,
   },
   plusButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#0b53f8",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#0b53f8",
+    backgroundColor: '#0b53f8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0b53f8',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -382,78 +420,78 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.4)",
-    justifyContent: "flex-end",
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'flex-end',
   },
   modalBackdropTouch: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     bottom: 0,
     left: 0,
     right: 0,
   },
   drawerContainer: {
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     marginHorizontal: 12,
     paddingHorizontal: 20,
     paddingTop: 20,
-    maxHeight: "85%",
-    shadowColor: "#0f172a",
+    maxHeight: '85%',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: -10 },
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 24,
   },
   drawerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: '#f1f5f9',
   },
   drawerTitle: {
     fontSize: 18,
-    fontWeight: "800",
-    color: "#0f172a",
+    fontWeight: '800',
+    color: '#0f172a',
   },
   drawerList: {
     marginBottom: 12,
   },
   drawerItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#f8fafc",
+    borderBottomColor: '#f8fafc',
   },
   menuIconBox: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "#eff6ff",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   drawerItemText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#334155",
+    fontWeight: '600',
+    color: '#334155',
   },
   closeButton: {
-    backgroundColor: "#f1f5f9",
+    backgroundColor: '#f1f5f9',
     borderRadius: 8,
     width: 32,
     height: 32,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   closeButtonText: {
-    color: "#475569",
+    color: '#475569',
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: '700',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -13,15 +13,15 @@ import {
   Image,
   Platform,
   Dimensions,
-} from "react-native";
-import { Box } from "@/components/ui/box";
-import { VStack } from "@/components/ui/vstack";
-import { HStack } from "@/components/ui/hstack";
-import { Text } from "@/components/ui/text";
-import { Heading } from "@/components/ui/heading";
-import { Button, ButtonText } from "@/components/ui/button";
-import { LinearGradient } from "expo-linear-gradient";
-import * as ImagePicker from "expo-image-picker";
+} from 'react-native';
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { HStack } from '@/components/ui/hstack';
+import { Text } from '@/components/ui/text';
+import { Heading } from '@/components/ui/heading';
+import { Button, ButtonText } from '@/components/ui/button';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import {
   listFestivalPosts,
   updateFestivalPostSelection,
@@ -33,33 +33,32 @@ import {
   getFestivalImageUrl,
   isPastDate,
   FestivalPost,
-} from "./festival-auto-post.api";
-import { router } from "expo-router";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Feather } from "@expo/vector-icons";
+} from './festival-auto-post.api';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Feather } from '@expo/vector-icons';
 
 const CATEGORY_SUGGESTIONS = [
-  "Religious",
-  "National",
-  "Cultural",
-  "Seasonal",
-  "Regional",
-  "International",
+  'Religious',
+  'National',
+  'Cultural',
+  'Seasonal',
+  'Regional',
+  'International',
 ];
 
 const EVENT_COLORS = [
-  "#e74c3c",
-  "#2eaa77",
-  "#3b5bdb",
-  "#4a4a4a",
-  "#e67e22",
-  "#8e44ad",
-  "#2980b9",
-  "#e84393",
-  "#00897b",
-  "#1565c0",
-  "#6c5ce7",
-  "#16a085",
+  '#e74c3c',
+  '#2eaa77',
+  '#3b5bdb',
+  '#4a4a4a',
+  '#e67e22',
+  '#8e44ad',
+  '#2980b9',
+  '#e84393',
+  '#00897b',
+  '#1565c0',
+  '#6c5ce7',
+  '#16a085',
 ];
 
 const hashString = (input: string): number => {
@@ -71,7 +70,7 @@ const hashString = (input: string): number => {
 };
 
 const getCategoryColor = (category?: string, fallback?: string) => {
-  const key = (category || fallback || "general").toLowerCase().trim();
+  const key = (category || fallback || 'general').toLowerCase().trim();
   return EVENT_COLORS[hashString(key) % EVENT_COLORS.length];
 };
 
@@ -83,13 +82,13 @@ const getTimeAgo = (dateString: string): string => {
 
   if (days < 0) {
     const absDays = Math.abs(days);
-    if (absDays === 1) return "Tomorrow";
+    if (absDays === 1) return 'Tomorrow';
     if (absDays <= 7) return `In ${absDays} days`;
     if (absDays <= 30) return `In ${Math.ceil(absDays / 7)} weeks`;
     return `In ${Math.ceil(absDays / 30)} months`;
   }
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
   if (days < 30) return `${Math.floor(days / 7)}w ago`;
   if (days < 365) return `${Math.floor(days / 30)}mo ago`;
@@ -97,13 +96,13 @@ const getTimeAgo = (dateString: string): string => {
 };
 
 const formatDisplayDate = (dateStr?: string) => {
-  if (!dateStr) return "—";
+  if (!dateStr) return '—';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 };
 
@@ -134,18 +133,15 @@ function FestivalPostCard({
 }) {
   const catColor = getCategoryColor(post.category, post.name);
   const imageUrl = getFestivalImageUrl(post.image || post.image_url);
-  const visibleHashtags = post.hashtags?.slice(
-    0,
-    expandedHashtag ? post.hashtags.length : 5,
-  );
+  const visibleHashtags = post.hashtags?.slice(0, expandedHashtag ? post.hashtags.length : 5);
   const hasMoreHashtags = (post.hashtags?.length || 0) > 5 && !expandedHashtag;
 
   const openMenu = () => {
-    Alert.alert(post.name, "Choose an action", [
-      { text: "Edit post", onPress: onEditPost },
-      { text: "Send notification", onPress: onSendNotification },
-      { text: "View full image", onPress: onViewImage },
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(post.name, 'Choose an action', [
+      { text: 'Edit post', onPress: onEditPost },
+      { text: 'Send notification', onPress: onSendNotification },
+      { text: 'View full image', onPress: onViewImage },
+      { text: 'Cancel', style: 'cancel' },
     ]);
   };
 
@@ -157,13 +153,11 @@ function FestivalPostCard({
             styles.igAvatar,
             {
               backgroundColor: `${catColor}20`,
-              borderColor: isSelected ? "#193867" : `${catColor}40`,
+              borderColor: isSelected ? '#193867' : `${catColor}40`,
             },
           ]}
         >
-          <Text style={styles.igAvatarText}>
-            {(post.name || "F").charAt(0).toUpperCase()}
-          </Text>
+          <Text style={styles.igAvatarText}>{(post.name || 'F').charAt(0).toUpperCase()}</Text>
         </Box>
         <VStack style={{ flex: 1, minWidth: 0 }}>
           <HStack className="items-center" space="xs">
@@ -177,9 +171,7 @@ function FestivalPostCard({
                 <Text style={styles.autoPostChipText}>Auto Post</Text>
               </Box>
             )}
-            {isSelected && (
-              <Feather name="check-circle" size={14} color="#193867" />
-            )}
+            {isSelected && <Feather name="check-circle" size={14} color="#193867" />}
           </HStack>
         </VStack>
         <TouchableOpacity onPress={openMenu} style={styles.igMenuBtn}>
@@ -190,11 +182,7 @@ function FestivalPostCard({
       <TouchableOpacity activeOpacity={0.95} onPress={onViewImage}>
         <Box style={styles.igImageWrap}>
           {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.igImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: imageUrl }} style={styles.igImage} resizeMode="cover" />
           ) : (
             <Box style={styles.igImagePlaceholder}>
               <Text style={{ fontSize: 32 }}>✨</Text>
@@ -205,14 +193,11 @@ function FestivalPostCard({
 
       <HStack style={styles.igActions} className="items-center justify-between">
         <HStack className="items-center">
-          <TouchableOpacity
-            style={styles.igActionBtn}
-            onPress={() => onSelectPost(!isSelected)}
-          >
+          <TouchableOpacity style={styles.igActionBtn} onPress={() => onSelectPost(!isSelected)}>
             <Feather
               name="heart"
               size={22}
-              color={isSelected ? "#ef4444" : "#0f172a"}
+              color={isSelected ? '#ef4444' : '#0f172a'}
               style={isSelected ? { opacity: 1 } : undefined}
             />
           </TouchableOpacity>
@@ -235,8 +220,8 @@ function FestivalPostCard({
           <Switch
             value={isSelected}
             onValueChange={(val) => onSelectPost(val)}
-            trackColor={{ false: "#e2e8f0", true: "#34c759" }}
-            thumbColor={Platform.OS === "android" ? "#ffffff" : undefined}
+            trackColor={{ false: '#e2e8f0', true: '#34c759' }}
+            thumbColor={Platform.OS === 'android' ? '#ffffff' : undefined}
             style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
           />
           <TouchableOpacity style={styles.igActionBtn} onPress={onViewImage}>
@@ -245,43 +230,34 @@ function FestivalPostCard({
         </HStack>
       </HStack>
 
-      <HStack style={styles.igChipRow} className="items-center flex-wrap">
+      <HStack style={styles.igChipRow} className="flex-wrap items-center">
         <Box
           style={[
             styles.statusChip,
             {
-              backgroundColor: isSelected ? "#dcfce720" : "#f1f5f9",
+              backgroundColor: isSelected ? '#dcfce720' : '#f1f5f9',
             },
           ]}
         >
-          <Text
-            style={[
-              styles.statusChipText,
-              { color: isSelected ? "#16a34a" : "#94a3b8" },
-            ]}
-          >
-            {isSelected ? "Active" : "Deactive"}
+          <Text style={[styles.statusChipText, { color: isSelected ? '#16a34a' : '#94a3b8' }]}>
+            {isSelected ? 'Active' : 'Deactive'}
           </Text>
         </Box>
         <Box style={[styles.statusChip, { backgroundColor: `${catColor}18` }]}>
           <Text style={[styles.statusChipText, { color: catColor }]}>
-            {post.category || "General"}
+            {post.category || 'General'}
           </Text>
         </Box>
         {post.post_status && (
-          <Box style={[styles.statusChip, { backgroundColor: "#dbeafe" }]}>
-            <Text style={[styles.statusChipText, { color: "#2563eb" }]}>
-              {post.post_status === "scheduled"
-                ? "Scheduled"
-                : post.post_status}
+          <Box style={[styles.statusChip, { backgroundColor: '#dbeafe' }]}>
+            <Text style={[styles.statusChipText, { color: '#2563eb' }]}>
+              {post.post_status === 'scheduled' ? 'Scheduled' : post.post_status}
             </Text>
           </Box>
         )}
         {post.autoGenerate && (
-          <Box style={[styles.statusChip, { backgroundColor: "#f3e8ff" }]}>
-            <Text style={[styles.statusChipText, { color: "#9333ea" }]}>
-              AI Auto
-            </Text>
+          <Box style={[styles.statusChip, { backgroundColor: '#f3e8ff' }]}>
+            <Text style={[styles.statusChipText, { color: '#9333ea' }]}>AI Auto</Text>
           </Box>
         )}
         <Text style={styles.igDateText}>{formatDisplayDate(post.date)}</Text>
@@ -309,16 +285,16 @@ function FestivalPostCard({
 
         {visibleHashtags && visibleHashtags.length > 0 && (
           <Text style={styles.igHashtags}>
-            {visibleHashtags.map((tag) => `#${tag.replace(/^#/, "")}`).join(" ")}
+            {visibleHashtags.map((tag) => `#${tag.replace(/^#/, '')}`).join(' ')}
             {hasMoreHashtags && (
               <Text style={styles.igMoreText} onPress={() => onToggleHashtag(true)}>
-                {" "}
+                {' '}
                 +{(post.hashtags?.length || 0) - 5} more
               </Text>
             )}
             {expandedHashtag && (post.hashtags?.length || 0) > 5 && (
               <Text style={styles.igMoreText} onPress={() => onToggleHashtag(false)}>
-                {" "}
+                {' '}
                 show less
               </Text>
             )}
@@ -335,38 +311,38 @@ export default function FestivalAutoPostScreen() {
   const [posts, setPosts] = useState<FestivalPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [activeTab, setActiveTab] = useState<"upcoming" | "completed">("upcoming");
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [notificationLoadingId, setNotificationLoadingId] = useState<string | null>(null);
   const [expandedCaptions, setExpandedCaptions] = useState<Record<string, boolean>>({});
   const [expandedHashtags, setExpandedHashtags] = useState<Record<string, boolean>>({});
   const [imageViewer, setImageViewer] = useState<{ open: boolean; src: string; alt: string }>({
     open: false,
-    src: "",
-    alt: "",
+    src: '',
+    alt: '',
   });
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingPost, setEditingPost] = useState<FestivalPost | null>(null);
   const [saving, setSaving] = useState(false);
-  const [name, setName] = useState("");
-  const [date, setDate] = useState("");
-  const [category, setCategory] = useState("");
-  const [status, setStatus] = useState<"active" | "inactive">("active");
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
+  const [category, setCategory] = useState('');
+  const [status, setStatus] = useState<'active' | 'inactive'>('active');
   const [selectedFestival, setSelectedFestival] = useState(true);
   const [autoGenerate, setAutoGenerate] = useState(false);
-  const [caption, setCaption] = useState("");
+  const [caption, setCaption] = useState('');
   const [hashtags, setHashtags] = useState<string[]>([]);
-  const [hashtagInput, setHashtagInput] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [hashtagInput, setHashtagInput] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [localImageUri, setLocalImageUri] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState<Date | null>(null);
-  const [generatingType, setGeneratingType] = useState<"gemini" | "openai" | null>(null);
+  const [generatingType, setGeneratingType] = useState<'gemini' | 'openai' | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const fetchFestivalPostsList = useCallback(
@@ -375,12 +351,12 @@ export default function FestivalAutoPostScreen() {
       try {
         const queryParams = new URLSearchParams({
           page: pg.toString(),
-          limit: "10",
-          currentMonth: "true",
+          limit: '10',
+          currentMonth: 'true',
         });
 
         if (search.trim()) {
-          queryParams.append("search", search.trim());
+          queryParams.append('search', search.trim());
         }
 
         const res = await listFestivalPosts(queryParams.toString());
@@ -395,14 +371,14 @@ export default function FestivalAutoPostScreen() {
         setHasMore(items.length >= 10);
         setPage(pg);
       } catch (err: any) {
-        Alert.alert("Error", err.message || "Failed to load festival posts.");
+        Alert.alert('Error', err.message || 'Failed to load festival posts.');
       } finally {
         setLoading(false);
         setRefreshing(false);
         setLoadingMore(false);
       }
     },
-    [search],
+    [search]
   );
 
   useEffect(() => {
@@ -420,37 +396,32 @@ export default function FestivalAutoPostScreen() {
     fetchFestivalPostsList(page + 1, false);
   };
 
-  const getPostId = (post: FestivalPost) => post._id || post.id || "";
+  const getPostId = (post: FestivalPost) => post._id || post.id || '';
 
   const handleToggleSelection = async (item: FestivalPost, nextVal: boolean) => {
     const id = getPostId(item);
     try {
       await updateFestivalPostSelection(id, nextVal);
       setPosts((prev) =>
-        prev.map((p) =>
-          getPostId(p) === id ? { ...p, selectedFestival: nextVal } : p,
-        ),
+        prev.map((p) => (getPostId(p) === id ? { ...p, selectedFestival: nextVal } : p))
       );
-      Alert.alert(
-        "Success",
-        `Festival automated posting ${nextVal ? "enabled" : "disabled"}.`,
-      );
+      Alert.alert('Success', `Festival automated posting ${nextVal ? 'enabled' : 'disabled'}.`);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to toggle festival selection.");
+      Alert.alert('Error', e.message || 'Failed to toggle festival selection.');
     }
   };
 
   const confirmToggleSelection = (item: FestivalPost, nextVal: boolean) => {
     Alert.alert(
-      nextVal ? "Active Post" : "Deactive Post",
-      `Are you sure you want to ${nextVal ? "active" : "deactive"} the festival post "${item.name}"?`,
+      nextVal ? 'Active Post' : 'Deactive Post',
+      `Are you sure you want to ${nextVal ? 'active' : 'deactive'} the festival post "${item.name}"?`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: nextVal ? "Active Post" : "Deactive Post",
+          text: nextVal ? 'Active Post' : 'Deactive Post',
           onPress: () => handleToggleSelection(item, nextVal),
         },
-      ],
+      ]
     );
   };
 
@@ -458,28 +429,25 @@ export default function FestivalAutoPostScreen() {
     try {
       setNotificationLoadingId(item.name);
       await sendFestivalNotifications(item.name);
-      Alert.alert(
-        "Notifications Sent",
-        `Successfully triggered notifications for ${item.name}!`,
-      );
+      Alert.alert('Notifications Sent', `Successfully triggered notifications for ${item.name}!`);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to trigger notifications.");
+      Alert.alert('Error', e.message || 'Failed to trigger notifications.');
     } finally {
       setNotificationLoadingId(null);
     }
   };
 
   const resetForm = () => {
-    setName("");
-    setDate("");
-    setCategory("");
-    setStatus("active");
+    setName('');
+    setDate('');
+    setCategory('');
+    setStatus('active');
     setSelectedFestival(true);
     setAutoGenerate(false);
-    setCaption("");
+    setCaption('');
     setHashtags([]);
-    setHashtagInput("");
-    setImageUrl("");
+    setHashtagInput('');
+    setImageUrl('');
     setLocalImageUri(null);
     setImageError(null);
     setTouched({});
@@ -490,23 +458,23 @@ export default function FestivalAutoPostScreen() {
     setEditingPost(null);
     resetForm();
     const today = new Date();
-    setDate(today.toISOString().split("T")[0]);
+    setDate(today.toISOString().split('T')[0]);
     setDatePickerValue(today);
     setModalVisible(true);
   };
 
   const handleOpenEdit = (post: FestivalPost) => {
     setEditingPost(post);
-    setName(post.name || "");
-    setDate(post.date || "");
-    setCategory(post.category || "");
-    setStatus(post.status || "active");
+    setName(post.name || '');
+    setDate(post.date || '');
+    setCategory(post.category || '');
+    setStatus(post.status || 'active');
     setSelectedFestival(post.selectedFestival ?? false);
     setAutoGenerate(post.autoGenerate ?? false);
-    setCaption(post.caption || "");
+    setCaption(post.caption || '');
     setHashtags(post.hashtags ? [...post.hashtags] : []);
-    setHashtagInput("");
-    setImageUrl(post.image || post.image_url || "");
+    setHashtagInput('');
+    setImageUrl(post.image || post.image_url || '');
     setLocalImageUri(null);
     setImageError(null);
     setTouched({});
@@ -515,13 +483,13 @@ export default function FestivalAutoPostScreen() {
   };
 
   const handleDateChange = (_event: unknown, selectedDate?: Date) => {
-    if (Platform.OS === "android") setShowDatePicker(false);
+    if (Platform.OS === 'android') setShowDatePicker(false);
     if (selectedDate) {
       if (isPastDate(selectedDate)) {
-        Alert.alert("Validation Error", "Date cannot be in the past");
+        Alert.alert('Validation Error', 'Date cannot be in the past');
         return;
       }
-      const isoDate = selectedDate.toISOString().split("T")[0];
+      const isoDate = selectedDate.toISOString().split('T')[0];
       setDate(isoDate);
       setDatePickerValue(selectedDate);
       setTouched((prev) => ({ ...prev, date: true }));
@@ -549,19 +517,19 @@ export default function FestivalAutoPostScreen() {
       });
       return combined;
     });
-    setHashtagInput("");
+    setHashtagInput('');
     setTouched((prev) => ({ ...prev, hashtags: true }));
   };
 
   const handleAddHashtag = () => {
-    const value = hashtagInput.trim().replace(/^#+/, "");
+    const value = hashtagInput.trim().replace(/^#+/, '');
     if (!value) return;
     if (hashtags.includes(value)) {
-      setHashtagInput("");
+      setHashtagInput('');
       return;
     }
     setHashtags((prev) => [...prev, value]);
-    setHashtagInput("");
+    setHashtagInput('');
     setTouched((prev) => ({ ...prev, hashtags: true }));
   };
 
@@ -573,7 +541,7 @@ export default function FestivalAutoPostScreen() {
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission required", "Please allow access to your photo library.");
+      Alert.alert('Permission required', 'Please allow access to your photo library.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -583,7 +551,7 @@ export default function FestivalAutoPostScreen() {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-        setImageError("Image must be less than 5 MB");
+        setImageError('Image must be less than 5 MB');
         return;
       }
       setLocalImageUri(asset.uri);
@@ -592,9 +560,9 @@ export default function FestivalAutoPostScreen() {
     }
   };
 
-  const handleGenerateAI = async (provider: "gemini" | "openai") => {
+  const handleGenerateAI = async (provider: 'gemini' | 'openai') => {
     if (!name.trim() || !category.trim()) {
-      Alert.alert("Validation Error", "Festival name and category are required for AI generation.");
+      Alert.alert('Validation Error', 'Festival name and category are required for AI generation.');
       return;
     }
     setGeneratingType(provider);
@@ -608,11 +576,7 @@ export default function FestivalAutoPostScreen() {
       if (aiPost) {
         if (aiPost.caption) setCaption(aiPost.caption);
         if (aiPost.hashtags) {
-          setHashtags(
-            (aiPost.hashtags || []).map((tag: string) =>
-              tag.replace(/^#/, "").trim(),
-            ),
-          );
+          setHashtags((aiPost.hashtags || []).map((tag: string) => tag.replace(/^#/, '').trim()));
         }
         const aiImage = aiPost.image_url || aiPost.image;
         if (aiImage) {
@@ -621,7 +585,7 @@ export default function FestivalAutoPostScreen() {
         }
       }
     } catch (e: any) {
-      Alert.alert("Error", e.message || "AI generation failed.");
+      Alert.alert('Error', e.message || 'AI generation failed.');
     } finally {
       setGeneratingType(null);
     }
@@ -645,10 +609,18 @@ export default function FestivalAutoPostScreen() {
       image: true,
     });
 
-    if (!hasName || !hasDate || isDateInPast || !hasCategory || !hasCaption || !hasHashtags || !hasImage) {
+    if (
+      !hasName ||
+      !hasDate ||
+      isDateInPast ||
+      !hasCategory ||
+      !hasCaption ||
+      !hasHashtags ||
+      !hasImage
+    ) {
       Alert.alert(
-        "Validation Error",
-        "Please fill all required fields: name, date, category, caption, hashtags, and image.",
+        'Validation Error',
+        'Please fill all required fields: name, date, category, caption, hashtags, and image.'
       );
       return;
     }
@@ -662,7 +634,7 @@ export default function FestivalAutoPostScreen() {
         if (uploadRes.data?.url) {
           finalImageUrl = uploadRes.data.url;
         } else {
-          throw new Error("Failed to upload image");
+          throw new Error('Failed to upload image');
         }
       }
 
@@ -680,17 +652,17 @@ export default function FestivalAutoPostScreen() {
 
       if (editingPost) {
         await updateFestivalPost(getPostId(editingPost), payload);
-        Alert.alert("Success", "Festival event updated!");
+        Alert.alert('Success', 'Festival event updated!');
       } else {
         await createFestivalPost(payload);
-        Alert.alert("Success", "Festival event created!");
+        Alert.alert('Success', 'Festival event created!');
       }
 
       setModalVisible(false);
       resetForm();
       fetchFestivalPostsList(1, true);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save festival configuration.");
+      Alert.alert('Error', e.message || 'Failed to save festival configuration.');
     } finally {
       setSaving(false);
     }
@@ -717,51 +689,59 @@ export default function FestivalAutoPostScreen() {
         onViewImage={() =>
           setImageViewer({
             open: true,
-            src: getFestivalImageUrl(item.image || item.image_url) || "",
-            alt: item.name || "Festival Image",
+            src: getFestivalImageUrl(item.image || item.image_url) || '',
+            alt: item.name || 'Festival Image',
           })
         }
       />
     );
   };
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split('T')[0];
   const filteredPosts = posts.filter((item) => {
-    if (!item.date) return activeTab === "upcoming";
-    return activeTab === "upcoming" ? item.date >= todayStr : item.date < todayStr;
+    if (!item.date) return activeTab === 'upcoming';
+    return activeTab === 'upcoming' ? item.date >= todayStr : item.date < todayStr;
   });
 
-  const previewImageUri =
-    localImageUri ||
-    (imageUrl ? getFestivalImageUrl(imageUrl) : "") ||
-    null;
+  const previewImageUri = localImageUri || (imageUrl ? getFestivalImageUrl(imageUrl) : '') || null;
 
   const isCreate = !editingPost;
-  const headerTitle = name.trim() || (isCreate ? "Untitled event" : editingPost?.name || "Untitled festival");
+  const headerTitle =
+    name.trim() || (isCreate ? 'Untitled event' : editingPost?.name || 'Untitled festival');
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
       <Box style={styles.header}>
-        <Box className="px-5 pt-14 pb-4">
-          <HStack className="justify-between items-center mb-2">
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Feather name="arrow-left" size={20} color="#fff" />
-              <Text className="text-white text-sm font-semibold ml-1">Back</Text>
-            </TouchableOpacity>
+        <Box className="px-5 pb-2 pt-12">
+          <HStack className="mb-2 items-center justify-between">
+            <Heading size="xl" style={{ color: '#fff', fontWeight: '700', marginTop: 4 }}>
+              Festival Auto Posts
+            </Heading>
+            {/* <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <HStack className="items-center space-x-1">
+                <Feather name="arrow-left" size={16} color="#fff" />
+                <Text style={styles.backBtnText}>Back</Text>
+              </HStack>
+            </TouchableOpacity> */}
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
               <Feather name="plus" size={20} color="#fff" />
             </TouchableOpacity>
           </HStack>
-          <Heading size="xl" style={{ color: "#fff", fontWeight: "700", marginTop: 4 }}>
-            Festival Auto Posts
-          </Heading>
         </Box>
       </Box>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Banner Card */}
-        <LinearGradient colors={["#0052d4", "#0040b0"]} style={styles.bannerCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <LinearGradient
+          colors={['#0052d4', '#0040b0']}
+          style={styles.bannerCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
           <VStack style={{ flex: 1, marginRight: 12 }} space="xs">
             <Text style={styles.bannerTitle}>
               Let PostBell handle your festival wishes and greetings automatically!
@@ -772,25 +752,34 @@ export default function FestivalAutoPostScreen() {
           </VStack>
           <Box style={styles.bannerGraphicContainer}>
             <Feather name="calendar" size={30} color="#0052d4" />
-            <Text style={{ fontSize: 9, color: "#0052d4", fontWeight: "800", marginTop: 2 }}>AUTO</Text>
+            <Text style={{ fontSize: 9, color: '#0052d4', fontWeight: '800', marginTop: 2 }}>
+              AUTO
+            </Text>
           </Box>
         </LinearGradient>
 
         {/* Tabs */}
         <HStack style={styles.tabContainer}>
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === "upcoming" && styles.tabButtonActive]}
-            onPress={() => setActiveTab("upcoming")}
+            style={[styles.tabButton, activeTab === 'upcoming' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('upcoming')}
           >
-            <Text style={[styles.tabButtonText, activeTab === "upcoming" && styles.tabButtonTextActive]}>
+            <Text
+              style={[styles.tabButtonText, activeTab === 'upcoming' && styles.tabButtonTextActive]}
+            >
               Upcoming
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === "completed" && styles.tabButtonActive]}
-            onPress={() => setActiveTab("completed")}
+            style={[styles.tabButton, activeTab === 'completed' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('completed')}
           >
-            <Text style={[styles.tabButtonText, activeTab === "completed" && styles.tabButtonTextActive]}>
+            <Text
+              style={[
+                styles.tabButtonText,
+                activeTab === 'completed' && styles.tabButtonTextActive,
+              ]}
+            >
               Completed
             </Text>
           </TouchableOpacity>
@@ -814,11 +803,13 @@ export default function FestivalAutoPostScreen() {
             onEndReachedThreshold={0.4}
             ListEmptyComponent={
               <Box className="items-center justify-center py-20">
-                <Text className="text-typography-400 text-base">No festival posts found</Text>
+                <Text className="text-base text-typography-400">No festival posts found</Text>
               </Box>
             }
             ListFooterComponent={
-              loadingMore ? <ActivityIndicator size="small" color="#0052d4" style={{ marginVertical: 20 }} /> : null
+              loadingMore ? (
+                <ActivityIndicator size="small" color="#0052d4" style={{ marginVertical: 20 }} />
+              ) : null
             }
             renderItem={renderItem}
           />
@@ -830,12 +821,12 @@ export default function FestivalAutoPostScreen() {
         visible={imageViewer.open}
         transparent
         animationType="fade"
-        onRequestClose={() => setImageViewer({ open: false, src: "", alt: "" })}
+        onRequestClose={() => setImageViewer({ open: false, src: '', alt: '' })}
       >
         <TouchableOpacity
           style={styles.imageViewerOverlay}
           activeOpacity={1}
-          onPress={() => setImageViewer({ open: false, src: "", alt: "" })}
+          onPress={() => setImageViewer({ open: false, src: '', alt: '' })}
         >
           {imageViewer.src ? (
             <Image
@@ -848,7 +839,12 @@ export default function FestivalAutoPostScreen() {
       </Modal>
 
       {/* Add / Edit Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => !saving && setModalVisible(false)}>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => !saving && setModalVisible(false)}
+      >
         <Box style={styles.modalOverlay}>
           <Box style={styles.modalContainer}>
             <Box style={styles.modalHeader}>
@@ -860,15 +856,15 @@ export default function FestivalAutoPostScreen() {
                 </Box>
                 <VStack style={{ flex: 1 }}>
                   <Text style={styles.modalHeaderKicker}>
-                    {isCreate ? "New Festival Event" : "Edit Festival"}
+                    {isCreate ? 'New Festival Event' : 'Edit Festival'}
                   </Text>
                   <Text style={styles.modalHeaderTitle} numberOfLines={1}>
                     {headerTitle}
                   </Text>
-                  <HStack className="items-center flex-wrap" space="xs">
+                  <HStack className="flex-wrap items-center" space="xs">
                     <Feather name="calendar" size={12} color="rgba(255,255,255,0.85)" />
                     <Text style={styles.modalHeaderMeta}>
-                      {date ? formatDisplayDate(date) : "No date set"}
+                      {date ? formatDisplayDate(date) : 'No date set'}
                     </Text>
                     {category ? (
                       <>
@@ -893,7 +889,10 @@ export default function FestivalAutoPostScreen() {
               </HStack>
             </Box>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: Dimensions.get("window").height * 0.55 }}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: Dimensions.get('window').height * 0.55 }}
+            >
               <VStack space="md" style={{ padding: 16 }}>
                 <VStack space="xs">
                   <Text style={styles.label}>Festival Name *</Text>
@@ -913,9 +912,15 @@ export default function FestivalAutoPostScreen() {
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>Date *</Text>
                     <TouchableOpacity onPress={openDatePicker}>
-                      <Box style={[styles.modalInput, styles.datePickerBox, touched.date && (!hasDate || isDateInPast) && styles.modalInputError]}>
-                        <Text style={{ color: date ? "#0f172a" : "#94a3b8" }}>
-                          {date || "Select date"}
+                      <Box
+                        style={[
+                          styles.modalInput,
+                          styles.datePickerBox,
+                          touched.date && (!hasDate || isDateInPast) && styles.modalInputError,
+                        ]}
+                      >
+                        <Text style={{ color: date ? '#0f172a' : '#94a3b8' }}>
+                          {date || 'Select date'}
                         </Text>
                       </Box>
                     </TouchableOpacity>
@@ -923,7 +928,7 @@ export default function FestivalAutoPostScreen() {
                       <DateTimePicker
                         value={datePickerValue || new Date()}
                         mode="date"
-                        display={Platform.OS === "ios" ? "spinner" : "default"}
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                         minimumDate={new Date()}
                         onChange={handleDateChange}
                       />
@@ -935,7 +940,10 @@ export default function FestivalAutoPostScreen() {
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>Category *</Text>
                     <TextInput
-                      style={[styles.modalInput, touched.category && !hasCategory && styles.modalInputError]}
+                      style={[
+                        styles.modalInput,
+                        touched.category && !hasCategory && styles.modalInputError,
+                      ]}
                       value={category}
                       onChangeText={setCategory}
                       onBlur={() => setTouched((p) => ({ ...p, category: true }))}
@@ -959,13 +967,13 @@ export default function FestivalAutoPostScreen() {
                           styles.categoryChip,
                           isActive
                             ? { backgroundColor: chipColor, borderColor: chipColor }
-                            : { backgroundColor: "transparent", borderColor: "#e2e8f0" },
+                            : { backgroundColor: 'transparent', borderColor: '#e2e8f0' },
                         ]}
                       >
                         <Text
                           style={[
                             styles.categoryChipText,
-                            { color: isActive ? "#fff" : "#64748b" },
+                            { color: isActive ? '#fff' : '#64748b' },
                           ]}
                         >
                           {suggestion}
@@ -988,16 +996,20 @@ export default function FestivalAutoPostScreen() {
                     Post Image & AI Generation *
                   </Text>
                   <HStack style={styles.aiBtnRow} className="flex-wrap">
-                    <TouchableOpacity style={styles.uploadBtn} onPress={handlePickImage} disabled={saving || generatingType !== null}>
+                    <TouchableOpacity
+                      style={styles.uploadBtn}
+                      onPress={handlePickImage}
+                      disabled={saving || generatingType !== null}
+                    >
                       <Feather name="image" size={14} color="#0052d4" />
                       <Text style={styles.uploadBtnText}>Upload Image</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.aiBtn, { backgroundColor: "#0284c7" }]}
-                      onPress={() => handleGenerateAI("gemini")}
+                      style={[styles.aiBtn, { backgroundColor: '#0284c7' }]}
+                      onPress={() => handleGenerateAI('gemini')}
                       disabled={saving || generatingType !== null || !hasName || !hasCategory}
                     >
-                      {generatingType === "gemini" ? (
+                      {generatingType === 'gemini' ? (
                         <ActivityIndicator size="small" color="#fff" />
                       ) : (
                         <>
@@ -1007,11 +1019,11 @@ export default function FestivalAutoPostScreen() {
                       )}
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.aiBtn, { backgroundColor: "#193867" }]}
-                      onPress={() => handleGenerateAI("openai")}
+                      style={[styles.aiBtn, { backgroundColor: '#193867' }]}
+                      onPress={() => handleGenerateAI('openai')}
                       disabled={saving || generatingType !== null || !hasName || !hasCategory}
                     >
-                      {generatingType === "openai" ? (
+                      {generatingType === 'openai' ? (
                         <ActivityIndicator size="small" color="#fff" />
                       ) : (
                         <>
@@ -1050,7 +1062,7 @@ export default function FestivalAutoPostScreen() {
                         setImageViewer({
                           open: true,
                           src: previewImageUri,
-                          alt: name || "Preview",
+                          alt: name || 'Preview',
                         })
                       }
                     >
@@ -1066,7 +1078,11 @@ export default function FestivalAutoPostScreen() {
                 <VStack space="xs">
                   <Text style={styles.label}>Caption *</Text>
                   <TextInput
-                    style={[styles.modalInput, styles.captionInput, touched.caption && !hasCaption && styles.modalInputError]}
+                    style={[
+                      styles.modalInput,
+                      styles.captionInput,
+                      touched.caption && !hasCaption && styles.modalInputError,
+                    ]}
                     value={caption}
                     onChangeText={setCaption}
                     onBlur={() => setTouched((p) => ({ ...p, caption: true }))}
@@ -1083,7 +1099,11 @@ export default function FestivalAutoPostScreen() {
                   <Text style={styles.label}>Hashtags *</Text>
                   <HStack space="sm" className="items-center">
                     <TextInput
-                      style={[styles.modalInput, { flex: 1 }, touched.hashtags && !hasHashtags && styles.modalInputError]}
+                      style={[
+                        styles.modalInput,
+                        { flex: 1 },
+                        touched.hashtags && !hasHashtags && styles.modalInputError,
+                      ]}
                       value={hashtagInput}
                       onChangeText={setHashtagInput}
                       onBlur={() => {
@@ -1093,7 +1113,11 @@ export default function FestivalAutoPostScreen() {
                       onSubmitEditing={handleAddHashtag}
                       placeholder="Paste or type hashtags (e.g. #Diwali #FestivalOfLights)"
                     />
-                    <TouchableOpacity style={styles.addHashtagBtn} onPress={handleAddHashtag} disabled={!hashtagInput.trim()}>
+                    <TouchableOpacity
+                      style={styles.addHashtagBtn}
+                      onPress={handleAddHashtag}
+                      disabled={!hashtagInput.trim()}
+                    >
                       <Text style={styles.addHashtagBtnText}>Add</Text>
                     </TouchableOpacity>
                   </HStack>
@@ -1105,7 +1129,7 @@ export default function FestivalAutoPostScreen() {
                           style={styles.hashtagChip}
                           onPress={() => handleRemoveHashtag(tag)}
                         >
-                          <Text style={styles.hashtagChipText}>#{tag.replace(/^#/, "")}</Text>
+                          <Text style={styles.hashtagChipText}>#{tag.replace(/^#/, '')}</Text>
                           <Feather name="x" size={12} color="#193867" style={{ marginLeft: 4 }} />
                         </TouchableOpacity>
                       ))}
@@ -1126,8 +1150,8 @@ export default function FestivalAutoPostScreen() {
                   <Switch
                     value={selectedFestival}
                     onValueChange={setSelectedFestival}
-                    trackColor={{ false: "#e2e8f0", true: "#34c759" }}
-                    thumbColor={Platform.OS === "android" ? "#ffffff" : undefined}
+                    trackColor={{ false: '#e2e8f0', true: '#34c759' }}
+                    thumbColor={Platform.OS === 'android' ? '#ffffff' : undefined}
                   />
                 </Box>
 
@@ -1135,8 +1159,13 @@ export default function FestivalAutoPostScreen() {
                   <VStack style={{ flex: 1 }}>
                     <Text style={styles.switchCardTitle}>Auto-generate posts</Text>
                     <Box style={[styles.yesNoChip, autoGenerate ? styles.yesChip : styles.noChip]}>
-                      <Text style={[styles.yesNoChipText, autoGenerate ? styles.yesChipText : styles.noChipText]}>
-                        {autoGenerate ? "YES" : "NO"}
+                      <Text
+                        style={[
+                          styles.yesNoChipText,
+                          autoGenerate ? styles.yesChipText : styles.noChipText,
+                        ]}
+                      >
+                        {autoGenerate ? 'YES' : 'NO'}
                       </Text>
                     </Box>
                   </VStack>
@@ -1144,7 +1173,10 @@ export default function FestivalAutoPostScreen() {
                 </Box>
 
                 {editingPost && (
-                  <TouchableOpacity style={styles.modalNotifyBtn} onPress={() => handleSendNotification(editingPost)}>
+                  <TouchableOpacity
+                    style={styles.modalNotifyBtn}
+                    onPress={() => handleSendNotification(editingPost)}
+                  >
                     <Text style={styles.modalNotifyBtnText}>🔔 Trigger Immediate Test Post</Text>
                   </TouchableOpacity>
                 )}
@@ -1153,16 +1185,36 @@ export default function FestivalAutoPostScreen() {
                   <Text style={styles.label}>Status *</Text>
                   <HStack space="sm">
                     <TouchableOpacity
-                      style={[styles.statusToggleBtn, status === "active" && styles.statusToggleBtnActive]}
-                      onPress={() => setStatus("active")}
+                      style={[
+                        styles.statusToggleBtn,
+                        status === 'active' && styles.statusToggleBtnActive,
+                      ]}
+                      onPress={() => setStatus('active')}
                     >
-                      <Text style={[styles.statusToggleText, status === "active" && styles.statusToggleTextActive]}>Active</Text>
+                      <Text
+                        style={[
+                          styles.statusToggleText,
+                          status === 'active' && styles.statusToggleTextActive,
+                        ]}
+                      >
+                        Active
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.statusToggleBtn, status === "inactive" && styles.statusToggleBtnActiveDanger]}
-                      onPress={() => setStatus("inactive")}
+                      style={[
+                        styles.statusToggleBtn,
+                        status === 'inactive' && styles.statusToggleBtnActiveDanger,
+                      ]}
+                      onPress={() => setStatus('inactive')}
                     >
-                      <Text style={[styles.statusToggleText, status === "inactive" && styles.statusToggleTextActiveDanger]}>Inactive</Text>
+                      <Text
+                        style={[
+                          styles.statusToggleText,
+                          status === 'inactive' && styles.statusToggleTextActiveDanger,
+                        ]}
+                      >
+                        Inactive
+                      </Text>
                     </TouchableOpacity>
                   </HStack>
                 </VStack>
@@ -1171,17 +1223,23 @@ export default function FestivalAutoPostScreen() {
 
             <HStack space="sm" style={styles.modalFooter}>
               <Button
-                style={{ flex: 1, backgroundColor: "#0052d4", borderRadius: 12 }}
+                style={{ flex: 1, backgroundColor: '#0052d4', borderRadius: 12 }}
                 onPress={handleSave}
                 disabled={saving}
               >
                 {saving ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <ButtonText style={{ color: "white" }}>{isCreate ? "Create Event" : "Save Changes"}</ButtonText>
+                  <ButtonText style={{ color: 'white' }}>
+                    {isCreate ? 'Create Event' : 'Save Changes'}
+                  </ButtonText>
                 )}
               </Button>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => !saving && setModalVisible(false)} disabled={saving}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => !saving && setModalVisible(false)}
+                disabled={saving}
+              >
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
             </HStack>
@@ -1194,13 +1252,18 @@ export default function FestivalAutoPostScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#0052d4",
+    backgroundColor: '#0052d4',
     paddingBottom: 4,
   },
   backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
+  backBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   addBtn: {
     padding: 6,
   },
@@ -1209,12 +1272,12 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   bannerCard: {
-    flexDirection: "row",
+    flexDirection: 'row',
     borderRadius: 16,
     padding: 18,
-    alignItems: "center",
+    alignItems: 'center',
     marginBottom: 20,
-    shadowColor: "#0052d4",
+    shadowColor: '#0052d4',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -1222,58 +1285,58 @@ const styles = StyleSheet.create({
   },
   bannerTitle: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#ffffff",
+    fontWeight: '700',
+    color: '#ffffff',
     lineHeight: 18,
   },
   bannerSubtitle: {
     fontSize: 11,
-    color: "rgba(255, 255, 255, 0.75)",
+    color: 'rgba(255, 255, 255, 0.75)',
     marginTop: 4,
   },
   bannerGraphicContainer: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   tabContainer: {
-    backgroundColor: "#e2e8f0",
+    backgroundColor: '#e2e8f0',
     borderRadius: 999,
     padding: 3,
-    flexDirection: "row",
+    flexDirection: 'row',
     marginBottom: 16,
   },
   tabButton: {
     flex: 1,
     paddingVertical: 8,
-    alignItems: "center",
+    alignItems: 'center',
     borderRadius: 999,
   },
   tabButtonActive: {
-    backgroundColor: "#0052d4",
+    backgroundColor: '#0052d4',
   },
   tabButtonText: {
     fontSize: 13,
-    color: "#64748b",
-    fontWeight: "700",
+    color: '#64748b',
+    fontWeight: '700',
   },
   tabButtonTextActive: {
-    color: "#ffffff",
+    color: '#ffffff',
   },
   igCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    overflow: "hidden",
+    borderColor: '#e2e8f0',
+    overflow: 'hidden',
   },
   igCardHeader: {
     paddingHorizontal: 10,
@@ -1283,51 +1346,51 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
     marginRight: 8,
   },
   igAvatarText: {
     fontSize: 13,
-    fontWeight: "800",
-    color: "#193867",
+    fontWeight: '800',
+    color: '#193867',
   },
   igCardName: {
     fontSize: 13,
-    fontWeight: "700",
-    color: "#0f172a",
+    fontWeight: '700',
+    color: '#0f172a',
     maxWidth: 180,
   },
   autoPostChip: {
-    backgroundColor: "#193867",
+    backgroundColor: '#193867',
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
     marginLeft: 4,
   },
   autoPostChipText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   igMenuBtn: {
     padding: 4,
   },
   igImageWrap: {
-    width: "100%",
+    width: '100%',
     aspectRatio: 4 / 5,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: '#f1f5f9',
   },
   igImage: {
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: '100%',
   },
   igImagePlaceholder: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f1f5f9",
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f1f5f9',
     aspectRatio: 4 / 5,
   },
   igActions: {
@@ -1351,12 +1414,12 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   igDateText: {
     fontSize: 10,
-    color: "#94a3b8",
-    marginLeft: "auto",
+    color: '#94a3b8',
+    marginLeft: 'auto',
   },
   igCaptionWrap: {
     paddingHorizontal: 10,
@@ -1366,55 +1429,55 @@ const styles = StyleSheet.create({
   igCaption: {
     fontSize: 12.5,
     lineHeight: 18,
-    color: "#0f172a",
+    color: '#0f172a',
   },
   igCaptionName: {
-    fontWeight: "700",
+    fontWeight: '700',
   },
   igMoreText: {
     fontSize: 12,
-    color: "#64748b",
-    fontWeight: "500",
+    color: '#64748b',
+    fontWeight: '500',
   },
   igHashtags: {
     fontSize: 12,
-    color: "#0052d4",
+    color: '#0052d4',
     lineHeight: 18,
   },
   igTimeAgo: {
     fontSize: 10,
-    color: "#94a3b8",
-    textTransform: "uppercase",
+    color: '#94a3b8',
+    textTransform: 'uppercase',
     letterSpacing: 0.2,
     marginTop: 4,
   },
   imageViewerOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.9)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 20,
   },
   imageViewerImg: {
-    width: "100%",
-    height: "80%",
+    width: '100%',
+    height: '80%',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 16,
   },
   modalContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 16,
-    width: "100%",
+    width: '100%',
     maxWidth: 420,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
   modalHeader: {
-    backgroundColor: "#0b5cf8",
+    backgroundColor: '#0b5cf8',
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -1422,96 +1485,96 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.22)",
+    borderColor: 'rgba(255,255,255,0.22)',
   },
   modalHeaderAvatarText: {
-    color: "#fff",
-    fontWeight: "700",
+    color: '#fff',
+    fontWeight: '700',
     fontSize: 20,
   },
   modalHeaderKicker: {
-    color: "rgba(255,255,255,0.85)",
+    color: 'rgba(255,255,255,0.85)',
     fontSize: 10.5,
-    fontWeight: "600",
+    fontWeight: '600',
     letterSpacing: 0.6,
-    textTransform: "uppercase",
+    textTransform: 'uppercase',
   },
   modalHeaderTitle: {
-    color: "#fff",
-    fontWeight: "700",
+    color: '#fff',
+    fontWeight: '700',
     fontSize: 18,
     lineHeight: 22,
   },
   modalHeaderMeta: {
-    color: "rgba(255,255,255,0.95)",
+    color: 'rgba(255,255,255,0.95)',
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: '500',
   },
   modalHeaderDot: {
-    color: "rgba(255,255,255,0.55)",
+    color: 'rgba(255,255,255,0.55)',
     fontSize: 11,
   },
   modalSelectedChip: {
-    backgroundColor: "rgba(34,197,94,0.25)",
+    backgroundColor: 'rgba(34,197,94,0.25)',
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.5)",
+    borderColor: 'rgba(34,197,94,0.5)',
     marginLeft: 4,
   },
   modalSelectedChipText: {
-    color: "#bbf7d0",
+    color: '#bbf7d0',
     fontSize: 10,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   modalCloseBtn: {
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 8,
     padding: 6,
   },
   label: {
     fontSize: 11,
-    fontWeight: "700",
-    color: "#94a3b8",
-    textTransform: "uppercase",
+    fontWeight: '700',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   modalInput: {
     borderWidth: 1.5,
-    borderColor: "#d1d5db",
+    borderColor: '#d1d5db',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: "#1e293b",
-    backgroundColor: "#fafafa",
+    color: '#1e293b',
+    backgroundColor: '#fafafa',
   },
   modalInputError: {
-    borderColor: "#ef4444",
-    backgroundColor: "#fef2f2",
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
   },
   captionInput: {
     minHeight: 80,
-    textAlignVertical: "top",
+    textAlignVertical: 'top',
   },
   datePickerBox: {
-    justifyContent: "center",
+    justifyContent: 'center',
     minHeight: 44,
   },
   errorText: {
     fontSize: 11,
-    color: "#ef4444",
-    fontWeight: "500",
+    color: '#ef4444',
+    fontWeight: '500',
     marginTop: 2,
   },
   helperText: {
     fontSize: 11,
-    color: "#94a3b8",
+    color: '#94a3b8',
   },
   categoryChips: {
     gap: 6,
@@ -1526,41 +1589,41 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   imageSection: {
     borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "#e2e8f0",
+    borderStyle: 'dashed',
+    borderColor: '#e2e8f0',
     borderRadius: 12,
     padding: 12,
   },
   imageSectionError: {
-    borderColor: "#ef4444",
-    backgroundColor: "rgba(239,68,68,0.02)",
+    borderColor: '#ef4444',
+    backgroundColor: 'rgba(239,68,68,0.02)',
   },
   aiBtnRow: {
     gap: 8,
   },
   uploadBtn: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: "#0052d4",
+    borderColor: '#0052d4',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
     marginBottom: 6,
   },
   uploadBtnText: {
-    color: "#0052d4",
+    color: '#0052d4',
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   aiBtn: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
     borderRadius: 8,
     paddingHorizontal: 10,
@@ -1568,34 +1631,34 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   aiBtnText: {
-    color: "#fff",
+    color: '#fff',
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   imagePreviewWrap: {
     marginTop: 10,
-    backgroundColor: "#f8fafc",
+    backgroundColor: '#f8fafc',
     borderRadius: 8,
     padding: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
   imagePreview: {
-    width: "100%",
+    width: '100%',
     height: 180,
     borderRadius: 8,
   },
   addHashtagBtn: {
-    backgroundColor: "#f1f5f9",
+    backgroundColor: '#f1f5f9',
     borderRadius: 12,
     paddingHorizontal: 14,
-    justifyContent: "center",
+    justifyContent: 'center',
     height: 44,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: '#e2e8f0',
   },
   addHashtagBtnText: {
-    color: "#193867",
-    fontWeight: "700",
+    color: '#193867',
+    fontWeight: '700',
     fontSize: 13,
   },
   hashtagChips: {
@@ -1603,11 +1666,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   hashtagChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(25,56,103,0.08)",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(25,56,103,0.08)',
     borderWidth: 1,
-    borderColor: "rgba(25,56,103,0.2)",
+    borderColor: 'rgba(25,56,103,0.2)',
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -1615,26 +1678,26 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   hashtagChipText: {
-    color: "#193867",
+    color: '#193867',
     fontSize: 11.5,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   switchCard: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: '#e2e8f0',
     borderRadius: 12,
     padding: 12,
   },
   switchCardTitle: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#334155",
+    fontWeight: '600',
+    color: '#334155',
   },
   switchCardSub: {
     fontSize: 11,
-    color: "#64748b",
+    color: '#64748b',
     marginTop: 2,
   },
   yesNoChip: {
@@ -1642,87 +1705,87 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginTop: 4,
-    alignSelf: "flex-start",
+    alignSelf: 'flex-start',
     borderWidth: 1,
   },
   yesChip: {
-    borderColor: "#86efac",
-    backgroundColor: "#dcfce7",
+    borderColor: '#86efac',
+    backgroundColor: '#dcfce7',
   },
   noChip: {
-    borderColor: "#e2e8f0",
-    backgroundColor: "#f8fafc",
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
   },
   yesNoChipText: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   yesChipText: {
-    color: "#15803d",
+    color: '#15803d',
   },
   noChipText: {
-    color: "#64748b",
+    color: '#64748b',
   },
   modalNotifyBtn: {
-    backgroundColor: "#fffbeb",
-    borderColor: "#fde68a",
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
     borderWidth: 1,
     borderRadius: 12,
     padding: 10,
-    alignItems: "center",
+    alignItems: 'center',
     marginVertical: 4,
   },
   modalNotifyBtnText: {
     fontSize: 12,
-    fontWeight: "700",
-    color: "#d97706",
+    fontWeight: '700',
+    color: '#d97706',
   },
   statusToggleBtn: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: '#f1f5f9',
     borderWidth: 1.5,
-    borderColor: "#e2e8f0",
+    borderColor: '#e2e8f0',
   },
   statusToggleBtnActive: {
-    backgroundColor: "#dcfce7",
-    borderColor: "#86efac",
+    backgroundColor: '#dcfce7',
+    borderColor: '#86efac',
   },
   statusToggleBtnActiveDanger: {
-    backgroundColor: "#fee2e2",
-    borderColor: "#fca5a5",
+    backgroundColor: '#fee2e2',
+    borderColor: '#fca5a5',
   },
   statusToggleText: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#64748b",
+    fontWeight: '600',
+    color: '#64748b',
   },
   statusToggleTextActive: {
-    color: "#15803d",
+    color: '#15803d',
   },
   statusToggleTextActiveDanger: {
-    color: "#dc2626",
+    color: '#dc2626',
   },
   modalFooter: {
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
-    backgroundColor: "#f8fafc",
+    borderTopColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
   },
   cancelBtn: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f1f5f9",
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f1f5f9',
     borderRadius: 12,
     minHeight: 44,
   },
   cancelBtnText: {
-    color: "#475569",
-    fontWeight: "700",
+    color: '#475569',
+    fontWeight: '700',
     fontSize: 14,
   },
 });

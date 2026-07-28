@@ -48,8 +48,7 @@ export const getBreakPointValue = (values: BreakPointValue, width: number) => {
     breakpoint.value = values.hasOwnProperty(breakpoint.key)
       ? // @ts-ignore
         values[breakpoint.key]
-      : mediaQueriesBreakpoints[index - 1]?.value ||
-        mediaQueriesBreakpoints[0]?.value;
+      : mediaQueriesBreakpoints[index - 1]?.value || mediaQueriesBreakpoints[0]?.value;
   });
 
   const lastValidObject = getLastValidObject(mediaQueriesBreakpoints);

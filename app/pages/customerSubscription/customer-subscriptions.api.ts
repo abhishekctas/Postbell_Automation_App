@@ -1,4 +1,4 @@
-import { fetchWithAuth, API_BASE_URL } from "@/services/api";
+import { fetchWithAuth, API_BASE_URL } from '@/services/api';
 
 const BASE = `${API_BASE_URL}/subscriptions`;
 
@@ -38,11 +38,11 @@ export interface Subscription {
 }
 
 export const listSubscriptions = async (
-  params = "",
+  params = ''
 ): Promise<{ data: Subscription[]; pagination?: any } | Subscription[]> => {
   const res = await fetchWithAuth(`${BASE}/admin/get-all-subscription?${params}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch subscriptions");
+    throw new Error(res.message || 'Failed to fetch subscriptions');
   }
 
   let items: Subscription[] = Array.isArray(res) ? res : res?.data || [];
@@ -52,43 +52,57 @@ export const listSubscriptions = async (
     (item: any) =>
       !item.user_name &&
       !item.customerName &&
-      !(item.customer_id && typeof item.customer_id === "object" && (item.customer_id.first_name || item.customer_id.name)) &&
-      !(item.user_id && typeof item.user_id === "object" && (item.user_id.first_name || item.user_id.name))
+      !(
+        item.customer_id &&
+        typeof item.customer_id === 'object' &&
+        (item.customer_id.first_name || item.customer_id.name)
+      ) &&
+      !(
+        item.user_id &&
+        typeof item.user_id === 'object' &&
+        (item.user_id.first_name || item.user_id.name)
+      )
   );
 
   if (needsCustomerFetch) {
     try {
       const custRes = await fetchWithAuth(`${API_BASE_URL}/customers/get-customers?limit=1000`);
-      const customersList: any[] = Array.isArray(custRes) ? custRes : custRes?.data || custRes?.results || [];
+      const customersList: any[] = Array.isArray(custRes)
+        ? custRes
+        : custRes?.data || custRes?.results || [];
       const customerMap = new Map<string, any>();
       customersList.forEach((c) => {
-        const cId = String(c._id || c.id || "");
+        const cId = String(c._id || c.id || '');
         if (cId) customerMap.set(cId, c);
       });
 
       items = items.map((item: any) => {
         const uId = String(
-          (typeof item.user_id === "object" ? item.user_id?._id || item.user_id?.id : item.user_id) ||
-          (typeof item.customer_id === "object" ? item.customer_id?._id || item.customer_id?.id : item.customer_id) ||
-          ""
+          (typeof item.user_id === 'object'
+            ? item.user_id?._id || item.user_id?.id
+            : item.user_id) ||
+            (typeof item.customer_id === 'object'
+              ? item.customer_id?._id || item.customer_id?.id
+              : item.customer_id) ||
+            ''
         );
         const matchedCust = customerMap.get(uId);
         if (matchedCust) {
-          const fn = matchedCust.first_name || matchedCust.name || "";
-          const ln = matchedCust.last_name || "";
-          const fullName = `${fn} ${ln}`.trim() || matchedCust.email || "Customer";
+          const fn = matchedCust.first_name || matchedCust.name || '';
+          const ln = matchedCust.last_name || '';
+          const fullName = `${fn} ${ln}`.trim() || matchedCust.email || 'Customer';
           return {
             ...item,
             user_name: item.user_name || item.customerName || fullName,
             user_email: item.user_email || item.customerEmail || matchedCust.email,
             user_avatar: item.user_avatar || matchedCust.image || matchedCust.avatar,
-            customer_id: typeof item.customer_id === "object" ? item.customer_id : matchedCust,
+            customer_id: typeof item.customer_id === 'object' ? item.customer_id : matchedCust,
           };
         }
         return item;
       });
     } catch (e) {
-      console.log("Could not auto-populate customer details:", e);
+      console.log('Could not auto-populate customer details:', e);
     }
   }
 
@@ -104,10 +118,10 @@ export const listSubscriptions = async (
 
 export const cancelSubscription = async (subId: string): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/cancel/${subId}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to cancel subscription");
+    throw new Error(res.message || 'Failed to cancel subscription');
   }
   return res;
 };

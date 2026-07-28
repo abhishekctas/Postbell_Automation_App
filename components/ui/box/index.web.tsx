@@ -27,12 +27,7 @@ const Box = React.forwardRef<HTMLDivElement, IBoxProps>(function Box(
   const normalizedStyle = normalizeStyle(style);
 
   return (
-    <div
-      ref={ref}
-      className={boxStyle({ class: className })}
-      style={normalizedStyle}
-      {...props}
-    />
+    <div ref={ref} className={boxStyle({ class: className })} style={normalizedStyle} {...props} />
   );
 });
 

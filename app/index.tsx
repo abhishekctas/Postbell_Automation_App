@@ -1,8 +1,8 @@
-import React, { useEffect } from "react";
-import { Redirect } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
-import { Box } from "@/components/ui/box";
-import { ActivityIndicator } from "react-native";
+import React, { useEffect } from 'react';
+import { Redirect } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
+import { Box } from '@/components/ui/box';
+import { ActivityIndicator } from 'react-native';
 
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuth();

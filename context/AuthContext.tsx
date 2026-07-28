@@ -1,22 +1,7 @@
 import { createContext, useContext } from 'react';
+import { StoredUser } from '@/utils/storage';
 
-export interface StoredUser {
-  _id?: string;
-  id?: string;
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  contact_no?: string | number;
-  role_id?: string;
-  status?: number;
-  isSuperAdmin?: boolean;
-  avatar?: string;
-  role_name?: string;
-  sectionMatrix?: any[];
-  token?: string;
-  loginType?: string;
-  preferred_language?: 'en' | 'hi' | 'gu';
-}
+export type { StoredUser };
 
 export interface AuthState {
   isAuthenticated: boolean;

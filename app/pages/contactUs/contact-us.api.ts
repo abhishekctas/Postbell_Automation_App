@@ -1,4 +1,4 @@
-import { fetchWithAuth, API_BASE_URL } from "@/services/api";
+import { fetchWithAuth, API_BASE_URL } from '@/services/api';
 
 const BASE = `${API_BASE_URL}/contact-us`;
 
@@ -18,35 +18,35 @@ export interface ContactRequest {
 }
 
 export const listContactRequests = async (
-  params = "",
+  params = ''
 ): Promise<{ data: ContactRequest[]; pagination?: any }> => {
   const res = await fetchWithAuth(`${BASE}/get-contact-us-list?${params}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch contact inquiries");
+    throw new Error(res.message || 'Failed to fetch contact inquiries');
   }
   return res;
 };
 
 export const updateContactStatus = async (
   contactId: string,
-  contactStatus: number,
+  contactStatus: number
 ): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/update-contact-status/${contactId}`, {
-    method: "PUT",
+    method: 'PUT',
     body: JSON.stringify({ contactStatus }),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to update inquiry status");
+    throw new Error(res.message || 'Failed to update inquiry status');
   }
   return res;
 };
 
 export const deleteContactRequest = async (contactId: string): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/delete-contact-us/${contactId}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to delete inquiry");
+    throw new Error(res.message || 'Failed to delete inquiry');
   }
   return res;
 };

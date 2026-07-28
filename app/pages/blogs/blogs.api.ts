@@ -1,4 +1,4 @@
-import { fetchWithAuth, API_BASE_URL } from "@/services/api";
+import { fetchWithAuth, API_BASE_URL } from '@/services/api';
 
 const BASE = `${API_BASE_URL}/blog-post`;
 
@@ -199,10 +199,10 @@ export interface GuidesConfigFormData {
 
 // ─── BLOG APIS ──────────────────────────────────────────────────────────────
 
-export const listBlogs = async (params = ""): Promise<{ data: BlogPost[]; pagination?: any }> => {
+export const listBlogs = async (params = ''): Promise<{ data: BlogPost[]; pagination?: any }> => {
   const res = await fetchWithAuth(`${BASE}/get-all-blogs?${params}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch blogs");
+    throw new Error(res.message || 'Failed to fetch blogs');
   }
   return res;
 };
@@ -210,7 +210,7 @@ export const listBlogs = async (params = ""): Promise<{ data: BlogPost[]; pagina
 export const getBlog = async (id: string): Promise<BlogPost> => {
   const res = await fetchWithAuth(`${BASE}/get-blog/${id}`);
   if (res && res.status !== 200 && res.success === false) {
-    throw new Error(res.message || "Failed to fetch blog");
+    throw new Error(res.message || 'Failed to fetch blog');
   }
   return res?.data || res;
 };
@@ -219,166 +219,169 @@ export const getBlogDetails = getBlog;
 
 export const createBlog = async (payload: Partial<BlogPost> | BlogFormData): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/create-blog`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to create blog");
+    throw new Error(res.message || 'Failed to create blog');
   }
   return res;
 };
 
-export const updateBlog = async (id: string, payload: Partial<BlogPost> | BlogFormData): Promise<any> => {
+export const updateBlog = async (
+  id: string,
+  payload: Partial<BlogPost> | BlogFormData
+): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/update-blog/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to update blog");
+    throw new Error(res.message || 'Failed to update blog');
   }
   return res;
 };
 
 export const deleteBlog = async (id: string): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/delete-blog/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to delete blog");
+    throw new Error(res.message || 'Failed to delete blog');
   }
   return res;
 };
 
 export const updateBlogStatus = async (id: string): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/update-blog-status/${id}`, {
-    method: "POST",
+    method: 'POST',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to update blog status");
+    throw new Error(res.message || 'Failed to update blog status');
   }
   return res;
 };
 
 // ─── TAG APIS ───────────────────────────────────────────────────────────────
 
-export const getAllTags = async (params = ""): Promise<Tag[]> => {
+export const getAllTags = async (params = ''): Promise<Tag[]> => {
   const res = await fetchWithAuth(`${BASE}/get-all-tags?${params}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch tags");
+    throw new Error(res.message || 'Failed to fetch tags');
   }
   return res?.data || res?.results || (Array.isArray(res) ? res : []);
 };
 
 export const createTag = async (payload: TagFormData): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/create-tag`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to create tag");
+    throw new Error(res.message || 'Failed to create tag');
   }
   return res;
 };
 
 export const updateTag = async (tagId: string, payload: Partial<TagFormData>): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/update-tag/${tagId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to update tag");
+    throw new Error(res.message || 'Failed to update tag');
   }
   return res;
 };
 
 export const deleteTag = async (tagId: string): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/delete-tag/${tagId}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to delete tag");
+    throw new Error(res.message || 'Failed to delete tag');
   }
   return res;
 };
 
 export const updateTagStatus = async (tagId: string): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/update-tag-status/${tagId}`, {
-    method: "POST",
+    method: 'POST',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to update tag status");
+    throw new Error(res.message || 'Failed to update tag status');
   }
   return res;
 };
 
 export const updateTagsOrder = async (data: { _id: string; order: number }[]): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/update-tags-order`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to update tags order");
+    throw new Error(res.message || 'Failed to update tags order');
   }
   return res;
 };
 
 // ─── FAQ APIS ───────────────────────────────────────────────────────────────
 
-export const getAllFaqs = async (params = ""): Promise<FaqItem[]> => {
+export const getAllFaqs = async (params = ''): Promise<FaqItem[]> => {
   const res = await fetchWithAuth(`${BASE}/get-all-faqs?${params}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch FAQs");
+    throw new Error(res.message || 'Failed to fetch FAQs');
   }
   return res?.data || res?.results || (Array.isArray(res) ? res : []);
 };
 
 export const createFaq = async (payload: FaqFormData): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/create-faq`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to create FAQ");
+    throw new Error(res.message || 'Failed to create FAQ');
   }
   return res;
 };
 
 export const updateFaq = async (faqId: string, payload: Partial<FaqFormData>): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/update-faq/${faqId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to update FAQ");
+    throw new Error(res.message || 'Failed to update FAQ');
   }
   return res;
 };
 
 export const deleteFaq = async (faqId: string): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/delete-faq/${faqId}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to delete FAQ");
+    throw new Error(res.message || 'Failed to delete FAQ');
   }
   return res;
 };
 
 export const reorderFaqs = async (faqs: { id: string; order: number }[]): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/reorder-faqs`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ faqs }),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to reorder FAQs");
+    throw new Error(res.message || 'Failed to reorder FAQs');
   }
   return res;
 };
@@ -388,31 +391,31 @@ export const reorderFaqs = async (faqs: { id: string; order: number }[]): Promis
 export const getGuidesConfig = async (): Promise<GuidesListingConfig> => {
   const res = await fetchWithAuth(`${BASE}/get-guides-config`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch guides config");
+    throw new Error(res.message || 'Failed to fetch guides config');
   }
   return res?.data || res;
 };
 
 export const updateGuidesConfig = async (payload: GuidesConfigFormData): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/update-guides-config`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to update guides config");
+    throw new Error(res.message || 'Failed to update guides config');
   }
   return res;
 };
 
 export const CreateGuidesConfig = async (payload: GuidesConfigFormData): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/create-guides-config`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to create guides config");
+    throw new Error(res.message || 'Failed to create guides config');
   }
   return res;
 };
@@ -422,17 +425,17 @@ export const CreateGuidesConfig = async (payload: GuidesConfigFormData): Promise
 export const getBlogImages = async (blogId: string): Promise<BlogImage[]> => {
   const res = await fetchWithAuth(`${BASE}/get-blog-images/${blogId}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch blog images");
+    throw new Error(res.message || 'Failed to fetch blog images');
   }
   return res?.data || (Array.isArray(res) ? res : []);
 };
 
 export const deleteBlogImage = async (imageId: string): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/delete-blog-image/${imageId}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to delete blog image");
+    throw new Error(res.message || 'Failed to delete blog image');
   }
   return res;
 };

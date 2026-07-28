@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -9,15 +9,15 @@ import {
   Modal,
   StyleSheet,
   Switch,
-} from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { Box } from "@/components/ui/box";
-import { VStack } from "@/components/ui/vstack";
-import { HStack } from "@/components/ui/hstack";
-import { Text } from "@/components/ui/text";
-import { Heading } from "@/components/ui/heading";
-import { Button, ButtonText } from "@/components/ui/button";
-import { LinearGradient } from "expo-linear-gradient";
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { HStack } from '@/components/ui/hstack';
+import { Text } from '@/components/ui/text';
+import { Heading } from '@/components/ui/heading';
+import { Button, ButtonText } from '@/components/ui/button';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   BlogPost,
   BlogFormData,
@@ -45,15 +45,15 @@ import {
   getGuidesConfig,
   updateGuidesConfig,
   CreateGuidesConfig,
-} from "./blogs.api";
+} from './blogs.api';
 
 const slugify = (text: string) =>
   text
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 
 export default function BlogEditorScreen() {
   const router = useRouter();
@@ -72,68 +72,68 @@ export default function BlogEditorScreen() {
   const [allBlogs, setAllBlogs] = useState<BlogPost[]>([]);
 
   // ─── TAB 0: BLOG CONFIGURATION STATE ──────────────────────────────────────
-  const [configId, setConfigId] = useState<string>("");
-  const [heroBadge, setHeroBadge] = useState("");
-  const [heroTitle, setHeroTitle] = useState("");
-  const [heroDesc, setHeroDesc] = useState("");
-  const [heroImage, setHeroImage] = useState("");
-  const [heroTagPills, setHeroTagPills] = useState("");
+  const [configId, setConfigId] = useState<string>('');
+  const [heroBadge, setHeroBadge] = useState('');
+  const [heroTitle, setHeroTitle] = useState('');
+  const [heroDesc, setHeroDesc] = useState('');
+  const [heroImage, setHeroImage] = useState('');
+  const [heroTagPills, setHeroTagPills] = useState('');
 
-  const [infoBadge, setInfoBadge] = useState("");
-  const [infoTitle, setInfoTitle] = useState("");
-  const [infoDesc, setInfoDesc] = useState("");
+  const [infoBadge, setInfoBadge] = useState('');
+  const [infoTitle, setInfoTitle] = useState('');
+  const [infoDesc, setInfoDesc] = useState('');
   const [infoPoints, setInfoPoints] = useState<InfoPoint[]>([
-    { title: "", description: "", order: 1 },
+    { title: '', description: '', order: 1 },
   ]);
 
-  const [featuredBlogId, setFeaturedBlogId] = useState("");
-  const [featuredLabel, setFeaturedLabel] = useState("");
-  const [featuredCtaText, setFeaturedCtaText] = useState("");
+  const [featuredBlogId, setFeaturedBlogId] = useState('');
+  const [featuredLabel, setFeaturedLabel] = useState('');
+  const [featuredCtaText, setFeaturedCtaText] = useState('');
   const [configStatus, setConfigStatus] = useState<number>(1);
 
   // ─── TAB 1: GLOBAL RESOURCES STATE ────────────────────────────────────────
   // Tag Modal
   const [tagModalVisible, setTagModalVisible] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
-  const [tagTitle, setTagTitle] = useState("");
-  const [tagSubtitle, setTagSubtitle] = useState("");
-  const [tagImage, setTagImage] = useState("");
-  const [tagLinkUrl, setTagLinkUrl] = useState("");
-  const [tagLinkText, setTagLinkText] = useState("");
+  const [tagTitle, setTagTitle] = useState('');
+  const [tagSubtitle, setTagSubtitle] = useState('');
+  const [tagImage, setTagImage] = useState('');
+  const [tagLinkUrl, setTagLinkUrl] = useState('');
+  const [tagLinkText, setTagLinkText] = useState('');
   const [tagIsPopular, setTagIsPopular] = useState(false);
 
   // FAQ Modal
   const [faqModalVisible, setFaqModalVisible] = useState(false);
   const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
-  const [faqQuestion, setFaqQuestion] = useState("");
-  const [faqAnswer, setFaqAnswer] = useState("");
-  const [faqOrder, setFaqOrder] = useState("1");
+  const [faqQuestion, setFaqQuestion] = useState('');
+  const [faqAnswer, setFaqAnswer] = useState('');
+  const [faqOrder, setFaqOrder] = useState('1');
 
   // ─── TAB 2: BLOG EDITOR STATE ──────────────────────────────────────────────
-  const [blogTitle, setBlogTitle] = useState("");
-  const [blogSlug, setBlogSlug] = useState("");
-  const [blogExcerpt, setBlogExcerpt] = useState("");
-  const [blogBody, setBlogBody] = useState("");
-  const [blogCategory, setBlogCategory] = useState("");
-  const [blogReadTime, setBlogReadTime] = useState("5");
-  const [blogAuthor, setBlogAuthor] = useState("");
-  const [blogCoverImage, setBlogCoverImage] = useState("");
+  const [blogTitle, setBlogTitle] = useState('');
+  const [blogSlug, setBlogSlug] = useState('');
+  const [blogExcerpt, setBlogExcerpt] = useState('');
+  const [blogBody, setBlogBody] = useState('');
+  const [blogCategory, setBlogCategory] = useState('');
+  const [blogReadTime, setBlogReadTime] = useState('5');
+  const [blogAuthor, setBlogAuthor] = useState('');
+  const [blogCoverImage, setBlogCoverImage] = useState('');
 
   // Attached FAQs
   const [selectedFaqIds, setSelectedFaqIds] = useState<string[]>([]);
 
   // Shop Banner
-  const [shopTitle, setShopTitle] = useState("");
-  const [shopDesc, setShopDesc] = useState("");
-  const [shopCtaText, setShopCtaText] = useState("");
-  const [shopCtaUrl, setShopCtaUrl] = useState("");
+  const [shopTitle, setShopTitle] = useState('');
+  const [shopDesc, setShopDesc] = useState('');
+  const [shopCtaText, setShopCtaText] = useState('');
+  const [shopCtaUrl, setShopCtaUrl] = useState('');
 
   // Internal SEO Links
-  const [seoLinks, setSeoLinks] = useState<SeoLink[]>([{ label: "", url: "", order: 1 }]);
+  const [seoLinks, setSeoLinks] = useState<SeoLink[]>([{ label: '', url: '', order: 1 }]);
 
   // SEO Meta
-  const [seoTitle, setSeoTitle] = useState("");
-  const [seoDescription, setSeoDescription] = useState("");
+  const [seoTitle, setSeoTitle] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
 
   // Status (0 = Draft, 1 = Published)
   const [blogStatus, setBlogStatus] = useState<number>(1);
@@ -157,26 +157,29 @@ export default function BlogEditorScreen() {
       if (configRes) {
         if (configRes._id) setConfigId(configRes._id);
         if (configRes.hero) {
-          setHeroBadge(configRes.hero.badge_label || "");
-          setHeroTitle(configRes.hero.title || "");
-          setHeroDesc(configRes.hero.description || "");
-          setHeroImage(configRes.hero.image_url || "");
-          setHeroTagPills(configRes.hero.tag_pills ? configRes.hero.tag_pills.join(", ") : "");
+          setHeroBadge(configRes.hero.badge_label || '');
+          setHeroTitle(configRes.hero.title || '');
+          setHeroDesc(configRes.hero.description || '');
+          setHeroImage(configRes.hero.image_url || '');
+          setHeroTagPills(configRes.hero.tag_pills ? configRes.hero.tag_pills.join(', ') : '');
         }
         if (configRes.info_section) {
-          setInfoBadge(configRes.info_section.badge_label || "");
-          setInfoTitle(configRes.info_section.title || "");
-          setInfoDesc(configRes.info_section.description || "");
+          setInfoBadge(configRes.info_section.badge_label || '');
+          setInfoTitle(configRes.info_section.title || '');
+          setInfoDesc(configRes.info_section.description || '');
           if (configRes.info_section.points?.length) {
             setInfoPoints(configRes.info_section.points);
           }
         }
         if (configRes.featured_blog_id) {
-          const fId = typeof configRes.featured_blog_id === "object" ? configRes.featured_blog_id._id : configRes.featured_blog_id;
-          setFeaturedBlogId(fId || "");
+          const fId =
+            typeof configRes.featured_blog_id === 'object'
+              ? configRes.featured_blog_id._id
+              : configRes.featured_blog_id;
+          setFeaturedBlogId(fId || '');
         }
-        setFeaturedLabel(configRes.featured_label || "");
-        setFeaturedCtaText(configRes.featured_cta_text || "");
+        setFeaturedLabel(configRes.featured_label || '');
+        setFeaturedCtaText(configRes.featured_cta_text || '');
         if (configRes.status !== undefined) setConfigStatus(configRes.status);
       }
 
@@ -184,39 +187,42 @@ export default function BlogEditorScreen() {
       if (isEditMode && currentBlogId) {
         const blogObj = await getBlog(currentBlogId);
         if (blogObj) {
-          setBlogTitle(blogObj.title || "");
-          setBlogSlug(blogObj.slug || "");
-          setBlogExcerpt(blogObj.excerpt || "");
-          setBlogBody(blogObj.body || "");
-          const catVal = typeof blogObj.category === "object" ? blogObj.category._id : blogObj.category;
-          setBlogCategory(catVal || "");
+          setBlogTitle(blogObj.title || '');
+          setBlogSlug(blogObj.slug || '');
+          setBlogExcerpt(blogObj.excerpt || '');
+          setBlogBody(blogObj.body || '');
+          const catVal =
+            typeof blogObj.category === 'object' ? blogObj.category._id : blogObj.category;
+          setBlogCategory(catVal || '');
           setBlogReadTime(String(blogObj.read_time_minutes || 5));
-          setBlogAuthor(blogObj.author_label || "");
-          setBlogCoverImage(blogObj.cover_image || "");
+          setBlogAuthor(blogObj.author_label || '');
+          setBlogCoverImage(blogObj.cover_image || '');
           setBlogStatus(blogObj.status ?? 1);
 
           if (blogObj.faq_ids?.length) {
-            const ids = blogObj.faq_ids.map((item: any) => (typeof item === "object" ? item._id : item));
+            const ids = blogObj.faq_ids.map((item: any) =>
+              typeof item === 'object' ? item._id : item
+            );
             setSelectedFaqIds(ids);
           }
 
           if (blogObj.shop_banner) {
-            setShopTitle(blogObj.shop_banner.title || "");
-            setShopDesc(blogObj.shop_banner.description || "");
-            setShopCtaText(blogObj.shop_banner.cta_text || "");
-            setShopCtaUrl(blogObj.shop_banner.cta_url || "");
+            setShopTitle(blogObj.shop_banner.title || '');
+            setShopDesc(blogObj.shop_banner.description || '');
+            setShopCtaText(blogObj.shop_banner.cta_text || '');
+            setShopCtaUrl(blogObj.shop_banner.cta_url || '');
           }
 
           if (blogObj.seo_links?.length) {
             setSeoLinks(blogObj.seo_links);
           }
 
-          setSeoTitle(blogObj.seo_title || "");
-          setSeoDescription(blogObj.seo_description || "");
+          setSeoTitle(blogObj.seo_title || '');
+          setSeoDescription(blogObj.seo_description || '');
         }
       }
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to load blog page data");
+      Alert.alert('Error', e.message || 'Failed to load blog page data');
     } finally {
       setLoading(false);
     }
@@ -228,17 +234,15 @@ export default function BlogEditorScreen() {
 
   // ─── TAB 0 HANDLERS (BLOG CONFIGURATION) ──────────────────────────────────
   const handleAddInfoPoint = () => {
-    setInfoPoints((prev) => [...prev, { title: "", description: "", order: prev.length + 1 }]);
+    setInfoPoints((prev) => [...prev, { title: '', description: '', order: prev.length + 1 }]);
   };
 
   const handleRemoveInfoPoint = (idx: number) => {
     setInfoPoints((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleUpdateInfoPoint = (idx: number, key: "title" | "description", val: string) => {
-    setInfoPoints((prev) =>
-      prev.map((pt, i) => (i === idx ? { ...pt, [key]: val } : pt))
-    );
+  const handleUpdateInfoPoint = (idx: number, key: 'title' | 'description', val: string) => {
+    setInfoPoints((prev) => prev.map((pt, i) => (i === idx ? { ...pt, [key]: val } : pt)));
   };
 
   const handleSaveGuidesConfig = async () => {
@@ -250,7 +254,10 @@ export default function BlogEditorScreen() {
           title: heroTitle,
           description: heroDesc,
           image_url: heroImage,
-          tag_pills: heroTagPills.split(",").map((s) => s.trim()).filter(Boolean),
+          tag_pills: heroTagPills
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
         },
         info_section: {
           badge_label: infoBadge,
@@ -269,9 +276,9 @@ export default function BlogEditorScreen() {
       } else {
         await CreateGuidesConfig(payload);
       }
-      Alert.alert("Success", "Blog configuration saved successfully!");
+      Alert.alert('Success', 'Blog configuration saved successfully!');
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save blog configuration");
+      Alert.alert('Error', e.message || 'Failed to save blog configuration');
     } finally {
       setSaving(false);
     }
@@ -281,29 +288,29 @@ export default function BlogEditorScreen() {
   // Tag CRUD
   const handleOpenAddTag = () => {
     setEditingTag(null);
-    setTagTitle("");
-    setTagSubtitle("");
-    setTagImage("");
-    setTagLinkUrl("");
-    setTagLinkText("");
+    setTagTitle('');
+    setTagSubtitle('');
+    setTagImage('');
+    setTagLinkUrl('');
+    setTagLinkText('');
     setTagIsPopular(false);
     setTagModalVisible(true);
   };
 
   const handleOpenEditTag = (tag: Tag) => {
     setEditingTag(tag);
-    setTagTitle(tag.title || "");
-    setTagSubtitle(tag.subtitle || "");
-    setTagImage(tag.image_url || "");
-    setTagLinkUrl(tag.link_url || "");
-    setTagLinkText(tag.link_text || "");
+    setTagTitle(tag.title || '');
+    setTagSubtitle(tag.subtitle || '');
+    setTagImage(tag.image_url || '');
+    setTagLinkUrl(tag.link_url || '');
+    setTagLinkText(tag.link_text || '');
     setTagIsPopular(!!tag.is_popular);
     setTagModalVisible(true);
   };
 
   const handleSaveTag = async () => {
     if (!tagTitle.trim()) {
-      Alert.alert("Validation Error", "Tag title is required");
+      Alert.alert('Validation Error', 'Tag title is required');
       return;
     }
     try {
@@ -316,34 +323,34 @@ export default function BlogEditorScreen() {
         is_popular: tagIsPopular,
       };
       if (editingTag) {
-        await updateTag(editingTag._id || editingTag.id || "", payload);
-        Alert.alert("Success", "Tag updated successfully!");
+        await updateTag(editingTag._id || editingTag.id || '', payload);
+        Alert.alert('Success', 'Tag updated successfully!');
       } else {
         await createTag(payload);
-        Alert.alert("Success", "Tag created successfully!");
+        Alert.alert('Success', 'Tag created successfully!');
       }
       setTagModalVisible(false);
       const updated = await getAllTags();
       setTags(updated);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save tag");
+      Alert.alert('Error', e.message || 'Failed to save tag');
     }
   };
 
   const handleDeleteTag = (tag: Tag) => {
-    const tId = tag._id || tag.id || "";
-    Alert.alert("Delete Tag", `Are you sure you want to delete tag "${tag.title}"?`, [
-      { text: "Cancel", style: "cancel" },
+    const tId = tag._id || tag.id || '';
+    Alert.alert('Delete Tag', `Are you sure you want to delete tag "${tag.title}"?`, [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: "Delete",
-        style: "destructive",
+        text: 'Delete',
+        style: 'destructive',
         onPress: async () => {
           try {
             await deleteTag(tId);
             setTags((prev) => prev.filter((t) => (t._id || t.id) !== tId));
-            Alert.alert("Success", "Tag deleted.");
+            Alert.alert('Success', 'Tag deleted.');
           } catch (e: any) {
-            Alert.alert("Error", e.message || "Failed to delete tag");
+            Alert.alert('Error', e.message || 'Failed to delete tag');
           }
         },
       },
@@ -351,37 +358,37 @@ export default function BlogEditorScreen() {
   };
 
   const handleToggleTagStatus = async (tag: Tag) => {
-    const tId = tag._id || tag.id || "";
+    const tId = tag._id || tag.id || '';
     try {
       await updateTagStatus(tId);
       setTags((prev) =>
         prev.map((t) => ((t._id || t.id) === tId ? { ...t, status: t.status === 1 ? 0 : 1 } : t))
       );
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to toggle status");
+      Alert.alert('Error', e.message || 'Failed to toggle status');
     }
   };
 
   // FAQ CRUD
   const handleOpenAddFaq = () => {
     setEditingFaq(null);
-    setFaqQuestion("");
-    setFaqAnswer("");
+    setFaqQuestion('');
+    setFaqAnswer('');
     setFaqOrder(String(faqs.length + 1));
     setFaqModalVisible(true);
   };
 
   const handleOpenEditFaq = (faq: FaqItem) => {
     setEditingFaq(faq);
-    setFaqQuestion(faq.question || "");
-    setFaqAnswer(faq.answer || "");
+    setFaqQuestion(faq.question || '');
+    setFaqAnswer(faq.answer || '');
     setFaqOrder(String(faq.order ?? 1));
     setFaqModalVisible(true);
   };
 
   const handleSaveFaq = async () => {
     if (!faqQuestion.trim() || !faqAnswer.trim()) {
-      Alert.alert("Validation Error", "Question and Answer are required.");
+      Alert.alert('Validation Error', 'Question and Answer are required.');
       return;
     }
     try {
@@ -389,37 +396,37 @@ export default function BlogEditorScreen() {
         question: faqQuestion.trim(),
         answer: faqAnswer.trim(),
         order: parseInt(faqOrder, 10) || 1,
-        blog_id: currentBlogId || "global",
+        blog_id: currentBlogId || 'global',
       };
       if (editingFaq) {
-        await updateFaq(editingFaq._id || editingFaq.id || "", payload);
-        Alert.alert("Success", "FAQ updated successfully!");
+        await updateFaq(editingFaq._id || editingFaq.id || '', payload);
+        Alert.alert('Success', 'FAQ updated successfully!');
       } else {
         await createFaq(payload);
-        Alert.alert("Success", "FAQ created successfully!");
+        Alert.alert('Success', 'FAQ created successfully!');
       }
       setFaqModalVisible(false);
       const updated = await getAllFaqs();
       setFaqs(updated);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save FAQ");
+      Alert.alert('Error', e.message || 'Failed to save FAQ');
     }
   };
 
   const handleDeleteFaq = (faq: FaqItem) => {
-    const fId = faq._id || faq.id || "";
-    Alert.alert("Delete FAQ", "Are you sure you want to delete this FAQ?", [
-      { text: "Cancel", style: "cancel" },
+    const fId = faq._id || faq.id || '';
+    Alert.alert('Delete FAQ', 'Are you sure you want to delete this FAQ?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: "Delete",
-        style: "destructive",
+        text: 'Delete',
+        style: 'destructive',
         onPress: async () => {
           try {
             await deleteFaq(fId);
             setFaqs((prev) => prev.filter((f) => (f._id || f.id) !== fId));
-            Alert.alert("Success", "FAQ deleted.");
+            Alert.alert('Success', 'FAQ deleted.');
           } catch (e: any) {
-            Alert.alert("Error", e.message || "Failed to delete FAQ");
+            Alert.alert('Error', e.message || 'Failed to delete FAQ');
           }
         },
       },
@@ -440,26 +447,24 @@ export default function BlogEditorScreen() {
   };
 
   const handleAddSeoLink = () => {
-    setSeoLinks((prev) => [...prev, { label: "", url: "", order: prev.length + 1 }]);
+    setSeoLinks((prev) => [...prev, { label: '', url: '', order: prev.length + 1 }]);
   };
 
   const handleRemoveSeoLink = (idx: number) => {
     setSeoLinks((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleUpdateSeoLink = (idx: number, key: "label" | "url", val: string) => {
-    setSeoLinks((prev) =>
-      prev.map((item, i) => (i === idx ? { ...item, [key]: val } : item))
-    );
+  const handleUpdateSeoLink = (idx: number, key: 'label' | 'url', val: string) => {
+    setSeoLinks((prev) => prev.map((item, i) => (i === idx ? { ...item, [key]: val } : item)));
   };
 
   const handleSaveBlog = async (targetStatus: number) => {
     if (!blogTitle.trim()) {
-      Alert.alert("Validation Error", "Blog Title is required.");
+      Alert.alert('Validation Error', 'Blog Title is required.');
       return;
     }
     if (!blogSlug.trim()) {
-      Alert.alert("Validation Error", "Blog Slug is required.");
+      Alert.alert('Validation Error', 'Blog Slug is required.');
       return;
     }
 
@@ -489,15 +494,21 @@ export default function BlogEditorScreen() {
 
       if (isEditMode && currentBlogId) {
         await updateBlog(currentBlogId, payload);
-        Alert.alert("Success", `Blog ${targetStatus === 1 ? "published" : "saved as draft"} successfully!`);
+        Alert.alert(
+          'Success',
+          `Blog ${targetStatus === 1 ? 'published' : 'saved as draft'} successfully!`
+        );
       } else {
         await createBlog(payload);
-        Alert.alert("Success", `Blog ${targetStatus === 1 ? "published" : "saved as draft"} successfully!`);
+        Alert.alert(
+          'Success',
+          `Blog ${targetStatus === 1 ? 'published' : 'saved as draft'} successfully!`
+        );
       }
 
-      router.push("/pages/blogs/blogs");
+      router.push('/pages/blogs/blogs');
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save blog");
+      Alert.alert('Error', e.message || 'Failed to save blog');
     } finally {
       setSaving(false);
     }
@@ -507,7 +518,7 @@ export default function BlogEditorScreen() {
     return (
       <Box className="flex-1 items-center justify-center bg-[#f8fafc]">
         <ActivityIndicator size="large" color="#193867" />
-        <Text style={{ marginTop: 12, color: "#64748b" }}>Loading Blog Editor...</Text>
+        <Text style={{ marginTop: 12, color: '#64748b' }}>Loading Blog Editor...</Text>
       </Box>
     );
   }
@@ -515,18 +526,18 @@ export default function BlogEditorScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* ── HEADER ──────────────────────────────────────────────────────────── */}
-      <LinearGradient colors={["#193867", "#0F2647"]} style={styles.header}>
-        <Box className="px-5 pt-12 pb-4">
-          <HStack className="justify-between items-center mb-2">
+      <LinearGradient colors={['#193867', '#0F2647']} style={styles.header}>
+        <Box className="px-5 pb-4 pt-12">
+          <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity onPress={() => router.back()}>
-              <Text className="text-white text-sm font-medium">← Back to Blogs</Text>
+              <Text className="text-sm font-medium text-white">← Back to Blogs</Text>
             </TouchableOpacity>
             {saving && <ActivityIndicator size="small" color="#fff" />}
           </HStack>
-          <Heading size="xl" style={{ color: "#fff" }}>
-            {isEditMode ? "Edit Blog Post" : "Blog Management & Editor"}
+          <Heading size="xl" style={{ color: '#fff' }}>
+            {isEditMode ? 'Edit Blog Post' : 'Blog Management & Editor'}
           </Heading>
-          <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 2 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 2 }}>
             Manage configuration, global tags & FAQs, and blog content
           </Text>
         </Box>
@@ -561,7 +572,10 @@ export default function BlogEditorScreen() {
       </LinearGradient>
 
       {/* ── MAIN CONTENT AREA ──────────────────────────────────────────────── */}
-      <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ════════════════════════════════════════════════════════════════════
             TAB 0: BLOG CONFIGURATION
             ════════════════════════════════════════════════════════════════════ */}
@@ -645,8 +659,8 @@ export default function BlogEditorScreen() {
               />
 
               {/* DYNAMIC INFO POINTS */}
-              <HStack className="justify-between items-center mt-3 mb-2">
-                <Text style={{ fontWeight: "700", color: "#1e293b" }}>Info Points List</Text>
+              <HStack className="mb-2 mt-3 items-center justify-between">
+                <Text style={{ fontWeight: '700', color: '#1e293b' }}>Info Points List</Text>
                 <TouchableOpacity style={styles.smallAddBtn} onPress={handleAddInfoPoint}>
                   <Text style={styles.smallAddBtnText}>+ Add Point</Text>
                 </TouchableOpacity>
@@ -654,13 +668,15 @@ export default function BlogEditorScreen() {
 
               {infoPoints.map((pt, idx) => (
                 <Box key={idx} style={styles.subBox}>
-                  <HStack className="justify-between items-center mb-2">
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569" }}>
+                  <HStack className="mb-2 items-center justify-between">
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#475569' }}>
                       Point #{idx + 1}
                     </Text>
                     {infoPoints.length > 1 && (
                       <TouchableOpacity onPress={() => handleRemoveInfoPoint(idx)}>
-                        <Text style={{ color: "#ef4444", fontSize: 12, fontWeight: "600" }}>Remove</Text>
+                        <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600' }}>
+                          Remove
+                        </Text>
                       </TouchableOpacity>
                     )}
                   </HStack>
@@ -668,14 +684,14 @@ export default function BlogEditorScreen() {
                     style={styles.input}
                     placeholder="Point Title"
                     value={pt.title}
-                    onChangeText={(v) => handleUpdateInfoPoint(idx, "title", v)}
+                    onChangeText={(v) => handleUpdateInfoPoint(idx, 'title', v)}
                   />
                   <TextInput
                     style={[styles.input, { height: 50 }]}
                     multiline
                     placeholder="Point Description"
                     value={pt.description}
-                    onChangeText={(v) => handleUpdateInfoPoint(idx, "description", v)}
+                    onChangeText={(v) => handleUpdateInfoPoint(idx, 'description', v)}
                   />
                 </Box>
               ))}
@@ -710,12 +726,14 @@ export default function BlogEditorScreen() {
                 onChangeText={setFeaturedBlogId}
               />
 
-              <HStack className="justify-between items-center mt-3">
-                <Text style={{ fontWeight: "600", color: "#334155" }}>Enable Configuration Status</Text>
+              <HStack className="mt-3 items-center justify-between">
+                <Text style={{ fontWeight: '600', color: '#334155' }}>
+                  Enable Configuration Status
+                </Text>
                 <Switch
                   value={configStatus === 1}
                   onValueChange={(val) => setConfigStatus(val ? 1 : 0)}
-                  trackColor={{ false: "#cbd5e1", true: "#193867" }}
+                  trackColor={{ false: '#cbd5e1', true: '#193867' }}
                 />
               </HStack>
             </Box>
@@ -723,7 +741,7 @@ export default function BlogEditorScreen() {
             {/* SAVE BUTTON FOR CONFIG */}
             <Button style={styles.saveBtn} onPress={handleSaveGuidesConfig} disabled={saving}>
               <ButtonText style={styles.saveBtnText}>
-                {saving ? "Saving Configuration..." : "Save Configuration"}
+                {saving ? 'Saving Configuration...' : 'Save Configuration'}
               </ButtonText>
             </Button>
           </VStack>
@@ -736,12 +754,12 @@ export default function BlogEditorScreen() {
           <VStack space="lg">
             {/* TAGS SECTION */}
             <Box style={styles.card}>
-              <HStack className="justify-between items-center mb-3">
+              <HStack className="mb-3 items-center justify-between">
                 <VStack>
-                  <Heading size="md" style={{ color: "#1e293b" }}>
+                  <Heading size="md" style={{ color: '#1e293b' }}>
                     Global Tags
                   </Heading>
-                  <Text style={{ fontSize: 12, color: "#64748b" }}>
+                  <Text style={{ fontSize: 12, color: '#64748b' }}>
                     Category tags used across blogs and filtering
                   </Text>
                 </VStack>
@@ -751,24 +769,22 @@ export default function BlogEditorScreen() {
               </HStack>
 
               {tags.length === 0 ? (
-                <Text style={{ color: "#94a3b8", textAlign: "center", marginVertical: 15 }}>
+                <Text style={{ color: '#94a3b8', textAlign: 'center', marginVertical: 15 }}>
                   No tags added yet.
                 </Text>
               ) : (
                 tags.map((tag) => (
                   <Box key={tag._id || tag.id} style={styles.listItem}>
-                    <HStack className="justify-between items-center">
+                    <HStack className="items-center justify-between">
                       <VStack style={{ flex: 1, paddingRight: 10 }}>
                         <HStack space="xs" className="items-center">
-                          <Text style={{ fontWeight: "700", color: "#0f172a", fontSize: 14 }}>
+                          <Text style={{ fontWeight: '700', color: '#0f172a', fontSize: 14 }}>
                             {tag.title}
                           </Text>
-                          {tag.is_popular && (
-                            <Text style={styles.popularBadge}>Popular</Text>
-                          )}
+                          {tag.is_popular && <Text style={styles.popularBadge}>Popular</Text>}
                         </HStack>
                         {tag.subtitle ? (
-                          <Text style={{ fontSize: 12, color: "#64748b" }}>{tag.subtitle}</Text>
+                          <Text style={{ fontSize: 12, color: '#64748b' }}>{tag.subtitle}</Text>
                         ) : null}
                       </VStack>
                       <HStack space="sm" className="items-center">
@@ -776,18 +792,22 @@ export default function BlogEditorScreen() {
                           <Text
                             style={{
                               fontSize: 12,
-                              fontWeight: "600",
-                              color: tag.status === 1 ? "#16a34a" : "#94a3b8",
+                              fontWeight: '600',
+                              color: tag.status === 1 ? '#16a34a' : '#94a3b8',
                             }}
                           >
-                            {tag.status === 1 ? "Active" : "Draft"}
+                            {tag.status === 1 ? 'Active' : 'Draft'}
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleOpenEditTag(tag)}>
-                          <Text style={{ color: "#2563eb", fontSize: 13, fontWeight: "600" }}>Edit</Text>
+                          <Text style={{ color: '#2563eb', fontSize: 13, fontWeight: '600' }}>
+                            Edit
+                          </Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleDeleteTag(tag)}>
-                          <Text style={{ color: "#ef4444", fontSize: 13, fontWeight: "600" }}>Delete</Text>
+                          <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '600' }}>
+                            Delete
+                          </Text>
                         </TouchableOpacity>
                       </HStack>
                     </HStack>
@@ -798,12 +818,12 @@ export default function BlogEditorScreen() {
 
             {/* FAQS SECTION */}
             <Box style={styles.card}>
-              <HStack className="justify-between items-center mb-3">
+              <HStack className="mb-3 items-center justify-between">
                 <VStack>
-                  <Heading size="md" style={{ color: "#1e293b" }}>
+                  <Heading size="md" style={{ color: '#1e293b' }}>
                     Global FAQs
                   </Heading>
-                  <Text style={{ fontSize: 12, color: "#64748b" }}>
+                  <Text style={{ fontSize: 12, color: '#64748b' }}>
                     Reusable FAQs attached to blogs
                   </Text>
                 </VStack>
@@ -813,27 +833,33 @@ export default function BlogEditorScreen() {
               </HStack>
 
               {faqs.length === 0 ? (
-                <Text style={{ color: "#94a3b8", textAlign: "center", marginVertical: 15 }}>
+                <Text style={{ color: '#94a3b8', textAlign: 'center', marginVertical: 15 }}>
                   No FAQs added yet.
                 </Text>
               ) : (
                 faqs.map((faq) => (
                   <Box key={faq._id || faq.id} style={styles.listItem}>
                     <VStack space="xs">
-                      <HStack className="justify-between items-start">
-                        <Text style={{ fontWeight: "700", color: "#0f172a", flex: 1, paddingRight: 8 }}>
+                      <HStack className="items-start justify-between">
+                        <Text
+                          style={{ fontWeight: '700', color: '#0f172a', flex: 1, paddingRight: 8 }}
+                        >
                           Q: {faq.question}
                         </Text>
                         <HStack space="sm">
                           <TouchableOpacity onPress={() => handleOpenEditFaq(faq)}>
-                            <Text style={{ color: "#2563eb", fontSize: 13, fontWeight: "600" }}>Edit</Text>
+                            <Text style={{ color: '#2563eb', fontSize: 13, fontWeight: '600' }}>
+                              Edit
+                            </Text>
                           </TouchableOpacity>
                           <TouchableOpacity onPress={() => handleDeleteFaq(faq)}>
-                            <Text style={{ color: "#ef4444", fontSize: 13, fontWeight: "600" }}>Delete</Text>
+                            <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '600' }}>
+                              Delete
+                            </Text>
                           </TouchableOpacity>
                         </HStack>
                       </HStack>
-                      <Text style={{ fontSize: 13, color: "#475569" }} numberOfLines={2}>
+                      <Text style={{ fontSize: 13, color: '#475569' }} numberOfLines={2}>
                         A: {faq.answer}
                       </Text>
                     </VStack>
@@ -863,10 +889,12 @@ export default function BlogEditorScreen() {
                 onChangeText={setBlogTitle}
               />
 
-              <HStack className="justify-between items-center mt-1">
+              <HStack className="mt-1 items-center justify-between">
                 <Text style={styles.label}>Blog Slug *</Text>
                 <TouchableOpacity onPress={handleAutoSlug}>
-                  <Text style={{ fontSize: 12, color: "#2563eb", fontWeight: "600" }}>Auto-Generate Slug</Text>
+                  <Text style={{ fontSize: 12, color: '#2563eb', fontWeight: '600' }}>
+                    Auto-Generate Slug
+                  </Text>
                 </TouchableOpacity>
               </HStack>
               <TextInput
@@ -886,16 +914,20 @@ export default function BlogEditorScreen() {
               />
 
               <Text style={styles.label}>Category (Select Tag)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginBottom: 12 }}
+              >
                 <HStack space="xs">
                   {tags.map((t) => {
-                    const tId = t._id || t.id || "";
+                    const tId = t._id || t.id || '';
                     const isSel = blogCategory === tId;
                     return (
                       <TouchableOpacity
                         key={tId}
                         style={[styles.pillBtn, isSel && styles.pillBtnSelected]}
-                        onPress={() => setBlogCategory(isSel ? "" : tId)}
+                        onPress={() => setBlogCategory(isSel ? '' : tId)}
                       >
                         <Text style={[styles.pillText, isSel && styles.pillTextSelected]}>
                           {t.title}
@@ -944,7 +976,7 @@ export default function BlogEditorScreen() {
               </Heading>
               <Text style={styles.label}>Main Article Body (HTML / Text)</Text>
               <TextInput
-                style={[styles.input, { height: 160, textAlignVertical: "top" }]}
+                style={[styles.input, { height: 160, textAlignVertical: 'top' }]}
                 multiline
                 placeholder="Write full article body content here..."
                 value={blogBody}
@@ -957,14 +989,16 @@ export default function BlogEditorScreen() {
               <Heading size="md" style={styles.cardHeader}>
                 Attached FAQs
               </Heading>
-              <Text style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+              <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
                 Select FAQs to display with this blog post:
               </Text>
               {faqs.length === 0 ? (
-                <Text style={{ color: "#94a3b8", fontSize: 13 }}>No FAQs available in Global Resources.</Text>
+                <Text style={{ color: '#94a3b8', fontSize: 13 }}>
+                  No FAQs available in Global Resources.
+                </Text>
               ) : (
                 faqs.map((f) => {
-                  const fId = f._id || f.id || "";
+                  const fId = f._id || f.id || '';
                   const isChecked = selectedFaqIds.includes(fId);
                   return (
                     <TouchableOpacity
@@ -972,8 +1006,15 @@ export default function BlogEditorScreen() {
                       style={[styles.checkRow, isChecked && styles.checkRowSelected]}
                       onPress={() => handleToggleFaqSelection(fId)}
                     >
-                      <Text style={{ fontSize: 14, color: isChecked ? "#193867" : "#334155", fontWeight: isChecked ? "700" : "500", flex: 1 }}>
-                        {isChecked ? "☑ " : "☐ "} {f.question}
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          color: isChecked ? '#193867' : '#334155',
+                          fontWeight: isChecked ? '700' : '500',
+                          flex: 1,
+                        }}
+                      >
+                        {isChecked ? '☑ ' : '☐ '} {f.question}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -1026,8 +1067,8 @@ export default function BlogEditorScreen() {
 
             {/* INTERNAL SEO LINKS */}
             <Box style={styles.card}>
-              <HStack className="justify-between items-center mb-2">
-                <Heading size="md" style={{ color: "#1e293b" }}>
+              <HStack className="mb-2 items-center justify-between">
+                <Heading size="md" style={{ color: '#1e293b' }}>
                   Internal SEO Links
                 </Heading>
                 <TouchableOpacity style={styles.smallAddBtn} onPress={handleAddSeoLink}>
@@ -1037,13 +1078,15 @@ export default function BlogEditorScreen() {
 
               {seoLinks.map((link, idx) => (
                 <Box key={idx} style={styles.subBox}>
-                  <HStack className="justify-between items-center mb-1">
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b" }}>
+                  <HStack className="mb-1 items-center justify-between">
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b' }}>
                       Link #{idx + 1}
                     </Text>
                     {seoLinks.length > 1 && (
                       <TouchableOpacity onPress={() => handleRemoveSeoLink(idx)}>
-                        <Text style={{ color: "#ef4444", fontSize: 12, fontWeight: "600" }}>Remove</Text>
+                        <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600' }}>
+                          Remove
+                        </Text>
                       </TouchableOpacity>
                     )}
                   </HStack>
@@ -1051,13 +1094,13 @@ export default function BlogEditorScreen() {
                     style={styles.input}
                     placeholder="Anchor Text / Label"
                     value={link.label}
-                    onChangeText={(v) => handleUpdateSeoLink(idx, "label", v)}
+                    onChangeText={(v) => handleUpdateSeoLink(idx, 'label', v)}
                   />
                   <TextInput
                     style={styles.input}
                     placeholder="Target URL (e.g. /pages/features)"
                     value={link.url}
-                    onChangeText={(v) => handleUpdateSeoLink(idx, "url", v)}
+                    onChangeText={(v) => handleUpdateSeoLink(idx, 'url', v)}
                   />
                 </Box>
               ))}
@@ -1085,16 +1128,22 @@ export default function BlogEditorScreen() {
                 onChangeText={setSeoDescription}
               />
 
-              <HStack className="justify-between items-center mt-3">
-                <Text style={{ fontWeight: "600", color: "#334155" }}>Publish Status</Text>
+              <HStack className="mt-3 items-center justify-between">
+                <Text style={{ fontWeight: '600', color: '#334155' }}>Publish Status</Text>
                 <HStack space="xs" className="items-center">
-                  <Text style={{ fontSize: 13, color: blogStatus === 1 ? "#16a34a" : "#64748b", fontWeight: "700" }}>
-                    {blogStatus === 1 ? "Published" : "Draft"}
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: blogStatus === 1 ? '#16a34a' : '#64748b',
+                      fontWeight: '700',
+                    }}
+                  >
+                    {blogStatus === 1 ? 'Published' : 'Draft'}
                   </Text>
                   <Switch
                     value={blogStatus === 1}
                     onValueChange={(val) => setBlogStatus(val ? 1 : 0)}
-                    trackColor={{ false: "#cbd5e1", true: "#16a34a" }}
+                    trackColor={{ false: '#cbd5e1', true: '#16a34a' }}
                   />
                 </HStack>
               </HStack>
@@ -1103,23 +1152,19 @@ export default function BlogEditorScreen() {
             {/* ACTION BUTTONS FOR BLOG EDITOR */}
             <HStack space="md" style={{ marginTop: 8 }}>
               <TouchableOpacity
-                style={[styles.saveBtn, { flex: 1, backgroundColor: "#64748b" }]}
+                style={[styles.saveBtn, { flex: 1, backgroundColor: '#64748b' }]}
                 onPress={() => handleSaveBlog(0)}
                 disabled={saving}
               >
-                <Text style={styles.saveBtnText}>
-                  {saving ? "Saving..." : "Save Draft"}
-                </Text>
+                <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Draft'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.saveBtn, { flex: 1, backgroundColor: "#16a34a" }]}
+                style={[styles.saveBtn, { flex: 1, backgroundColor: '#16a34a' }]}
                 onPress={() => handleSaveBlog(1)}
                 disabled={saving}
               >
-                <Text style={styles.saveBtnText}>
-                  {saving ? "Publishing..." : "Publish Blog"}
-                </Text>
+                <Text style={styles.saveBtnText}>{saving ? 'Publishing...' : 'Publish Blog'}</Text>
               </TouchableOpacity>
             </HStack>
           </VStack>
@@ -1127,11 +1172,16 @@ export default function BlogEditorScreen() {
       </ScrollView>
 
       {/* ── TAG MODAL ──────────────────────────────────────────────────────── */}
-      <Modal visible={tagModalVisible} transparent animationType="slide" onRequestClose={() => setTagModalVisible(false)}>
+      <Modal
+        visible={tagModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTagModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Heading size="md" style={{ color: "#0f172a", marginBottom: 12 }}>
-              {editingTag ? "Edit Tag" : "Add New Tag"}
+            <Heading size="md" style={{ color: '#0f172a', marginBottom: 12 }}>
+              {editingTag ? 'Edit Tag' : 'Add New Tag'}
             </Heading>
             <ScrollView style={{ maxHeight: 400 }}>
               <Text style={styles.label}>Tag Title *</Text>
@@ -1174,12 +1224,12 @@ export default function BlogEditorScreen() {
                 onChangeText={setTagLinkText}
               />
 
-              <HStack className="justify-between items-center mt-2 mb-2">
-                <Text style={{ fontWeight: "600", color: "#334155" }}>Mark as Popular</Text>
+              <HStack className="mb-2 mt-2 items-center justify-between">
+                <Text style={{ fontWeight: '600', color: '#334155' }}>Mark as Popular</Text>
                 <Switch
                   value={tagIsPopular}
                   onValueChange={setTagIsPopular}
-                  trackColor={{ false: "#cbd5e1", true: "#193867" }}
+                  trackColor={{ false: '#cbd5e1', true: '#193867' }}
                 />
               </HStack>
             </ScrollView>
@@ -1197,11 +1247,16 @@ export default function BlogEditorScreen() {
       </Modal>
 
       {/* ── FAQ MODAL ──────────────────────────────────────────────────────── */}
-      <Modal visible={faqModalVisible} transparent animationType="slide" onRequestClose={() => setFaqModalVisible(false)}>
+      <Modal
+        visible={faqModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFaqModalVisible(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Heading size="md" style={{ color: "#0f172a", marginBottom: 12 }}>
-              {editingFaq ? "Edit FAQ" : "Add New FAQ"}
+            <Heading size="md" style={{ color: '#0f172a', marginBottom: 12 }}>
+              {editingFaq ? 'Edit FAQ' : 'Add New FAQ'}
             </Heading>
             <ScrollView style={{ maxHeight: 400 }}>
               <Text style={styles.label}>Question *</Text>
@@ -1214,7 +1269,7 @@ export default function BlogEditorScreen() {
 
               <Text style={styles.label}>Answer *</Text>
               <TextInput
-                style={[styles.input, { height: 90, textAlignVertical: "top" }]}
+                style={[styles.input, { height: 90, textAlignVertical: 'top' }]}
                 multiline
                 placeholder="Enter FAQ Answer..."
                 value={faqAnswer}
@@ -1251,8 +1306,8 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   tabsContainer: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.12)",
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     padding: 4,
     marginHorizontal: 16,
     marginBottom: 10,
@@ -1261,168 +1316,168 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     paddingVertical: 9,
-    alignItems: "center",
+    alignItems: 'center',
     borderRadius: 8,
   },
   tabButtonActive: {
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
   },
   tabText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.85)",
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
   },
   tabTextActive: {
-    color: "#193867",
-    fontWeight: "700",
+    color: '#193867',
+    fontWeight: '700',
   },
   contentContainer: {
     padding: 16,
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: '#e2e8f0',
   },
   cardHeader: {
-    color: "#0f172a",
+    color: '#0f172a',
     marginBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: '#f1f5f9',
     paddingBottom: 8,
   },
   label: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#475569",
+    fontWeight: '600',
+    color: '#475569',
     marginBottom: 4,
     marginTop: 8,
   },
   input: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: '#cbd5e1',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
-    color: "#0f172a",
+    color: '#0f172a',
     marginBottom: 4,
   },
   subBox: {
-    backgroundColor: "#f1f5f9",
+    backgroundColor: '#f1f5f9',
     borderRadius: 8,
     padding: 10,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: '#e2e8f0',
   },
   smallAddBtn: {
-    backgroundColor: "#193867",
+    backgroundColor: '#193867',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
   },
   smallAddBtnText: {
-    color: "#ffffff",
+    color: '#ffffff',
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   saveBtn: {
-    backgroundColor: "#193867",
+    backgroundColor: '#193867',
     borderRadius: 10,
     paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 10,
   },
   saveBtnText: {
-    color: "#ffffff",
-    fontWeight: "700",
+    color: '#ffffff',
+    fontWeight: '700',
     fontSize: 15,
   },
   listItem: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: '#f8fafc',
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: '#e2e8f0',
   },
   popularBadge: {
-    backgroundColor: "#fef3c7",
-    color: "#d97706",
+    backgroundColor: '#fef3c7',
+    color: '#d97706',
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: '700',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   pillBtn: {
-    backgroundColor: "#e2e8f0",
+    backgroundColor: '#e2e8f0',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     marginRight: 6,
   },
   pillBtnSelected: {
-    backgroundColor: "#193867",
+    backgroundColor: '#193867',
   },
   pillText: {
-    color: "#475569",
+    color: '#475569',
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   pillTextSelected: {
-    color: "#ffffff",
+    color: '#ffffff',
   },
   checkRow: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: '#f8fafc',
     padding: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: '#e2e8f0',
     marginBottom: 6,
   },
   checkRowSelected: {
-    backgroundColor: "#f0f9ff",
-    borderColor: "#bae6fd",
+    backgroundColor: '#f0f9ff',
+    borderColor: '#bae6fd',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 20,
   },
   cancelBtn: {
     flex: 1,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: '#f1f5f9',
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
   cancelBtnText: {
-    color: "#64748b",
-    fontWeight: "600",
+    color: '#64748b',
+    fontWeight: '600',
   },
   submitBtn: {
     flex: 1,
-    backgroundColor: "#193867",
+    backgroundColor: '#193867',
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
   submitBtnText: {
-    color: "#ffffff",
-    fontWeight: "700",
+    color: '#ffffff',
+    fontWeight: '700',
   },
 });

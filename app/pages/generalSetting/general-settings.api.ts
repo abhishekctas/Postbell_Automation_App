@@ -1,4 +1,4 @@
-import { fetchWithAuth, API_ENDPOINTS } from "@/services/api";
+import { fetchWithAuth, API_ENDPOINTS } from '@/services/api';
 
 const BASE = API_ENDPOINTS.settings;
 
@@ -34,20 +34,20 @@ export interface GeneralSettings {
 export const getGeneralSettings = async (): Promise<GeneralSettings> => {
   const res = await fetchWithAuth(`${BASE}/get-general-settings`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch settings");
+    throw new Error(res.message || 'Failed to fetch settings');
   }
   return res?.data || res;
 };
 
 export const createOrUpdateGeneralSettings = async (
-  payload: Partial<GeneralSettings>,
+  payload: Partial<GeneralSettings>
 ): Promise<GeneralSettings> => {
   const res = await fetchWithAuth(`${BASE}/add-update-general-settings`, {
-    method: "POST",
+    method: 'POST',
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to save settings");
+    throw new Error(res.message || 'Failed to save settings');
   }
   return res?.data || res;
 };
