@@ -117,6 +117,7 @@ export const createFestivalPost = async (payload: Partial<FestivalPost>): Promis
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+  console.log(res, "resresresresresresresresres-create-festival-post")
   if (res && res.success === false) {
     throw new Error(res.message || 'Failed to create festival post');
   }

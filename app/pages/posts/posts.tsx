@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -208,12 +208,18 @@ function PostCard({
 // ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 export default function PostsScreen() {
   const { user } = useAuth();
-  const { action } = useLocalSearchParams<{ action?: string }>();
+  const { status: statusParam } = useLocalSearchParams<{ action?: string; status?: string }>();
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(statusParam && FILTERS.includes(statusParam) ? statusParam : 'all');
+
+  useEffect(() => {
+    if (statusParam && FILTERS.includes(statusParam)) {
+      setFilter(statusParam);
+    }
+  }, [statusParam]);
   const [platformFilter, setPlatformFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -338,7 +344,7 @@ export default function PostsScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
       <Box style={styles.header} className="px-5 pb-4 pt-14">
-        <HStack className="items-center justify-between pb-3">
+        <HStack className="items-center justify-between pb-1">
           <Heading size="xl" style={{ color: '#fff', fontWeight: '700' }}>
             Posts
           </Heading>
@@ -540,13 +546,13 @@ const styles = StyleSheet.create({
   },
   filterList: {
     paddingHorizontal: 16,
-    paddingVertical: 9,
     alignItems: 'center',
   },
   filterBtn: {
-    height: 36,
+    // height: 36,
     paddingHorizontal: 18,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 9,
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -574,7 +580,7 @@ const styles = StyleSheet.create({
   postCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 14,
+    padding: 10,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -583,8 +589,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardImage: {
-    width: 68,
-    height: 68,
+    width: 88,
+    height: 88,
     borderRadius: 12,
     backgroundColor: '#f1f5f9',
   },
@@ -658,7 +664,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === 'ios' ? 8 : 4,
-    marginTop: 4,
+    marginBottom: 8
   },
   searchInput: {
     flex: 1,
@@ -671,8 +677,8 @@ const styles = StyleSheet.create({
   },
   platformChip: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingVertical: 3,
+    borderRadius: 9,
     backgroundColor: '#e2e8f0',
     marginRight: 6,
   },

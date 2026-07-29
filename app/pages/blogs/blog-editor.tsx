@@ -526,7 +526,7 @@ export default function BlogEditorScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* ── HEADER ──────────────────────────────────────────────────────────── */}
-      <LinearGradient colors={['#193867', '#0F2647']} style={styles.header}>
+      <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
         <Box className="px-5 pb-4 pt-12">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity onPress={() => router.back()}>
@@ -733,7 +733,7 @@ export default function BlogEditorScreen() {
                 <Switch
                   value={configStatus === 1}
                   onValueChange={(val) => setConfigStatus(val ? 1 : 0)}
-                  trackColor={{ false: '#cbd5e1', true: '#193867' }}
+                  trackColor={{ false: '#cbd5e1', true: '#2563eb' }}
                 />
               </HStack>
             </Box>
@@ -1009,7 +1009,7 @@ export default function BlogEditorScreen() {
                       <Text
                         style={{
                           fontSize: 14,
-                          color: isChecked ? '#193867' : '#334155',
+                          color: isChecked ? '#2563eb' : '#334155',
                           fontWeight: isChecked ? '700' : '500',
                           flex: 1,
                         }}
@@ -1152,7 +1152,7 @@ export default function BlogEditorScreen() {
             {/* ACTION BUTTONS FOR BLOG EDITOR */}
             <HStack space="md" style={{ marginTop: 8 }}>
               <TouchableOpacity
-                style={[styles.saveBtn, { flex: 1, backgroundColor: '#64748b' }]}
+                style={[styles.saveBtn, { flex: 1, backgroundColor: '#64748b', paddingVertical: 8 }]}
                 onPress={() => handleSaveBlog(0)}
                 disabled={saving}
               >
@@ -1160,7 +1160,7 @@ export default function BlogEditorScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.saveBtn, { flex: 1, backgroundColor: '#16a34a' }]}
+                style={[styles.saveBtn, { flex: 1, backgroundColor: '#16a34a', paddingVertical: 8 }]}
                 onPress={() => handleSaveBlog(1)}
                 disabled={saving}
               >
@@ -1229,7 +1229,7 @@ export default function BlogEditorScreen() {
                 <Switch
                   value={tagIsPopular}
                   onValueChange={setTagIsPopular}
-                  trackColor={{ false: '#cbd5e1', true: '#193867' }}
+                  trackColor={{ false: '#cbd5e1', true: '#2563eb' }}
                 />
               </HStack>
             </ScrollView>
@@ -1307,28 +1307,35 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     padding: 4,
     marginHorizontal: 16,
-    marginBottom: 10,
-    borderRadius: 12,
+    marginBottom: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 9,
+    paddingVertical: 10,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 10,
   },
   tabButtonActive: {
     backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tabText: {
     fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.9)',
   },
   tabTextActive: {
-    color: '#193867',
+    color: '#2563eb',
     fontWeight: '700',
   },
   contentContainer: {
@@ -1337,63 +1344,81 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 18,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    shadowColor: '#1e293b',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeader: {
     color: '#0f172a',
-    marginBottom: 12,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
-    paddingBottom: 8,
+    paddingBottom: 10,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#475569',
-    marginBottom: 4,
-    marginTop: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    marginTop: 10,
   },
   input: {
     backgroundColor: '#f8fafc',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#cbd5e1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     fontSize: 14,
     color: '#0f172a',
     marginBottom: 4,
   },
   subBox: {
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 8,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
   smallAddBtn: {
-    backgroundColor: '#193867',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   smallAddBtnText: {
     color: '#ffffff',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   saveBtn: {
-    backgroundColor: '#193867',
-    borderRadius: 10,
-    paddingVertical: 14,
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   saveBtnText: {
     color: '#ffffff',
@@ -1401,79 +1426,93 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   listItem: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    shadowColor: '#1e293b',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   popularBadge: {
     backgroundColor: '#fef3c7',
-    color: '#d97706',
-    fontSize: 10,
+    color: '#b45309',
+    fontSize: 11,
     fontWeight: '700',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   pillBtn: {
-    backgroundColor: '#e2e8f0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 6,
+    marginRight: 8,
   },
   pillBtnSelected: {
-    backgroundColor: '#193867',
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
   },
   pillText: {
     color: '#475569',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   pillTextSelected: {
     color: '#ffffff',
+    fontWeight: '700',
   },
   checkRow: {
-    backgroundColor: '#f8fafc',
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: '#ffffff',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   checkRowSelected: {
-    backgroundColor: '#f0f9ff',
-    borderColor: '#bae6fd',
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'center',
     padding: 20,
   },
   modalContent: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 24,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
   },
   cancelBtn: {
     flex: 1,
     backgroundColor: '#f1f5f9',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
   },
   cancelBtnText: {
-    color: '#64748b',
-    fontWeight: '600',
+    color: '#475569',
+    fontWeight: '700',
   },
   submitBtn: {
     flex: 1,
-    backgroundColor: '#193867',
+    backgroundColor: '#2563eb',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
   },
   submitBtnText: {

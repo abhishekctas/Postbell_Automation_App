@@ -58,7 +58,7 @@ export default function PostEditorScreen() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'ai' | 'manual'>('manual');
-  const [previewTab, setPreviewTab] = useState<'facebook' | 'instagram' | 'whatsapp'>('facebook');
+  const [previewTab, setPreviewTab] = useState<string>('all');
 
   // AI Auto Post State
   const [aiPrompt, setAiPrompt] = useState('');
@@ -82,7 +82,7 @@ export default function PostEditorScreen() {
   const [imageUrl, setImageUrl] = useState('');
   const [imagePath, setImagePath] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['facebook', 'instagram']);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [postStatus, setPostStatus] = useState<'draft' | 'scheduled' | 'published'>('draft');
   const [isScheduled, setIsScheduled] = useState(false);
@@ -93,10 +93,12 @@ export default function PostEditorScreen() {
   // Platforms & Accounts Selection Modal State
   const [networksModalOpen, setNetworksModalOpen] = useState(false);
 
-  // AI Marketing Image from Reference State
+  // AI Marketing Image & Reference Media Analysis State
   const [aiMarketingGenerating, setAiMarketingGenerating] = useState(false);
   const [aiMarketingImageUrl, setAiMarketingImageUrl] = useState('');
   const [aiReferencePrompt, setAiReferencePrompt] = useState('');
+  const [aiAnalyzingRef, setAiAnalyzingRef] = useState(false);
+  const [aiRefAnalysisSummary, setAiRefAnalysisSummary] = useState('');
 
   // Content Type & Platform-Specific Overrides
   const [activePlatformTab, setActivePlatformTab] = useState<string>('general');
@@ -206,11 +208,6 @@ export default function PostEditorScreen() {
             setIsScheduled(true);
             setScheduledDate(new Date(postData.scheduled_at));
           }
-        } else if (loadedAccounts.length > 0) {
-          const autoSelected = loadedAccounts
-            .filter((acc) => ['facebook', 'instagram'].includes(acc.platform))
-            .map((acc) => acc.account_id);
-          setSelectedAccounts(autoSelected);
         }
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Failed to load post data.');
@@ -225,7 +222,7 @@ export default function PostEditorScreen() {
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
       });
@@ -353,6 +350,33 @@ export default function PostEditorScreen() {
     }
   };
 
+  // AI Reference Media Analysis Handler
+  const handleAnalyzeReferenceMedia = async () => {
+    if (!aiRefImage) {
+      Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
+      return;
+    }
+    setAiAnalyzingRef(true);
+    try {
+      const res = await analyzeReferenceMedia(aiRefImage);
+      const summary =
+        res?.summary || res?.data?.summary || res?.message || 'Reference media analyzed successfully.';
+      setAiRefAnalysisSummary(summary);
+      if (summary) {
+        setAiPrompt((prev) =>
+          prev
+            ? `${prev}\n\n[Reference Analysis: ${summary}]`
+            : `Create a post based on reference media: ${summary}`
+        );
+      }
+      Alert.alert('Analysis Complete', summary);
+    } catch (err: any) {
+      Alert.alert('Analysis Error', err.message || 'Failed to analyze reference media.');
+    } finally {
+      setAiAnalyzingRef(false);
+    }
+  };
+
   // Form Validation
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -403,6 +427,15 @@ export default function PostEditorScreen() {
         }
       });
 
+      const formatWebsiteUrl = (urlStr?: string) => {
+        if (!urlStr || !urlStr.trim()) return undefined;
+        const trimmed = urlStr.trim();
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        return `https://${trimmed}`;
+      };
+
+      const formattedWebsite = formatWebsiteUrl(companyWebsite);
+
       // Build platformSpecificContent
       const platformSpecificContentObj: Record<string, any[]> = {};
       selectedPlatforms.forEach((platform) => {
@@ -413,10 +446,12 @@ export default function PostEditorScreen() {
         const platformContentType =
           override.contentType || contentTypeOverrides[platform] || 'media';
 
+        const platformLink = formatWebsiteUrl(override.link) || formattedWebsite;
+
         platformSpecificContentObj[platform] = platformAccs.map((acc) => ({
           account_id: acc.account_id,
           caption: override.caption || caption || '',
-          link: override.link || companyWebsite || '',
+          link: platformLink || '',
           hashtags: override.hashtags || hashtagsArray,
           mediaUrl: override.image_url || imageUrl || '',
           contentType: platformContentType,
@@ -430,7 +465,7 @@ export default function PostEditorScreen() {
         company_name: companyName || '',
         company_email: companyEmail || '',
         company_phone: companyPhone || '',
-        company_website: companyWebsite || '',
+        company_website: formattedWebsite || '',
         caption,
         hashtags: hashtagsArray,
         selectedNetworks: selectedPlatforms,
@@ -439,15 +474,15 @@ export default function PostEditorScreen() {
         image_path: imagePath || imageUrl || undefined,
         generalContent: {
           caption,
-          link: companyWebsite || '',
+          link: formattedWebsite || '',
           media: imageUrl
             ? [
-                {
-                  type: 'image',
-                  url: imageUrl,
-                  imagePath: imagePath || imageUrl,
-                },
-              ]
+              {
+                type: 'image',
+                url: imageUrl,
+                imagePath: imagePath || imageUrl,
+              },
+            ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -648,20 +683,47 @@ export default function PostEditorScreen() {
                 )}
 
                 {aiRefImage ? (
-                  <TouchableOpacity
-                    style={[styles.primaryBtn, { backgroundColor: '#7c3aed', marginTop: 10 }]}
-                    onPress={handleGenerateAiMarketingImage}
-                    disabled={aiMarketingGenerating}
-                  >
-                    {aiMarketingGenerating ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <>
-                        <Feather name="image" size={16} color="#fff" style={{ marginRight: 6 }} />
-                        <Text style={styles.primaryBtnText}>Generate AI Marketing Image</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                  <VStack space="xs" style={{ marginTop: 10 }}>
+                    <HStack space="xs">
+                      <TouchableOpacity
+                        style={[styles.primaryBtn, { backgroundColor: '#0284c7', flex: 1 }]}
+                        onPress={handleAnalyzeReferenceMedia}
+                        disabled={aiAnalyzingRef}
+                      >
+                        {aiAnalyzingRef ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <>
+                            <Feather name="search" size={14} color="#fff" style={{ marginRight: 4 }} />
+                            <Text style={[styles.primaryBtnText, { fontSize: 12 }]}>Analyze Media</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.primaryBtn, { backgroundColor: '#7c3aed', flex: 1 }]}
+                        onPress={handleGenerateAiMarketingImage}
+                        disabled={aiMarketingGenerating}
+                      >
+                        {aiMarketingGenerating ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <>
+                            <Feather name="image" size={14} color="#fff" style={{ marginRight: 4 }} />
+                            <Text style={[styles.primaryBtnText, { fontSize: 12 }]}>Generate AI Image</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </HStack>
+
+                    {aiRefAnalysisSummary ? (
+                      <Box style={{ backgroundColor: '#f0f9ff', padding: 8, borderRadius: 6, borderWidth: 1, borderColor: '#bae6fd', marginTop: 4 }}>
+                        <Text style={{ fontSize: 11, color: '#0369a1', fontWeight: '600' }}>
+                          🔍 Analysis Summary: {aiRefAnalysisSummary}
+                        </Text>
+                      </Box>
+                    ) : null}
+                  </VStack>
                 ) : null}
               </VStack>
 
@@ -739,19 +801,6 @@ export default function PostEditorScreen() {
                 <Heading size="sm" style={styles.cardTitle}>
                   🌐 Select Target Social Platforms *
                 </Heading>
-                <TouchableOpacity
-                  onPress={() => setNetworksModalOpen(true)}
-                  style={{
-                    backgroundColor: '#eff6ff',
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 6,
-                  }}
-                >
-                  <Text style={{ fontSize: 11, color: '#2563eb', fontWeight: '700' }}>
-                    ⚙️ Manage Accounts
-                  </Text>
-                </TouchableOpacity>
               </HStack>
               {errors.platforms && <Text style={styles.errorText}>{errors.platforms}</Text>}
 
@@ -842,6 +891,28 @@ export default function PostEditorScreen() {
                 </VStack>
               )}
             </Box>
+
+            <TouchableOpacity
+              onPress={() => setNetworksModalOpen(true)}
+              style={{
+                backgroundColor: "#2563EB",
+                height: 42,
+                paddingHorizontal: 18,
+                borderRadius: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#2563EB",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.25,
+                shadowRadius: 8,
+                elevation: 5,
+              }}
+            >
+              <Text style={{ fontSize: 15, color: '#fff', fontWeight: '900' }}>
+                ⚙️ Plateform
+              </Text>
+            </TouchableOpacity>
 
             {/* Media Upload Section */}
             <Box style={styles.card}>
@@ -1207,216 +1278,328 @@ export default function PostEditorScreen() {
               )}
             </Box>
 
-            {/* Live Social Post Preview Card */}
+            {/* Live Social Post Preview Panel (Per Platform & Per Account matching Control Panel) */}
             <Box style={styles.card}>
-              <HStack className="mb-3 items-center justify-between">
-                <Heading size="sm" style={styles.cardTitle}>
-                  👁 Live Social Feed Preview
-                </Heading>
-                <HStack space="xs">
-                  {SOCIAL_PLATFORMS.map((p) => {
-                    const isSelected = previewTab === p.id;
-                    return (
-                      <TouchableOpacity
-                        key={p.id}
-                        style={[styles.miniPrevTab, isSelected && styles.miniPrevTabActive]}
-                        onPress={() => {
-                          setPreviewTab(p.id as any);
-                          // Auto select first account for platform if available
-                          const acc = socialAccounts.find((a) => a.platform === p.id);
-                          if (acc) setPreviewAccountId(acc.account_id);
-                        }}
-                      >
-                        <FontAwesome
-                          name={p.icon as any}
-                          size={14}
-                          color={isSelected ? p.color : '#64748b'}
-                        />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </HStack>
-              </HStack>
+              <VStack space="xs" className="mb-3">
+                <HStack className="items-center justify-between">
+                  <Heading size="sm" style={styles.cardTitle}>
+                    👁 Live Social Feed Preview
+                  </Heading>
 
-              {/* Account Selector Tabs for Preview */}
-              {(() => {
-                const platformAccounts = socialAccounts.filter(
-                  (a) => a.platform === previewTab && selectedAccounts.includes(a.account_id)
-                );
-                if (platformAccounts.length <= 1) return null;
-                return (
+                  {/* Filter tabs: All, Facebook, Instagram, WhatsApp, etc. */}
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ marginBottom: 10, gap: 4 }}
+                    contentContainerStyle={{ gap: 4 }}
                   >
-                    {platformAccounts.map((acc) => {
-                      const isActive = (previewAccountId || platformAccounts[0]?.account_id) === acc.account_id;
+                    <TouchableOpacity
+                      style={[
+                        styles.miniPrevTab,
+                        previewTab === 'all' && styles.miniPrevTabActive,
+                      ]}
+                      onPress={() => setPreviewTab('all')}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '700',
+                          color: previewTab === 'all' ? '#0052d4' : '#64748b',
+                        }}
+                      >
+                        ALL
+                      </Text>
+                    </TouchableOpacity>
+                    {SOCIAL_PLATFORMS.map((p) => {
+                      const isSelected = previewTab === p.id;
                       return (
                         <TouchableOpacity
-                          key={acc.account_id}
-                          style={[
-                            styles.accountPill,
-                            isActive && styles.accountPillActive,
-                            { paddingVertical: 3, paddingHorizontal: 8 },
-                          ]}
-                          onPress={() => setPreviewAccountId(acc.account_id)}
+                          key={p.id}
+                          style={[styles.miniPrevTab, isSelected && styles.miniPrevTabActive]}
+                          onPress={() => setPreviewTab(p.id)}
                         >
-                          <Text
-                            style={[
-                              styles.accountPillText,
-                              isActive && styles.accountPillTextActive,
-                            ]}
-                          >
-                            @{acc.username || acc.account_name}
-                          </Text>
+                          <FontAwesome
+                            name={p.icon as any}
+                            size={13}
+                            color={isSelected ? p.color : '#64748b'}
+                          />
                         </TouchableOpacity>
                       );
                     })}
                   </ScrollView>
-                );
-              })()}
+                </HStack>
+                <Text style={{ fontSize: 11, color: '#64748b' }}>
+                  Per Platform & Per Account Preview
+                </Text>
+              </VStack>
 
-              {/* Mock Social Post Container */}
+              {/* Preview Content Listing */}
               {(() => {
-                const activePlatformConfig =
-                  SOCIAL_PLATFORMS.find((p) => p.id === previewTab) || SOCIAL_PLATFORMS[0];
-                const platformAccs = socialAccounts.filter((a) => a.platform === previewTab);
-                const activeAccount =
-                  platformAccs.find((a) => a.account_id === previewAccountId) ||
-                  platformAccs[0] ||
-                  null;
+                // Check if any image is uploaded (general or platform specific)
+                const hasImageUploaded = Boolean(
+                  imageUrl ||
+                  imagePath ||
+                  Object.values(platformOverrides).some((o) => Boolean(o?.image_url))
+                );
 
-                const accountName =
-                  activeAccount?.account_name ||
-                  (activeAccount?.first_name
-                    ? `${activeAccount.first_name} ${activeAccount.last_name || ''}`
-                    : companyName || 'Postbell Official');
+                // If no platforms are selected
+                if (selectedPlatforms.length === 0) {
+                  return (
+                    <Box style={{ paddingVertical: 24, alignItems: 'center', justifyContent: 'center' }}>
+                      <Feather name="eye-off" size={32} color="#cbd5e1" />
+                      <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, fontStyle: 'italic', textAlign: 'center' }}>
+                        Select target social platforms in '⚙️ Platform' modal to see preview
+                      </Text>
+                    </Box>
+                  );
+                }
 
-                const override = platformOverrides[previewTab] || {};
-                const displayCaption = override.caption || caption || '';
-                const displayImage = override.image_url || imageUrl || '';
-                const displayLink = override.link || companyWebsite || '';
-                const activeContentType =
-                  override.contentType || contentTypeOverrides[previewTab] || 'media';
+                // If platforms selected but no image uploaded yet
+                if (!hasImageUploaded) {
+                  return (
+                    <Box style={{ paddingVertical: 24, alignItems: 'center', justifyContent: 'center' }}>
+                      <Feather name="image" size={32} color="#cbd5e1" />
+                      <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, fontStyle: 'italic', textAlign: 'center' }}>
+                        Upload an image to see live post preview
+                      </Text>
+                    </Box>
+                  );
+                }
+
+                // Filter active platforms to show based on previewTab
+                const activeNetworks =
+                  previewTab === 'all'
+                    ? selectedPlatforms
+                    : selectedPlatforms.filter((net) => net === previewTab);
+
+                if (activeNetworks.length === 0) {
+                  return (
+                    <Box style={{ paddingVertical: 18, alignItems: 'center', justifyContent: 'center' }}>
+                      <Feather name="info" size={24} color="#94a3b8" />
+                      <Text style={{ fontSize: 12, color: '#64748b', marginTop: 6, textAlign: 'center' }}>
+                        Platform '{previewTab.toUpperCase()}' is not selected in target social platforms.
+                      </Text>
+                    </Box>
+                  );
+                }
 
                 return (
-                  <Box style={styles.mockFeedCard}>
-                    {/* User Header */}
-                    <HStack space="sm" className="mb-2 items-center justify-between">
-                      <HStack space="sm" className="items-center">
-                        <Box
-                          style={[
-                            styles.mockAvatar,
-                            { backgroundColor: activePlatformConfig.color },
-                          ]}
-                        >
-                          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>
-                            {accountName.slice(0, 2).toUpperCase()}
-                          </Text>
-                        </Box>
-                        <VStack>
-                          <HStack space="xs" className="items-center">
-                            <Text style={{ fontWeight: '700', fontSize: 13, color: '#0f172a' }}>
-                              {accountName}
+                  <VStack space="md">
+                    {activeNetworks.map((network) => {
+                      const platformConfig =
+                        SOCIAL_PLATFORMS.find((p) => p.id === network) || {
+                          id: network,
+                          label: network.charAt(0).toUpperCase() + network.slice(1),
+                          icon: 'share-2',
+                          color: '#0052d4',
+                        };
+
+                      // Get all accounts selected for this platform
+                      const platformAccounts = socialAccounts.filter(
+                        (a) => a.platform === network && selectedAccounts.includes(a.account_id)
+                      );
+
+                      // Helper function to render a single preview card for a given account entry or default platform preview
+                      const renderCard = (acct: any | null) => {
+                        const accountId = acct?.account_id || 'default';
+                        const accountName =
+                          acct?.account_name ||
+                          (acct?.first_name ? `${acct.first_name} ${acct.last_name || ''}`.trim() : '') ||
+                          acct?.username ||
+                          companyName ||
+                          platformConfig.label;
+
+                        const override = platformOverrides[network] || {};
+                        const acctCaption = override.caption || caption || '';
+                        const acctMediaUrl = override.image_url || imageUrl || imagePath || '';
+                        const acctLink = override.link || companyWebsite || '';
+                        const acctHashtags: string[] =
+                          override.hashtags ||
+                          hashtagsInput
+                            .split(',')
+                            .map((t) => t.trim().replace(/^#/, ''))
+                            .filter(Boolean);
+
+                        const activeContentType =
+                          override.contentType || contentTypeOverrides[network] || 'media';
+
+                        return (
+                          <Box
+                            key={`${network}-${accountId}`}
+                            style={[
+                              styles.mockFeedCard,
+                              {
+                                borderColor: `${platformConfig.color}40`,
+                                borderWidth: 1,
+                                borderRadius: 12,
+                                marginBottom: 10,
+                                backgroundColor: '#ffffff',
+                                overflow: 'hidden',
+                                padding: 12,
+                              },
+                            ]}
+                          >
+                            {/* Card Header (Panel lines 5552-5616) */}
+                            <HStack className="mb-2 items-center justify-between pb-2" style={{ borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+                              <HStack space="xs" className="items-center" style={{ flex: 1 }}>
+                                <Box
+                                  style={[
+                                    styles.mockAvatar,
+                                    { backgroundColor: platformConfig.color, width: 32, height: 32, borderRadius: 16 },
+                                  ]}
+                                >
+                                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>
+                                    {accountName.slice(0, 2).toUpperCase()}
+                                  </Text>
+                                </Box>
+                                <VStack style={{ flex: 1, marginLeft: 4 }}>
+                                  <HStack space="xs" className="items-center">
+                                    <Text style={{ fontWeight: '700', fontSize: 13, color: '#0f172a' }} numberOfLines={1}>
+                                      {accountName}
+                                    </Text>
+                                    <FontAwesome
+                                      name={platformConfig.icon as any}
+                                      size={12}
+                                      color={platformConfig.color}
+                                    />
+                                  </HStack>
+                                  <Text style={{ fontSize: 10, color: '#64748b' }}>
+                                    {acct?.username ? `@${acct.username} • ` : ''}{platformConfig.label} Preview
+                                  </Text>
+                                </VStack>
+                              </HStack>
+
+                              <Box
+                                style={{
+                                  backgroundColor: `${platformConfig.color}15`,
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 2,
+                                  borderRadius: 10,
+                                }}
+                              >
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: platformConfig.color }}>
+                                  {platformConfig.label}
+                                </Text>
+                              </Box>
+                            </HStack>
+
+                            {/* Post Title / Name (If entered) */}
+                            {title ? (
+                              <Text
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: '700',
+                                  color: '#0f172a',
+                                  marginBottom: 6,
+                                  marginTop: 2,
+                                }}
+                              >
+                                📌 {title}
+                              </Text>
+                            ) : null}
+
+                            {/* Media Image (Panel lines 5618-5642) */}
+                            {acctMediaUrl ? (
+                              <Box style={{ borderRadius: 8, overflow: 'hidden', marginBottom: 8, marginTop: 2 }}>
+                                <Image
+                                  source={{ uri: acctMediaUrl }}
+                                  style={styles.mockPostImage}
+                                  resizeMode="cover"
+                                />
+                              </Box>
+                            ) : (
+                              <Box
+                                style={{
+                                  height: 120,
+                                  borderRadius: 8,
+                                  backgroundColor: '#f8fafc',
+                                  borderWidth: 1,
+                                  borderColor: '#e2e8f0',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  marginBottom: 8,
+                                  marginTop: 2,
+                                }}
+                              >
+                                <Feather name="image" size={26} color="#cbd5e1" />
+                                <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                                  No image attached
+                                </Text>
+                              </Box>
+                            )}
+
+                            {/* Post Description / Caption (Panel lines 5644-5664) */}
+                            <Text
+                              style={{
+                                fontSize: 13,
+                                color: acctCaption ? '#1e293b' : '#94a3b8',
+                                fontStyle: acctCaption ? 'normal' : 'italic',
+                                lineHeight: 18,
+                                marginBottom: 6,
+                              }}
+                            >
+                              {acctCaption || 'Your post description / caption will appear here...'}
                             </Text>
-                            <FontAwesome
-                              name={activePlatformConfig.icon as any}
-                              size={12}
-                              color={activePlatformConfig.color}
-                            />
-                          </HStack>
-                          <Text style={{ fontSize: 10, color: '#64748b' }}>
-                            {activeAccount?.username ? `@${activeAccount.username} • ` : ''}Just now • 🌎
-                          </Text>
-                        </VStack>
-                      </HStack>
 
-                      {/* Content Type Badge */}
-                      <Box
-                        style={{
-                          backgroundColor: '#f1f5f9',
-                          paddingHorizontal: 8,
-                          paddingVertical: 2,
-                          borderRadius: 6,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 10,
-                            fontWeight: '700',
-                            color: '#475569',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {activeContentType}
-                        </Text>
-                      </Box>
-                    </HStack>
+                            {/* Website Link Banner */}
+                            {acctLink ? (
+                              <View
+                                style={{
+                                  backgroundColor: '#eff6ff',
+                                  borderWidth: 1,
+                                  borderColor: '#bfdbfe',
+                                  paddingHorizontal: 8,
+                                  paddingVertical: 5,
+                                  borderRadius: 6,
+                                  marginBottom: 6,
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <Feather name="link" size={12} color="#2563eb" style={{ marginRight: 5 }} />
+                                <Text style={{ fontSize: 11, color: '#1d4ed8', fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                                  {acctLink}
+                                </Text>
+                              </View>
+                            ) : null}
 
-                    {/* Caption Text */}
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        color: '#1e293b',
-                        lineHeight: 18,
-                        marginBottom: displayImage ? 8 : 4,
-                      }}
-                    >
-                      {displayCaption || 'Your post caption will appear here...'}
-                    </Text>
+                            {/* Hashtags Chips (Panel lines 5665-5686) */}
+                            {acctHashtags.length > 0 && (
+                              <HStack space="xs" className="mb-2 flex-wrap">
+                                {acctHashtags.map((tag: string, idx: number) => (
+                                  <Text key={idx} style={{ fontSize: 11, color: platformConfig.color, fontWeight: '600', marginRight: 4 }}>
+                                    #{tag.replace(/^#/, '')}
+                                  </Text>
+                                ))}
+                              </HStack>
+                            )}
 
-                    {/* Custom Link Button / Banner */}
-                    {displayLink ? (
-                      <TouchableOpacity
-                        style={{
-                          backgroundColor: '#eff6ff',
-                          borderWidth: 1,
-                          borderColor: '#bfdbfe',
-                          padding: 8,
-                          borderRadius: 8,
-                          marginBottom: 8,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Feather name="link" size={14} color="#2563eb" style={{ marginRight: 6 }} />
-                        <Text style={{ fontSize: 12, color: '#1d4ed8', fontWeight: '600', flex: 1 }} numberOfLines={1}>
-                          {displayLink}
-                        </Text>
-                      </TouchableOpacity>
-                    ) : null}
+                            {/* Action Bar Footer (Panel lines 5689-5736) */}
+                            <View style={{ borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 6, marginTop: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <HStack space="sm" className="items-center">
+                                <FontAwesome name="heart-o" size={13} color="#64748b" />
+                                <FontAwesome name="comment-o" size={13} color="#64748b" style={{ marginLeft: 8 }} />
+                                <FontAwesome name="share" size={13} color="#64748b" style={{ marginLeft: 8 }} />
+                              </HStack>
+                              <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '600' }}>
+                                {acctMediaUrl ? '1 image' : `${activeContentType} post`}
+                              </Text>
+                            </View>
+                          </Box>
+                        );
+                      };
 
-                    {/* Image */}
-                    {displayImage ? (
-                      <Image
-                        source={{ uri: displayImage }}
-                        style={styles.mockPostImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Box style={styles.mockImagePlaceholder}>
-                        <Feather name="image" size={24} color="#cbd5e1" />
-                      </Box>
-                    )}
+                      if (platformAccounts.length > 0) {
+                        return (
+                          <VStack key={network} space="xs">
+                            {platformAccounts.map((acct) => renderCard(acct))}
+                          </VStack>
+                        );
+                      }
 
-                    {/* Hashtags */}
-                    {hashtagsInput.trim().length > 0 && (
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          color: '#2563eb',
-                          marginTop: 6,
-                          fontWeight: '600',
-                        }}
-                      >
-                        {hashtagsInput
-                          .split(',')
-                          .map((t) => '#' + t.trim().replace(/^#/, ''))
-                          .join(' ')}
-                      </Text>
-                    )}
-                  </Box>
+                      // If no specific account checkbox selected yet, render platform default preview card with form values
+                      return renderCard(null);
+                    })}
+                  </VStack>
                 );
               })()}
             </Box>
@@ -1599,7 +1782,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 16,
+    padding: 13,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -1766,7 +1949,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 3,
     borderRadius: 20,
     backgroundColor: '#f1f5f9',
     borderWidth: 1,

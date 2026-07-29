@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   StyleSheet,
   TextInput,
-  Platform,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';

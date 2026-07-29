@@ -8,6 +8,8 @@ import {
   Dimensions,
   View,
   Image,
+  Alert,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Box } from '@/components/ui/box';
@@ -50,16 +52,12 @@ function StatCard({
   iconColor,
   value,
   label,
-  badgeText,
-  badgeColor,
 }: {
   icon: string;
   iconBg: string;
   iconColor: string;
   value: number | string;
   label: string;
-  badgeText?: string;
-  badgeColor?: string;
 }) {
   return (
     <View style={styles.statCard}>
@@ -328,7 +326,7 @@ const renderPlatformIcons = (platform: string | string[]) => {
 };
 
 export default function CustomerDashboard() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -424,6 +422,19 @@ export default function CustomerDashboard() {
 
   const connectedCount = customerPlatforms.filter((p) => p.status === 'Connected').length;
 
+  const handleSignOut = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to sign out?')) {
+        signOut();
+      }
+    } else {
+      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
+      ]);
+    }
+  };
+
   return (
     <Box style={styles.container}>
       {/* Dynamic Header Banner */}
@@ -433,7 +444,6 @@ export default function CustomerDashboard() {
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
-        {/* Subtle Decorative Ambient Circles */}
         <View style={styles.headerDecorationCircle1} />
         <View style={styles.headerDecorationCircle2} />
 
@@ -465,13 +475,11 @@ export default function CustomerDashboard() {
               </View>
             </VStack>
           </HStack>
-
           <TouchableOpacity
-            style={styles.profileBtn}
-            onPress={() => router.push('/pages/generalSetting/general-settings')}
-            activeOpacity={0.8}
+            onPress={handleSignOut}
+            style={styles.headerIconButton}
           >
-            <Feather name="settings" size={19} color="#ffffff" />
+            <Feather name="log-out" size={18} color="white" />
           </TouchableOpacity>
         </HStack>
       </LinearGradient>
@@ -681,80 +689,80 @@ export default function CustomerDashboard() {
           <VStack space="sm">
             {recentPosts.length > 0
               ? recentPosts.map((post) => (
-                  <View key={post.id} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
-                    <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <VStack style={{ flex: 1, paddingRight: 10 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
-                          {post.title || 'Untitled Post'}
+                <View key={post.id} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
+                  <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <VStack style={{ flex: 1, paddingRight: 10 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
+                        {post.title || 'Untitled Post'}
+                      </Text>
+                      <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
+                        {renderPlatformIcons(post.platform || [])}
+                        <View style={styles.timeDivider} />
+                        <Feather
+                          name="clock"
+                          size={11}
+                          color="#94a3b8"
+                          style={{ marginRight: 3 }}
+                        />
+                        <Text style={{ fontSize: 11, color: '#64748b' }}>
+                          {formatDate(post.date || '')}
                         </Text>
-                        <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
-                          {renderPlatformIcons(post.platform || [])}
-                          <View style={styles.timeDivider} />
-                          <Feather
-                            name="clock"
-                            size={11}
-                            color="#94a3b8"
-                            style={{ marginRight: 3 }}
-                          />
-                          <Text style={{ fontSize: 11, color: '#64748b' }}>
-                            {formatDate(post.date || '')}
-                          </Text>
-                        </HStack>
-                      </VStack>
-                      <StatusBadge status={post.status || 'published'} />
-                    </HStack>
-                  </View>
-                ))
+                      </HStack>
+                    </VStack>
+                    <StatusBadge status={post.status || 'published'} />
+                  </HStack>
+                </View>
+              ))
               : [
-                  {
-                    title: 'Diwali Special Offer Banner',
-                    platform: ['instagram', 'facebook'],
-                    date: new Date().toISOString(),
-                    status: 'published',
-                  },
-                  {
-                    title: 'New Product Teaser Story',
-                    platform: ['instagram'],
-                    date: new Date(Date.now() - 3600000 * 2).toISOString(),
-                    status: 'scheduled',
-                  },
-                  {
-                    title: 'Weekend Promotion Broadcast',
-                    platform: ['whatsapp'],
-                    date: new Date(Date.now() - 3600000 * 5).toISOString(),
-                    status: 'published',
-                  },
-                  {
-                    title: 'Customer Festival Wishes Post',
-                    platform: ['facebook', 'twitter'],
-                    date: new Date(Date.now() - 3600000 * 24).toISOString(),
-                    status: 'draft',
-                  },
-                ].map((item, idx) => (
-                  <View key={idx} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
-                    <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <VStack style={{ flex: 1, paddingRight: 10 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
-                          {item.title}
+                {
+                  title: 'Diwali Special Offer Banner',
+                  platform: ['instagram', 'facebook'],
+                  date: new Date().toISOString(),
+                  status: 'published',
+                },
+                {
+                  title: 'New Product Teaser Story',
+                  platform: ['instagram'],
+                  date: new Date(Date.now() - 3600000 * 2).toISOString(),
+                  status: 'scheduled',
+                },
+                {
+                  title: 'Weekend Promotion Broadcast',
+                  platform: ['whatsapp'],
+                  date: new Date(Date.now() - 3600000 * 5).toISOString(),
+                  status: 'published',
+                },
+                {
+                  title: 'Customer Festival Wishes Post',
+                  platform: ['facebook', 'twitter'],
+                  date: new Date(Date.now() - 3600000 * 24).toISOString(),
+                  status: 'draft',
+                },
+              ].map((item, idx) => (
+                <View key={idx} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
+                  <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <VStack style={{ flex: 1, paddingRight: 10 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
+                        {item.title}
+                      </Text>
+                      <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
+                        {renderPlatformIcons(item.platform)}
+                        <View style={styles.timeDivider} />
+                        <Feather
+                          name="clock"
+                          size={11}
+                          color="#94a3b8"
+                          style={{ marginRight: 3 }}
+                        />
+                        <Text style={{ fontSize: 11, color: '#64748b' }}>
+                          {formatDate(item.date)}
                         </Text>
-                        <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
-                          {renderPlatformIcons(item.platform)}
-                          <View style={styles.timeDivider} />
-                          <Feather
-                            name="clock"
-                            size={11}
-                            color="#94a3b8"
-                            style={{ marginRight: 3 }}
-                          />
-                          <Text style={{ fontSize: 11, color: '#64748b' }}>
-                            {formatDate(item.date)}
-                          </Text>
-                        </HStack>
-                      </VStack>
-                      <StatusBadge status={item.status} />
-                    </HStack>
-                  </View>
-                ))}
+                      </HStack>
+                    </VStack>
+                    <StatusBadge status={item.status} />
+                  </HStack>
+                </View>
+              ))}
           </VStack>
         </VStack>
       </ScrollView>
@@ -881,7 +889,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#ffffff',
   },
-  profileBtn: {
+  headerIconButton: {
     width: 40,
     height: 40,
     borderRadius: 12,
@@ -890,8 +898,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
-
   scrollContent: {
     padding: 16,
     paddingBottom: 40,

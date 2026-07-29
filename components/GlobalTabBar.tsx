@@ -214,10 +214,10 @@ export default function GlobalTabBar() {
       const hasAccess = sectionMatrix.some((matrix: any) => {
         const secName = String(
           matrix.section_name ||
-            matrix.sectionId?.name ||
-            matrix.sectionId?.title ||
-            matrix.sectionId ||
-            ''
+          matrix.sectionId?.name ||
+          matrix.sectionId?.title ||
+          matrix.sectionId ||
+          ''
         );
         const secTitle = String(matrix.sectionId?.title || '');
         const perms = matrix.permissions || [];
@@ -268,7 +268,7 @@ export default function GlobalTabBar() {
             activeOpacity={0.7}
           >
             <Feather
-              name="file-text"
+              name="edit"
               size={21}
               color={getIsActive(1) ? activeColor : inactiveColor}
             />

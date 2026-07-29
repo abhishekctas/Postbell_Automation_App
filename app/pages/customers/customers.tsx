@@ -306,18 +306,30 @@ export default function CustomersScreen() {
 
     try {
       const payload: any = {
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        contact_no: contactNo,
-        gender: gender,
-        dob: dob,
-        status: status,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim(),
+        gender: Number(gender) || 1,
+        status: Number(status) ?? 1,
       };
+
+      if (contactNo && contactNo.trim()) {
+        const parsedContact = Number(contactNo.trim());
+        if (isNaN(parsedContact)) {
+          Alert.alert('Validation Error', 'Contact number must be a valid number.');
+          return;
+        }
+        payload.contact_no = parsedContact;
+      }
+
+      if (dob && dob.trim()) {
+        payload.dob = dob.trim();
+      }
 
       if (password.trim()) {
         payload.password = password;
       }
+      console.log(payload, "payload");
 
       if (editingCustomer) {
         await updateCustomer(editingCustomer._id || editingCustomer.id || '', payload);

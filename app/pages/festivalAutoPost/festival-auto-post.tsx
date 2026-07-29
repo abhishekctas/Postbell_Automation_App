@@ -1311,7 +1311,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     padding: 3,
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   tabButton: {
     flex: 1,

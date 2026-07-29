@@ -51,7 +51,7 @@ const BLOG_TABLE_COLUMNS: HtmlTableColumn<BlogPost>[] = [
       });
       return (
         <VStack style={{ justifyContent: 'center' }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>{dateStr}</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#0f172a' }}>{dateStr}</Text>
           <Text style={{ fontSize: 11, color: '#64748b' }}>{timeStr}</Text>
         </VStack>
       );
@@ -90,12 +90,12 @@ const BLOG_TABLE_COLUMNS: HtmlTableColumn<BlogPost>[] = [
               {initials}
             </Text>
           </Box>
-          <VStack style={{ justifyContent: 'center' }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b' }} numberOfLines={1}>
+          <VStack style={{ justifyContent: 'center', flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }} numberOfLines={1}>
               {title}
             </Text>
             {row.slug ? (
-              <Text style={{ fontSize: 11, color: '#64748b' }} numberOfLines={1}>
+              <Text style={{ fontSize: 11, color: '#2563eb', fontWeight: '500' }} numberOfLines={1}>
                 /{row.slug}
               </Text>
             ) : null}
@@ -118,12 +118,12 @@ const BLOG_TABLE_COLUMNS: HtmlTableColumn<BlogPost>[] = [
             paddingHorizontal: 10,
             paddingVertical: 4,
             borderRadius: 8,
-            backgroundColor: '#e5f0ff',
+            backgroundColor: '#eff6ff',
             borderWidth: 1,
-            borderColor: '#193867',
+            borderColor: '#bfdbfe',
           }}
         >
-          <Text style={{ color: '#193867', fontWeight: '700', fontSize: 12 }} numberOfLines={1}>
+          <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 12 }} numberOfLines={1}>
             {catTitle}
           </Text>
         </Box>
@@ -147,9 +147,9 @@ const BLOG_TABLE_COLUMNS: HtmlTableColumn<BlogPost>[] = [
     render: (v) => {
       const isPublished = Number(v) === 1;
       const label = isPublished ? 'Published' : 'Draft';
-      const bg = isPublished ? '#dcfce7' : '#fef9c3';
-      const color = isPublished ? '#15803d' : '#a16207';
-      const border = isPublished ? '#bbf7d0' : '#fef08a';
+      const bg = isPublished ? '#dcfce7' : '#fef3c7';
+      const color = isPublished ? '#15803d' : '#b45309';
+      const border = isPublished ? '#bbf7d0' : '#fde68a';
       return (
         <Box
           style={{
@@ -610,20 +610,26 @@ export default function BlogsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingBottom: 4 },
+  header: { paddingBottom: 16 },
   addBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
   },
-  addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  addBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
   headerIllustration: {
-    width: 70,
-    height: 70,
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
+    marginTop: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   sparkleTopLeft: {
     position: 'absolute',
@@ -646,19 +652,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   filterSection: {
-    padding: 16,
-    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
+    shadowColor: '#1e293b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchInput: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     fontSize: 14,
-    color: '#1e293b',
+    color: '#0f172a',
     backgroundColor: '#f8fafc',
   },
   listContent: { padding: 16, paddingBottom: 90 },
@@ -689,7 +701,7 @@ const styles = StyleSheet.create({
   },
   statusToggleActionText: { fontSize: 10, color: '#475569', fontWeight: '600' },
   actionBtn: {
-    backgroundColor: '#f0f7ff',
+    backgroundColor: '#eff6ff',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -700,56 +712,62 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff5f5',
     borderColor: '#fecaca',
   },
-  actionBtnText: { fontSize: 12, fontWeight: '600', color: '#193867' },
+  actionBtnText: { fontSize: 12, fontWeight: '600', color: '#1d4ed8' },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 22,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 420,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
   },
   label: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#94a3b8',
+    color: '#475569',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
+    marginBottom: 4,
   },
   modalInput: {
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: '#cbd5e1',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     fontSize: 14,
-    color: '#1e293b',
+    color: '#0f172a',
     backgroundColor: '#f8fafc',
   },
   selectBtn: {
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: '#cbd5e1',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     backgroundColor: '#f8fafc',
   },
-  selectBtnText: { fontSize: 14, color: '#1e293b' },
+  selectBtnText: { fontSize: 14, color: '#0f172a', fontWeight: '500' },
   statusToggleBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderRadius: 12,
     backgroundColor: '#f1f5f9',
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: '#cbd5e1',
   },
   statusToggleBtnActive: {
     backgroundColor: '#dcfce7',
@@ -760,27 +778,28 @@ const styles = StyleSheet.create({
     borderColor: '#fca5a5',
   },
   statusToggleText: { fontSize: 13, fontWeight: '600', color: '#64748b' },
-  statusToggleTextActive: { color: '#15803d' },
-  statusToggleTextActiveDanger: { color: '#dc2626' },
+  statusToggleTextActive: { color: '#15803d', fontWeight: '700' },
+  statusToggleTextActiveDanger: { color: '#dc2626', fontWeight: '700' },
   cancelBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f1f5f9',
     borderRadius: 12,
+    paddingVertical: 12,
   },
   cancelBtnText: { color: '#475569', fontWeight: '700', fontSize: 14 },
   selectItem: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
   closeSelectBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    marginTop: 10,
-    borderRadius: 10,
+    paddingVertical: 12,
+    marginTop: 12,
+    borderRadius: 12,
     backgroundColor: '#f1f5f9',
   },
 });

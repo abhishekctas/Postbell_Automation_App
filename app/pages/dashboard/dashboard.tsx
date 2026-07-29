@@ -8,6 +8,8 @@ import {
   Dimensions,
   Image,
   View,
+  Alert,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Box } from '@/components/ui/box';
@@ -35,7 +37,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Feather,
-  Ionicons,
   FontAwesome,
   AntDesign,
   FontAwesome6,
@@ -93,23 +94,27 @@ function StatColumn({
   iconColor,
   value,
   label,
+  onPress,
 }: {
   icon: string;
   iconBg: string;
   iconColor: string;
   value: number | string;
   label: string;
+  onPress?: () => void;
 }) {
   return (
-    <VStack style={styles.statCol} space="xs">
-      <Box style={[styles.statIconContainer, { backgroundColor: iconBg }]}>
-        <Feather name={icon as any} size={15} color={iconColor} />
-      </Box>
-      <Text style={styles.statValText}>{formatNumber(value as any)}</Text>
-      <Text style={styles.statLabelText} numberOfLines={1}>
-        {label}
-      </Text>
-    </VStack>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={{ flex: 1 }}>
+      <VStack style={styles.statCol} space="xs">
+        <Box style={[styles.statIconContainer, { backgroundColor: iconBg }]}>
+          <Feather name={icon as any} size={15} color={iconColor} />
+        </Box>
+        <Text style={styles.statValText}>{formatNumber(value as any)}</Text>
+        <Text style={styles.statLabelText} numberOfLines={1}>
+          {label}
+        </Text>
+      </VStack>
+    </TouchableOpacity>
   );
 }
 
@@ -990,6 +995,19 @@ export default function DashboardScreen() {
   // Get first name with fallback
   const firstName = user?.first_name || '';
 
+  const handleSignOut = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to sign out?')) {
+        signOut();
+      }
+    } else {
+      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
+      ]);
+    }
+  };
+
   return (
     <Box style={styles.container}>
       {/* ── HEADER BAR ──────────────────────────────────────────────────────── */}
@@ -1010,18 +1028,15 @@ export default function DashboardScreen() {
 
           {/* Notification bell and logout buttons */}
           <HStack space="md" style={styles.headerRightIcons}>
-            <TouchableOpacity style={styles.headerIconButton}>
+            {/* <TouchableOpacity style={styles.headerIconButton}>
               <Ionicons name="notifications-outline" size={20} color="white" />
               <Box style={styles.badgeCount}>
                 <Text style={styles.badgeCountText}>3</Text>
               </Box>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             <TouchableOpacity
-              onPress={async () => {
-                await signOut();
-                router.replace('/(auth)/login');
-              }}
+              onPress={handleSignOut}
               style={styles.headerIconButton}
             >
               <Feather name="log-out" size={18} color="white" />
@@ -1055,11 +1070,12 @@ export default function DashboardScreen() {
             {/* Row 1 */}
             <HStack style={styles.statsRow}>
               <StatColumn
-                icon="file-text"
+                icon="edit"
                 iconBg="#eff6ff"
                 iconColor="#3b82f6"
                 value={stats.totalPosts}
                 label="Total Posts"
+                onPress={() => router.push('/pages/posts/posts')}
               />
               <StatColumn
                 icon="check-square"
@@ -1067,6 +1083,7 @@ export default function DashboardScreen() {
                 iconColor="#16a34a"
                 value={stats.publishedPosts}
                 label="Published"
+                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'published' } })}
               />
               <StatColumn
                 icon="calendar"
@@ -1074,6 +1091,7 @@ export default function DashboardScreen() {
                 iconColor="#d97706"
                 value={stats.scheduledPosts}
                 label="Scheduled"
+                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'scheduled' } })}
               />
               <StatColumn
                 icon="edit-2"
@@ -1081,6 +1099,7 @@ export default function DashboardScreen() {
                 iconColor="#7c3aed"
                 value={stats.draftPosts}
                 label="Drafts"
+                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'draft' } })}
               />
             </HStack>
 
@@ -1095,6 +1114,7 @@ export default function DashboardScreen() {
                 iconColor="#4f46e5"
                 value={stats.totalUsers}
                 label="Active Customers"
+                onPress={() => router.push('/pages/customers/customers')}
               />
               <StatColumn
                 icon="alert-circle"
@@ -1102,6 +1122,7 @@ export default function DashboardScreen() {
                 iconColor="#dc2626"
                 value={stats.failedPosts}
                 label="Failed"
+                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'failed' } })}
               />
               <StatColumn
                 icon="layers"
@@ -1109,6 +1130,7 @@ export default function DashboardScreen() {
                 iconColor="#ea580c"
                 value={stats.partialPublishedPosts}
                 label="Partial"
+                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'partial' } })}
               />
             </HStack>
           </View>
@@ -1310,10 +1332,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -1333,7 +1357,7 @@ const styles = StyleSheet.create({
   },
   badgeCountText: {
     color: '#ffffff',
-    fontSize: 8,
+    fontSize: 4,
     fontWeight: 'bold',
   },
   headerWelcomeSection: {
