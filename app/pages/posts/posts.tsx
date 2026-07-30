@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -10,28 +10,36 @@ import {
   Platform,
   Image,
   View,
-} from "react-native";
-import { Box } from "@/components/ui/box";
-import { VStack } from "@/components/ui/vstack";
-import { HStack } from "@/components/ui/hstack";
-import { Text } from "@/components/ui/text";
-import { Heading } from "@/components/ui/heading";
-import { useAuth } from "@/context/AuthContext";
-import { listPosts, deletePost, publishPostNow, Post } from "./posts.api";
-import { Feather, FontAwesome } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+  TextInput,
+} from 'react-native';
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { HStack } from '@/components/ui/hstack';
+import { Text } from '@/components/ui/text';
+import { Heading } from '@/components/ui/heading';
+import { useAuth } from '@/context/AuthContext';
+import { listPosts, deletePost, publishPostNow, Post } from './posts.api';
+import { Feather, FontAwesome } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+
+const PLATFORMS_FILTER = [
+  { id: 'all', label: 'All Platforms' },
+  { id: 'facebook', label: 'Facebook' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'whatsapp', label: 'WhatsApp' },
+];
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 const STATUS_META: Record<string, { bg: string; color: string; label: string }> = {
-  published: { bg: "#eff6ff", color: "#3b82f6", label: "Published" },
-  scheduled: { bg: "#f0fdf4", color: "#22c55e", label: "Scheduled" },
-  draft: { bg: "#f1f5f9", color: "#64748b", label: "Draft" },
-  failed: { bg: "#fef2f2", color: "#ef4444", label: "Failed" },
-  partial: { bg: "#fef3c7", color: "#d97706", label: "Partial" },
+  published: { bg: '#eff6ff', color: '#3b82f6', label: 'Published' },
+  scheduled: { bg: '#f0fdf4', color: '#22c55e', label: 'Scheduled' },
+  draft: { bg: '#f1f5f9', color: '#64748b', label: 'Draft' },
+  failed: { bg: '#fef2f2', color: '#ef4444', label: 'Failed' },
+  partial: { bg: '#fef3c7', color: '#d97706', label: 'Partial' },
 };
 
 function StatusBadge({ status }: { status?: string }) {
-  const normStatus = (status ?? "draft").toLowerCase();
+  const normStatus = (status ?? 'draft').toLowerCase();
   const meta = STATUS_META[normStatus] ?? STATUS_META.draft;
   return (
     <Box style={[styles.badge, { backgroundColor: meta.bg }]}>
@@ -41,15 +49,9 @@ function StatusBadge({ status }: { status?: string }) {
 }
 
 // ── Filter tab ────────────────────────────────────────────────────────────────
-const FILTERS = ["all", "scheduled", "published", "failed", "partial", "draft"];
+const FILTERS = ['all', 'scheduled', 'published', 'failed', 'partial', 'draft'];
 
-function FilterTabs({
-  active,
-  onChange,
-}: {
-  active: string;
-  onChange: (f: string) => void;
-}) {
+function FilterTabs({ active, onChange }: { active: string; onChange: (f: string) => void }) {
   return (
     <View style={styles.filterTabsWrapper}>
       <FlatList
@@ -60,20 +62,16 @@ function FilterTabs({
         contentContainerStyle={styles.filterList}
         renderItem={({ item }) => {
           const isActive = active === item;
-          const displayLabel = item === "draft" ? "Drafts" : item.charAt(0).toUpperCase() + item.slice(1);
+          const displayLabel =
+            item === 'draft' ? 'Drafts' : item.charAt(0).toUpperCase() + item.slice(1);
           return (
             <TouchableOpacity
               onPress={() => onChange(item)}
               style={[styles.filterBtn, isActive && styles.filterBtnActive]}
               activeOpacity={0.8}
             >
-              <Text
-                style={[
-                  styles.filterText,
-                  isActive && styles.filterTextActive,
-                ]}
-              >
-                {displayLabel} abhi
+              <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+                {displayLabel}
               </Text>
             </TouchableOpacity>
           );
@@ -94,7 +92,7 @@ function PostCard({
   onOpenOptions: () => void;
 }) {
   const platforms = post.selectedNetworks ?? [];
-  const previewImg = typeof post.image_url === "string" ? post.image_url : undefined;
+  const previewImg = typeof post.image_url === 'string' ? post.image_url : undefined;
 
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPressCard}>
@@ -104,17 +102,21 @@ function PostCard({
           {previewImg ? (
             <Image source={{ uri: previewImg }} style={styles.cardImage} resizeMode="cover" />
           ) : (
-            <Image source={require("@/assets/images/360_image.jpg")} style={styles.cardImage} resizeMode="cover" />
+            <Image
+              source={require('@/assets/images/360_image.jpg')}
+              style={styles.cardImage}
+              resizeMode="cover"
+            />
           )}
 
           {/* Middle: Details */}
-          <VStack space="xs" style={{ flex: 1, justifyContent: "center" }}>
+          <VStack space="xs" style={{ flex: 1, justifyContent: 'center' }}>
             <Text
-              className="text-typography-900 font-bold text-sm"
+              className="text-sm font-bold text-typography-900"
               numberOfLines={2}
               style={styles.cardTitle}
             >
-              {post.title || post.caption || "Untitled Post"}
+              {post.title || post.caption || 'Untitled Post'}
             </Text>
             {post.createdAt && (
               <Text style={styles.cardDate}>
@@ -122,15 +124,15 @@ function PostCard({
                   const d = new Date(post.createdAt);
                   if (isNaN(d.getTime())) return post.createdAt;
                   return (
-                    d.toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
+                    d.toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
                     }) +
-                    " • " +
-                    d.toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
+                    ' • ' +
+                    d.toLocaleTimeString('en-IN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
                       hour12: true,
                     })
                   );
@@ -143,26 +145,26 @@ function PostCard({
               <HStack space="xs" className="mt-1 items-center">
                 {platforms.map((p, idx) => {
                   const name = p.toLowerCase();
-                  let iconName = "";
-                  let iconColor = "#64748b";
-                  if (name.includes("facebook")) {
-                    iconName = "facebook-square";
-                    iconColor = "#1877f2";
-                  } else if (name.includes("instagram")) {
-                    iconName = "instagram";
-                    iconColor = "#e1306c";
-                  } else if (name.includes("whatsapp")) {
-                    iconName = "whatsapp";
-                    iconColor = "#25d366";
-                  } else if (name.includes("twitter") || name.includes("x")) {
-                    iconName = "twitter";
-                    iconColor = "#1da1f2";
-                  } else if (name.includes("linkedin")) {
-                    iconName = "linkedin";
-                    iconColor = "#0a66c2";
-                  } else if (name.includes("youtube")) {
-                    iconName = "youtube-play";
-                    iconColor = "#ff0000";
+                  let iconName = '';
+                  let iconColor = '#64748b';
+                  if (name.includes('facebook')) {
+                    iconName = 'facebook-square';
+                    iconColor = '#1877f2';
+                  } else if (name.includes('instagram')) {
+                    iconName = 'instagram';
+                    iconColor = '#e1306c';
+                  } else if (name.includes('whatsapp')) {
+                    iconName = 'whatsapp';
+                    iconColor = '#25d366';
+                  } else if (name.includes('twitter') || name.includes('x')) {
+                    iconName = 'twitter';
+                    iconColor = '#1da1f2';
+                  } else if (name.includes('linkedin')) {
+                    iconName = 'linkedin';
+                    iconColor = '#0a66c2';
+                  } else if (name.includes('youtube')) {
+                    iconName = 'youtube-play';
+                    iconColor = '#ff0000';
                   }
                   if (!iconName) return null;
                   return (
@@ -180,8 +182,19 @@ function PostCard({
           </VStack>
 
           {/* Right: Actions and Status */}
-          <VStack style={{ alignItems: "flex-end", height: "100%", justifyContent: "space-between", minHeight: 70 }}>
-            <TouchableOpacity onPress={onOpenOptions} style={styles.moreBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <VStack
+            style={{
+              alignItems: 'flex-end',
+              height: '100%',
+              justifyContent: 'space-between',
+              minHeight: 70,
+            }}
+          >
+            <TouchableOpacity
+              onPress={onOpenOptions}
+              style={styles.moreBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Feather name="more-horizontal" size={20} color="#64748b" />
             </TouchableOpacity>
             <StatusBadge status={post.post_status} />
@@ -195,12 +208,20 @@ function PostCard({
 // ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 export default function PostsScreen() {
   const { user } = useAuth();
-  const { action } = useLocalSearchParams<{ action?: string }>();
+  const { status: statusParam } = useLocalSearchParams<{ action?: string; status?: string }>();
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState(statusParam && FILTERS.includes(statusParam) ? statusParam : 'all');
+
+  useEffect(() => {
+    if (statusParam && FILTERS.includes(statusParam)) {
+      setFilter(statusParam);
+    }
+  }, [statusParam]);
+  const [platformFilter, setPlatformFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -211,16 +232,26 @@ export default function PostsScreen() {
     async (pg = 1, reset = true) => {
       if (reset) setLoading(true);
       try {
-        const status = filter === "all" ? undefined : filter;
-        const loginType = user?.loginType || "user";
+        const status = filter === 'all' ? undefined : filter;
+        const platform = platformFilter === 'all' ? undefined : platformFilter;
+        const loginType = user?.loginType || 'user';
         const queryParams = new URLSearchParams({
           page: pg.toString(),
-          limit: "15",
+          limit: '15',
           loginType,
         });
-        if (status) {
-          queryParams.append("columnFilters", JSON.stringify({ post_status: status }));
+
+        if (searchQuery.trim()) {
+          queryParams.append('search', searchQuery.trim());
         }
+
+        const columnFiltersObj: Record<string, string> = {};
+        if (status) columnFiltersObj.post_status = status;
+        if (platform) columnFiltersObj.platform = platform;
+        if (Object.keys(columnFiltersObj).length > 0) {
+          queryParams.append('columnFilters', JSON.stringify(columnFiltersObj));
+        }
+
         const res = (await listPosts(queryParams.toString())) as any;
         const rawItems = res?.data || (Array.isArray(res) ? res : res?.results || []);
         const items: Post[] = Array.isArray(rawItems) ? rawItems : [];
@@ -233,14 +264,14 @@ export default function PostsScreen() {
         setHasMore(pg < lastPage);
         setPage(pg);
       } catch (err: any) {
-        Alert.alert("Error", err.message || "Failed to load posts.");
+        Alert.alert('Error', err.message || 'Failed to load posts.');
       } finally {
         setLoading(false);
         setRefreshing(false);
         setLoadingMore(false);
       }
     },
-    [filter, user]
+    [filter, platformFilter, searchQuery, user]
   );
 
   useFocusEffect(
@@ -261,17 +292,17 @@ export default function PostsScreen() {
   };
 
   const handleDelete = (postId: string) => {
-    Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: "Delete",
-        style: "destructive",
+        text: 'Delete',
+        style: 'destructive',
         onPress: async () => {
           try {
             await deletePost(postId);
             setPosts((prev) => prev.filter((p) => (p._id || p.id) !== postId));
           } catch {
-            Alert.alert("Error", "Failed to delete post.");
+            Alert.alert('Error', 'Failed to delete post.');
           }
         },
       },
@@ -282,20 +313,18 @@ export default function PostsScreen() {
     try {
       await publishPostNow(postId);
       setPosts((prev) =>
-        prev.map((p) =>
-          (p._id || p.id) === postId ? { ...p, post_status: "published" } : p
-        )
+        prev.map((p) => ((p._id || p.id) === postId ? { ...p, post_status: 'published' } : p))
       );
-      Alert.alert("Success", "Post published successfully!");
+      Alert.alert('Success', 'Post published successfully!');
     } catch {
-      Alert.alert("Error", "Failed to publish post.");
+      Alert.alert('Error', 'Failed to publish post.');
     }
   };
 
   const navigateToDetails = (postId?: string) => {
     if (!postId) return;
     router.push({
-      pathname: "/pages/posts/post-details",
+      pathname: '/pages/posts/post-details',
       params: { id: postId },
     });
   };
@@ -303,20 +332,20 @@ export default function PostsScreen() {
   const navigateToEditor = (postId?: string) => {
     if (postId) {
       router.push({
-        pathname: "/pages/posts/post-editor",
+        pathname: '/pages/posts/post-editor',
         params: { id: postId },
       });
     } else {
-      router.push("/pages/posts/post-editor");
+      router.push('/pages/posts/post-editor');
     }
   };
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
-      <Box style={styles.header} className="px-5 pt-14 pb-4">
-        <HStack className="justify-between items-center pb-4">
-          <Heading size="xl" style={{ color: "#fff", fontWeight: "700" }}>
+      <Box style={styles.header} className="px-5 pb-4 pt-14">
+        <HStack className="items-center justify-between pb-1">
+          <Heading size="xl" style={{ color: '#fff', fontWeight: '700' }}>
             Posts
           </Heading>
           <HStack space="md" className="items-center">
@@ -325,10 +354,59 @@ export default function PostsScreen() {
             </TouchableOpacity>
           </HStack>
         </HStack>
+
+        {/* Search Bar */}
+        <Box style={styles.searchContainer}>
+          <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search posts..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={(text) => setSearchQuery(text)}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Feather name="x" size={16} color="#94a3b8" />
+            </TouchableOpacity>
+          )}
+        </Box>
       </Box>
 
-      {/* Filters */}
+      {/* Status Filters */}
       <FilterTabs active={filter} onChange={(f) => setFilter(f)} />
+
+      {/* Platform Filter Pills */}
+      <View style={styles.platformFilterRow}>
+        <FlatList
+          horizontal
+          data={PLATFORMS_FILTER}
+          keyExtractor={(item) => item.id}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+          renderItem={({ item }) => {
+            const isActive = platformFilter === item.id;
+            return (
+              <TouchableOpacity
+                onPress={() => setPlatformFilter(item.id)}
+                style={[
+                  styles.platformChip,
+                  isActive && styles.platformChipActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.platformChipText,
+                    isActive && styles.platformChipTextActive,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
 
       {/* List */}
       {loading ? (
@@ -342,28 +420,18 @@ export default function PostsScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#0052d4"
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0052d4" />
           }
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
             <Box className="items-center justify-center py-20">
-              <Text className="text-typography-400 text-base">
-                No posts found
-              </Text>
+              <Text className="text-base text-typography-400">No posts found</Text>
             </Box>
           }
           ListFooterComponent={
             loadingMore ? (
-              <ActivityIndicator
-                size="small"
-                color="#0052d4"
-                style={{ marginVertical: 20 }}
-              />
+              <ActivityIndicator size="small" color="#0052d4" style={{ marginVertical: 20 }} />
             ) : null
           }
           renderItem={({ item }) => (
@@ -393,7 +461,7 @@ export default function PostsScreen() {
         >
           <Box style={styles.optionsModalCard}>
             <Text style={styles.optionsModalTitle} numberOfLines={1}>
-              {actionPost?.title || actionPost?.caption || "Post Actions"}
+              {actionPost?.title || actionPost?.caption || 'Post Actions'}
             </Text>
 
             <TouchableOpacity
@@ -409,7 +477,7 @@ export default function PostsScreen() {
               <Text style={styles.optionItemText}>View Details</Text>
             </TouchableOpacity>
 
-            {actionPost?.post_status === "draft" && (
+            {actionPost?.post_status === 'draft' && (
               <TouchableOpacity
                 style={styles.optionItem}
                 onPress={() => {
@@ -450,7 +518,7 @@ export default function PostsScreen() {
               }}
             >
               <Feather name="trash-2" size={18} color="#dc2626" style={{ marginRight: 12 }} />
-              <Text style={[styles.optionItemText, { color: "#dc2626" }]}>Delete Post</Text>
+              <Text style={[styles.optionItemText, { color: '#dc2626' }]}>Delete Post</Text>
             </TouchableOpacity>
           </Box>
         </TouchableOpacity>
@@ -461,132 +529,168 @@ export default function PostsScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#0052d4",
+    backgroundColor: '#0052d4',
     paddingBottom: 4,
   },
   addBtn: {
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  addBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   filterTabsWrapper: {
     height: 54,
-    justifyContent: "center",
-    backgroundColor: "#f8fafc",
+    justifyContent: 'center',
+    backgroundColor: '#f8fafc',
   },
   filterList: {
     paddingHorizontal: 16,
-    paddingVertical: 9,
-    alignItems: "center",
+    alignItems: 'center',
   },
   filterBtn: {
-    height: 36,
+    // height: 36,
     paddingHorizontal: 18,
-    borderRadius: 12,
-    backgroundColor: "#ffffff",
+    paddingVertical: 8,
+    borderRadius: 9,
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 6,
   },
   filterBtnActive: {
-    backgroundColor: "#0052d4",
-    borderColor: "#0052d4",
+    backgroundColor: '#0052d4',
+    borderColor: '#0052d4',
   },
   filterText: {
     fontSize: 13,
-    color: "#64748b",
-    fontWeight: "600",
+    color: '#64748b',
+    fontWeight: '600',
     lineHeight: 18,
   },
   filterTextActive: {
-    color: "#ffffff",
+    color: '#ffffff',
   },
   listContent: {
     padding: 16,
     paddingBottom: 80,
   },
   postCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 14,
+    padding: 10,
     marginBottom: 12,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
   cardImage: {
-    width: 68,
-    height: 68,
+    width: 88,
+    height: 88,
     borderRadius: 12,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: '#f1f5f9',
   },
   cardImagePlaceholder: {
     width: 68,
     height: 68,
     borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardTitle: {
     fontSize: 14,
-    color: "#0f172a",
-    fontWeight: "700",
+    color: '#0f172a',
+    fontWeight: '700',
     lineHeight: 18,
   },
   cardDate: {
     fontSize: 11,
-    color: "#64748b",
+    color: '#64748b',
     marginTop: 2,
   },
   moreBtn: {
     padding: 4,
-    alignSelf: "flex-end",
+    alignSelf: 'flex-end',
   },
   badge: {
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    alignSelf: "flex-end",
+    alignSelf: 'flex-end',
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   optionsModalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
-    justifyContent: "flex-end",
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'flex-end',
   },
   optionsModalCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   optionsModalTitle: {
     fontSize: 16,
-    fontWeight: "700",
-    color: "#0f172a",
+    fontWeight: '700',
+    color: '#0f172a',
     marginBottom: 20,
-    textAlign: "center",
+    textAlign: 'center',
   },
   optionItem: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: '#f1f5f9',
   },
   optionItemText: {
     fontSize: 15,
-    color: "#1e293b",
-    fontWeight: "600",
+    color: '#1e293b',
+    fontWeight: '600',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    marginBottom: 8
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0f172a',
+  },
+  platformFilterRow: {
+    paddingVertical: 6,
+    backgroundColor: '#f8fafc',
+  },
+  platformChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 9,
+    backgroundColor: '#e2e8f0',
+    marginRight: 6,
+  },
+  platformChipActive: {
+    backgroundColor: '#0052d4',
+  },
+  platformChipText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  platformChipTextActive: {
+    color: '#ffffff',
   },
 });

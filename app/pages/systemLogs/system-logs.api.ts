@@ -1,4 +1,4 @@
-import { fetchWithAuth, API_ENDPOINTS } from "@/services/api";
+import { fetchWithAuth, API_ENDPOINTS } from '@/services/api';
 
 export interface SystemLog {
   _id: string;
@@ -25,13 +25,11 @@ export interface PaginatedResponse<T> {
   totalCount?: number;
 }
 
-export const listSystemLogs = async (
-  params = "",
-): Promise<PaginatedResponse<SystemLog>> => {
+export const listSystemLogs = async (params = ''): Promise<PaginatedResponse<SystemLog>> => {
   const url = `${API_ENDPOINTS.systemLog}/get-system-log?${params}`;
   const data = await fetchWithAuth(url);
   if (data && data.success === false) {
-    throw new Error(data.message || "Failed to fetch system logs");
+    throw new Error(data.message || 'Failed to fetch system logs');
   }
   return data;
 };
@@ -40,7 +38,7 @@ export const getSystemLog = async (logId: string): Promise<SystemLog> => {
   const url = `${API_ENDPOINTS.systemLog}/get-system-log-byId/${logId}`;
   const data = await fetchWithAuth(url);
   if (data && data.success === false) {
-    throw new Error(data.message || "Failed to fetch system log details");
+    throw new Error(data.message || 'Failed to fetch system log details');
   }
   return data?.data || data;
 };

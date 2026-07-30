@@ -1,4 +1,4 @@
-import { fetchWithAuth, API_BASE_URL } from "@/services/api";
+import { fetchWithAuth, API_BASE_URL } from '@/services/api';
 
 export const BASE = `${API_BASE_URL}/customers`; // Mapped to /customers
 
@@ -25,17 +25,17 @@ export interface Customer {
 }
 
 export const getCustomerAvatarUrl = (image?: string): string => {
-  if (!image) return "";
-  if (/^https?:\/\//i.test(image) || image.startsWith("file://")) return image;
+  if (!image) return '';
+  if (/^https?:\/\//i.test(image) || image.startsWith('file://')) return image;
   return `${API_BASE_URL}/customer-profile/${encodeURIComponent(image)}`;
 };
 
 export const listCustomers = async (
-  params = ""
+  params = ''
 ): Promise<{ results?: Customer[]; data?: Customer[]; totalCount?: number; length?: number }> => {
   const res = await fetchWithAuth(`${BASE}/get-customers?${params}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch customers");
+    throw new Error(res.message || 'Failed to fetch customers');
   }
   return res;
 };
@@ -43,7 +43,7 @@ export const listCustomers = async (
 export const getCustomerDetails = async (customerId: string): Promise<Customer> => {
   const res = await fetchWithAuth(`${BASE}/get-customer/${customerId}`);
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to fetch customer details");
+    throw new Error(res.message || 'Failed to fetch customer details');
   }
   return res?.data || res;
 };
@@ -52,12 +52,12 @@ export const getCustomer = getCustomerDetails;
 
 export const createCustomer = async (payload: Partial<Customer>): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/create-customer`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to create customer");
+    throw new Error(res.message || 'Failed to create customer');
   }
   return res;
 };
@@ -67,22 +67,42 @@ export const updateCustomer = async (
   payload: Partial<Customer>
 ): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/update-customer/${customerId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to update customer");
+    throw new Error(res.message || 'Failed to update customer');
   }
   return res;
 };
 
 export const deleteCustomer = async (customerId: string): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/delete-customer/${customerId}`, {
-    method: "DELETE",
+    method: 'DELETE',
   });
   if (res && res.success === false) {
-    throw new Error(res.message || "Failed to delete customer");
+    throw new Error(res.message || 'Failed to delete customer');
+  }
+  return res;
+};
+
+export const uploadCustomerProfileImage = async (data: FormData | any): Promise<any> => {
+  let options: RequestInit = {
+    method: 'POST',
+  };
+  if (typeof FormData !== 'undefined' && data instanceof FormData) {
+    options.body = data;
+  } else {
+    options.headers = { 'Content-Type': 'application/json' };
+    options.body = typeof data === 'string' ? data : JSON.stringify(data);
+  }
+  const res = await fetchWithAuth(
+    `${API_BASE_URL}/customers/profile/upload-profile-image`,
+    options
+  );
+  if (res && res.success === false) {
+    throw new Error(res.message || 'Failed to upload profile image');
   }
   return res;
 };

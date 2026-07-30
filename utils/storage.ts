@@ -14,13 +14,17 @@ export interface StoredUser {
   last_name?: string;
   email?: string;
   contact_no?: string | number;
+  gender?: number;
   address?: string;
-  role_id?: string;
+  role_id?: string | any;
   status?: number;
   isSuperAdmin?: boolean;
   avatar?: string;
+  image?: string;
   role_name?: string;
   sectionMatrix?: any[];
+  section_list?: any[];
+  roleData?: any;
   token?: string;
   loginType?: string;
   preferred_language?: 'en' | 'hi' | 'gu';
@@ -31,11 +35,9 @@ export interface StoredUser {
  */
 export const encryptData = (data: any): string => {
   try {
-    const encrypted = CryptoJS.AES.encrypt(
-      JSON.stringify(data),
-      derivedKey,
-      { iv: staticIv },
-    ).toString();
+    const encrypted = CryptoJS.AES.encrypt(JSON.stringify(data), derivedKey, {
+      iv: staticIv,
+    }).toString();
     return encrypted;
   } catch (error) {
     console.error('❌ Encryption error:', error);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   ScrollView,
   TextInput,
@@ -7,74 +7,84 @@ import {
   Alert,
   StyleSheet,
   Image,
-} from "react-native";
-import { Box } from "@/components/ui/box";
-import { VStack } from "@/components/ui/vstack";
-import { HStack } from "@/components/ui/hstack";
-import { Text } from "@/components/ui/text";
-import { Heading } from "@/components/ui/heading";
-import { LinearGradient } from "expo-linear-gradient";
-import { Feather } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
-import { getGeneralSettings, createOrUpdateGeneralSettings, GeneralSettings } from "./general-settings.api";
-import { router } from "expo-router";
+} from 'react-native';
+import { Box } from '@/components/ui/box';
+import { VStack } from '@/components/ui/vstack';
+import { HStack } from '@/components/ui/hstack';
+import { Text } from '@/components/ui/text';
+import { Heading } from '@/components/ui/heading';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import {
+  getGeneralSettings,
+  createOrUpdateGeneralSettings,
+  GeneralSettings,
+} from './general-settings.api';
+import { useAuth } from '@/context/AuthContext';
+import CustomerSetupWizard from './CustomerSetupWizard';
+import AiLogoGeneratorModal from './steps/AiLogoGenerate';
+import { router } from 'expo-router';
 
 export default function GeneralAccessScreen() {
+  const { user } = useAuth();
+  const isCustomer = user?.loginType === 'customer';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [companyName, setCompanyName] = useState("");
-  const [companyEmail, setCompanyEmail] = useState("");
-  const [companyPhone, setCompanyPhone] = useState("");
-  const [companyAddress, setCompanyAddress] = useState("");
-  const [website, setWebsite] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
-  const [facebookUrl, setFacebookUrl] = useState("");
-  const [instagramUrl, setInstagramUrl] = useState("");
-  const [twitterUrl, setTwitterUrl] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState("");
-  const [defaultHashtags, setDefaultHashtags] = useState("");
-  const [aboutText, setAboutText] = useState("");
-  const [copyright, setCopyright] = useState("");
+  const [aiModalVisible, setAiModalVisible] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [website, setWebsite] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [facebookUrl, setFacebookUrl] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [twitterUrl, setTwitterUrl] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [defaultHashtags, setDefaultHashtags] = useState('');
+  const [aboutText, setAboutText] = useState('');
+  const [copyright, setCopyright] = useState('');
   const [activeTab, setActiveTab] = useState(0);
-  const [contactAddress, setContactAddress] = useState("");
-  const [contactNo, setContactNo] = useState("");
-  const [emailAddress, setEmailAddress] = useState("");
-  const [locationAddress, setLocationAddress] = useState("");
-  const [whatsappNo, setWhatsappNo] = useState("");
-  const [geminiApiKey, setGeminiApiKey] = useState("");
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
-  const [workingTime, setWorkingTime] = useState("");
-  const [companyNameFooter, setCompanyNameFooter] = useState("");
+  const [contactAddress, setContactAddress] = useState('');
+  const [contactNo, setContactNo] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+  const [whatsappNo, setWhatsappNo] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [workingTime, setWorkingTime] = useState('');
+  const [companyNameFooter, setCompanyNameFooter] = useState('');
 
   const fetchSettings = async () => {
     try {
       const data = await getGeneralSettings();
       if (data) {
-        setCompanyName(data.company_name || "");
-        setCompanyEmail(data.company_email || "");
-        setCompanyPhone(data.company_phone || "");
-        setCompanyAddress(data.company_address || "");
-        setWebsite(data.website || "");
-        setLogoUrl(data.logo_url || "");
-        setFacebookUrl(data.social_links?.facebook_url || "");
-        setInstagramUrl(data.social_links?.instagram_url || "");
-        setTwitterUrl(data.social_links?.twitter_url || "");
-        setLinkedinUrl(data.social_links?.linkedin_url || "");
-        setDefaultHashtags(data.default_hashtags?.join(", ") || "");
-        setAboutText(data.about_text || "");
-        setCopyright(data.copyright || "");
-        setContactAddress(data.contact_address || "");
-        setContactNo(data.contact_no || "");
-        setEmailAddress(data.email_address || "");
-        setLocationAddress(data.location_address || "");
-        setWhatsappNo(data.whatsapp_no || "");
-        setGeminiApiKey(data.gemini_api_key || "");
-        setOpenaiApiKey(data.openai_api_key || "");
-        setWorkingTime(data.working_time || "");
-        setCompanyNameFooter(data.company_name_footer || "");
+        setCompanyName(data.company_name || '');
+        setCompanyEmail(data.company_email || '');
+        setCompanyPhone(data.company_phone || '');
+        setCompanyAddress(data.company_address || '');
+        setWebsite(data.website || '');
+        setLogoUrl(data.logo_url || '');
+        setFacebookUrl(data.social_links?.facebook_url || '');
+        setInstagramUrl(data.social_links?.instagram_url || '');
+        setTwitterUrl(data.social_links?.twitter_url || '');
+        setLinkedinUrl(data.social_links?.linkedin_url || '');
+        setDefaultHashtags(data.default_hashtags?.join(', ') || '');
+        setAboutText(data.about_text || '');
+        setCopyright(data.copyright || '');
+        setContactAddress(data.contact_address || '');
+        setContactNo(data.contact_no || '');
+        setEmailAddress(data.email_address || '');
+        setLocationAddress(data.location_address || '');
+        setWhatsappNo(data.whatsapp_no || '');
+        setGeminiApiKey(data.gemini_api_key || '');
+        setOpenaiApiKey(data.openai_api_key || '');
+        setWorkingTime(data.working_time || '');
+        setCompanyNameFooter(data.company_name_footer || '');
       }
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to load general settings.");
+      Alert.alert('Error', error.message || 'Failed to load general settings.');
     } finally {
       setLoading(false);
     }
@@ -88,7 +98,10 @@ export default function GeneralAccessScreen() {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert("Permission Required", "Permission to access gallery is required to select a logo.");
+        Alert.alert(
+          'Permission Required',
+          'Permission to access gallery is required to select a logo.'
+        );
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -103,28 +116,28 @@ export default function GeneralAccessScreen() {
         setLogoUrl(uri);
       }
     } catch (err: any) {
-      Alert.alert("Error", err.message || "Failed to pick logo image.");
+      Alert.alert('Error', err.message || 'Failed to pick logo image.');
     }
   };
 
   const handleSave = async () => {
     if (!companyName.trim()) {
-      Alert.alert("Validation Error", "Company name is required.");
+      Alert.alert('Validation Error', 'Company name is required.');
       return;
     }
-    if (!companyEmail.trim() || !companyEmail.includes("@")) {
-      Alert.alert("Validation Error", "Please enter a valid company email.");
+    if (!companyEmail.trim() || !companyEmail.includes('@')) {
+      Alert.alert('Validation Error', 'Please enter a valid company email.');
       return;
     }
     if (!companyPhone.trim()) {
-      Alert.alert("Validation Error", "Company phone is required.");
+      Alert.alert('Validation Error', 'Company phone is required.');
       return;
     }
 
     setSaving(true);
     try {
       const hashtagsArray = defaultHashtags
-        .split(",")
+        .split(',')
         .map((tag) => tag.trim())
         .filter((tag) => tag.length > 0);
 
@@ -156,38 +169,44 @@ export default function GeneralAccessScreen() {
       };
 
       await createOrUpdateGeneralSettings(payload);
-      Alert.alert("Success", "General settings saved successfully!");
+      Alert.alert('Success', 'General settings saved successfully!');
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to save settings.");
+      Alert.alert('Error', error.message || 'Failed to save settings.');
     } finally {
       setSaving(false);
     }
   };
 
   const steps = [
-    { key: 0, label: "Basic Info", icon: "info" as const },
-    { key: 1, label: "Social Media", icon: "share-2" as const },
-    { key: 2, label: "AI Config", icon: "cpu" as const },
-    { key: 3, label: "Advanced", icon: "sliders" as const },
-    { key: 4, label: "Footer", icon: "layout" as const },
+    { key: 0, label: 'Basic Info', icon: 'info' as const },
+    { key: 1, label: 'Social Media', icon: 'share-2' as const },
+    { key: 2, label: 'AI Config', icon: 'cpu' as const },
+    { key: 3, label: 'Advanced', icon: 'sliders' as const },
+    { key: 4, label: 'Footer', icon: 'layout' as const },
   ];
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header Banner */}
       <LinearGradient
-        colors={["#2563EB", "#1D4ED8"]}
+        colors={['#2563EB', '#1D4ED8']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
         <Box style={styles.headerGlow} />
         <Box style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.8}>
-            <Text style={styles.backIcon}>←</Text>
-            <Text style={styles.backText}>Back</Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <HStack className="items-center gap-0.5">
+              <Feather name="arrow-left" size={16} color="#fff" />
+              <Text style={styles.backBtnText}>Back</Text>
+            </HStack>
           </TouchableOpacity>
-          <HStack style={{ justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
             <VStack style={{ flex: 1, paddingRight: 15 }}>
               <Heading style={styles.headerTitle}>General Settings</Heading>
               <Text style={styles.headerSubtitle}>
@@ -203,7 +222,11 @@ export default function GeneralAccessScreen() {
 
       {/* Main Content Card */}
       <Box style={styles.mainCard}>
-        {loading ? (
+        {isCustomer ? (
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            <CustomerSetupWizard />
+          </ScrollView>
+        ) : loading ? (
           <Box className="flex-1 items-center justify-center py-20">
             <ActivityIndicator size="large" color="#0b53f8" />
           </Box>
@@ -228,7 +251,7 @@ export default function GeneralAccessScreen() {
                     <Feather
                       name={tab.icon}
                       size={15}
-                      color={isActive ? "#ffffff" : "#64748b"}
+                      color={isActive ? '#ffffff' : '#64748b'}
                       style={{ marginRight: 6 }}
                     />
                     <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
@@ -248,7 +271,9 @@ export default function GeneralAccessScreen() {
                   </Box>
                   <VStack style={{ flex: 1 }}>
                     <Heading style={styles.cardTitle}>Company Information</Heading>
-                    <Text style={styles.cardSubtitle}>Basic organizational profile, contact & logo</Text>
+                    <Text style={styles.cardSubtitle}>
+                      Basic organizational profile, contact & logo
+                    </Text>
                   </VStack>
                 </HStack>
 
@@ -318,38 +343,61 @@ export default function GeneralAccessScreen() {
                   <VStack space="xs" style={{ marginTop: 8 }}>
                     <Text style={styles.label}>Company Logo</Text>
                     <Box style={styles.logoContainer}>
-                      <HStack style={{ alignItems: "center" }} space="md">
+                      <HStack style={{ alignItems: 'center' }} space="md">
                         <Box style={styles.logoPreviewBox}>
                           {logoUrl ? (
-                            <Image source={{ uri: logoUrl }} style={styles.logoImage} resizeMode="contain" />
+                            <Image
+                              source={{ uri: logoUrl }}
+                              style={styles.logoImage}
+                              resizeMode="contain"
+                            />
                           ) : (
                             <Feather name="image" size={26} color="#94a3b8" />
                           )}
                         </Box>
                         <VStack space="xs" style={{ flex: 1 }}>
-                          <HStack space="sm" style={{ flexWrap: "wrap", gap: 8 }}>
+                          <HStack space="sm" style={{ flexWrap: 'wrap', gap: 8 }}>
                             <TouchableOpacity
                               style={styles.uploadLogoBtn}
                               onPress={handlePickLogo}
                               activeOpacity={0.8}
                             >
-                              <Feather name="upload" size={14} color="#ffffff" style={{ marginRight: 6 }} />
+                              <Feather
+                                name="upload"
+                                size={14}
+                                color="#ffffff"
+                                style={{ marginRight: 6 }}
+                              />
                               <Text style={styles.uploadLogoText}>
-                                {logoUrl ? "Change Logo" : "Upload Logo"}
+                                {logoUrl ? 'Change Logo' : 'Upload Logo'}
                               </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={styles.aiLogoBtn}
+                              onPress={() => setAiModalVisible(true)}
+                              activeOpacity={0.8}
+                            >
+                              <Feather
+                                name="zap"
+                                size={14}
+                                color="#ffffff"
+                                style={{ marginRight: 6 }}
+                              />
+                              <Text style={styles.uploadLogoText}>Generate with AI Abhi</Text>
                             </TouchableOpacity>
 
                             {logoUrl ? (
                               <TouchableOpacity
                                 style={styles.removeLogoBtn}
-                                onPress={() => setLogoUrl("")}
+                                onPress={() => setLogoUrl('')}
                                 activeOpacity={0.8}
                               >
                                 <Feather name="trash-2" size={14} color="#dc2626" />
                               </TouchableOpacity>
                             ) : null}
                           </HStack>
-                          <Text style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                          <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
                             JPG, PNG or GIF · Max 5 MB
                           </Text>
                         </VStack>
@@ -357,7 +405,7 @@ export default function GeneralAccessScreen() {
 
                       {/* Direct Logo URL TextInput */}
                       <VStack space="xs" style={{ marginTop: 10 }}>
-                        <Text style={[styles.label, { fontSize: 10, color: "#94a3b8" }]}>
+                        <Text style={[styles.label, { fontSize: 10, color: '#94a3b8' }]}>
                           Direct Logo URL (Optional)
                         </Text>
                         <TextInput
@@ -384,7 +432,9 @@ export default function GeneralAccessScreen() {
                   </Box>
                   <VStack style={{ flex: 1 }}>
                     <Heading style={styles.cardTitle}>Social Links</Heading>
-                    <Text style={styles.cardSubtitle}>Corporate social media handles & profile links</Text>
+                    <Text style={styles.cardSubtitle}>
+                      Corporate social media handles & profile links
+                    </Text>
                   </VStack>
                 </HStack>
 
@@ -449,7 +499,9 @@ export default function GeneralAccessScreen() {
                   </Box>
                   <VStack style={{ flex: 1 }}>
                     <Heading style={styles.cardTitle}>AI API Configuration</Heading>
-                    <Text style={styles.cardSubtitle}>Configure Google Gemini & OpenAI credentials</Text>
+                    <Text style={styles.cardSubtitle}>
+                      Configure Google Gemini & OpenAI credentials
+                    </Text>
                   </VStack>
                 </HStack>
 
@@ -492,7 +544,9 @@ export default function GeneralAccessScreen() {
                   </Box>
                   <VStack style={{ flex: 1 }}>
                     <Heading style={styles.cardTitle}>Advanced Settings</Heading>
-                    <Text style={styles.cardSubtitle}>Default hashtags, support hours & location details</Text>
+                    <Text style={styles.cardSubtitle}>
+                      Default hashtags, support hours & location details
+                    </Text>
                   </VStack>
                 </HStack>
 
@@ -722,7 +776,7 @@ export default function GeneralAccessScreen() {
               style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
             >
               <LinearGradient
-                colors={saving ? ["#94a3b8", "#64748b"] : ["#0b53f8", "#023eb9"]}
+                colors={saving ? ['#94a3b8', '#64748b'] : ['#0b53f8', '#023eb9']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.saveBtnGradient}
@@ -730,8 +784,13 @@ export default function GeneralAccessScreen() {
                 {saving ? (
                   <ActivityIndicator color="#ffffff" size="small" />
                 ) : (
-                  <HStack style={{ alignItems: "center", justifyContent: "center" }}>
-                    <Feather name="check-circle" size={18} color="#ffffff" style={{ marginRight: 8 }} />
+                  <HStack style={{ alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather
+                      name="check-circle"
+                      size={18}
+                      color="#ffffff"
+                      style={{ marginRight: 8 }}
+                    />
                     <Text style={styles.saveBtnText}>Save Changes</Text>
                   </HStack>
                 )}
@@ -740,6 +799,13 @@ export default function GeneralAccessScreen() {
           </ScrollView>
         )}
       </Box>
+
+      <AiLogoGeneratorModal
+        open={aiModalVisible}
+        onClose={() => setAiModalVisible(false)}
+        onLogoSelected={(filename, previewUrl) => setLogoUrl(previewUrl)}
+        initialCompanyName={companyName}
+      />
     </Box>
   );
 }
@@ -749,47 +815,51 @@ const styles = StyleSheet.create({
     paddingTop: 54,
     paddingBottom: 32,
     paddingHorizontal: 20,
-    position: "relative",
-    overflow: "hidden",
+    position: 'relative',
+    overflow: 'hidden',
   },
   headerGlow: {
-    position: "absolute",
+    position: 'absolute',
     right: -30,
     top: -30,
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   headerContent: {
     zIndex: 2,
   },
   backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
-  backIcon: { color: "#fff", fontSize: 20, fontWeight: "600", marginRight: 4 },
-  backText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  headerTitle: { color: "#ffffff", fontSize: 26, fontWeight: "800", marginBottom: 4 },
-  headerSubtitle: { color: "rgba(255,255,255,0.85)", fontSize: 13, lineHeight: 18 },
+  backIcon: { color: '#fff', fontSize: 20, fontWeight: '600', marginRight: 4 },
+  backBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  headerTitle: { color: '#ffffff', fontSize: 26, fontWeight: '800', marginBottom: 4 },
+  headerSubtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 13, lineHeight: 18 },
   iconContainer: {
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerEmoji: { fontSize: 26 },
 
   mainCard: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     marginTop: -20,
-    shadowColor: "#0f172a",
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -800,40 +870,40 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
   },
   tabScrollContent: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   tab: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 14,
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    backgroundColor: "#f8fafc",
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
   },
   tabActive: {
-    backgroundColor: "#0b53f8",
-    borderColor: "#0b53f8",
+    backgroundColor: '#0b53f8',
+    borderColor: '#0b53f8',
   },
   tabText: {
-    color: "#475569",
+    color: '#475569',
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   tabTextActive: {
-    color: "#ffffff",
+    color: '#ffffff',
   },
 
   card: {
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    shadowColor: "#0f172a",
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -841,29 +911,29 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cardHeader: {
-    alignItems: "center",
+    alignItems: 'center',
     marginBottom: 20,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: '#f1f5f9',
   },
   cardIconBox: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#eff6ff",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   cardTitle: {
     fontSize: 17,
-    fontWeight: "700",
-    color: "#0f172a",
+    fontWeight: '700',
+    color: '#0f172a',
   },
   cardSubtitle: {
     fontSize: 12,
-    color: "#64748b",
+    color: '#64748b',
     marginTop: 2,
   },
 
@@ -872,31 +942,31 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    fontWeight: "700",
-    color: "#475569",
-    textTransform: "uppercase",
+    fontWeight: '700',
+    color: '#475569',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: '#e2e8f0',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 11,
     fontSize: 14,
-    color: "#0f172a",
-    backgroundColor: "#f8fafc",
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
   },
   multilineInput: {
     minHeight: 80,
-    textAlignVertical: "top",
+    textAlignVertical: 'top',
   },
 
   logoContainer: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: '#f8fafc',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: '#e2e8f0',
     padding: 14,
     marginTop: 4,
   },
@@ -904,46 +974,54 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 14,
-    backgroundColor: "#ffffff",
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: "#cbd5e1",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   logoImage: {
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: '100%',
   },
   uploadLogoBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#0b53f8",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0b53f8',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  aiLogoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8b5cf6',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
   },
   uploadLogoText: {
-    color: "#ffffff",
+    color: '#ffffff',
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   removeLogoBtn: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "#fef2f2",
+    backgroundColor: '#fef2f2',
     borderWidth: 1,
-    borderColor: "#fca5a5",
-    alignItems: "center",
-    justifyContent: "center",
+    borderColor: '#fca5a5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   saveBtn: {
     borderRadius: 14,
-    overflow: "hidden",
+    overflow: 'hidden',
     marginTop: 8,
-    shadowColor: "#0b53f8",
+    shadowColor: '#0b53f8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -954,12 +1032,12 @@ const styles = StyleSheet.create({
   },
   saveBtnGradient: {
     height: 50,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveBtnText: {
-    color: "#ffffff",
+    color: '#ffffff',
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: '700',
   },
 });

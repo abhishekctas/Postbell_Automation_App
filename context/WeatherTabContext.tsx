@@ -1,5 +1,5 @@
-import React, { createContext, useRef, useState } from "react";
-import { View } from "react-native";
+import React, { createContext, useRef, useState } from 'react';
+import { View } from 'react-native';
 
 const WeatherTabContext = createContext({});
 

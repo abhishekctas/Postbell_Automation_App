@@ -43,22 +43,23 @@ type IGridItemProps = React.ComponentPropsWithoutRef<'div'> &
       className: string;
     };
   };
-const GridItem = React.forwardRef<HTMLDivElement, IGridItemProps>(
-  function GridItem({ className, _extra, ...props }, ref) {
-    const gridItemClass = _extra?.className;
+const GridItem = React.forwardRef<HTMLDivElement, IGridItemProps>(function GridItem(
+  { className, _extra, ...props },
+  ref
+) {
+  const gridItemClass = _extra?.className;
 
-    const finalGridItemClass = gridItemClass ?? '';
-    return (
-      <div
-        ref={ref}
-        className={gridItemStyle({
-          class: className + ' ' + finalGridItemClass,
-        })}
-        {...props}
-      />
-    );
-  }
-);
+  const finalGridItemClass = gridItemClass ?? '';
+  return (
+    <div
+      ref={ref}
+      className={gridItemStyle({
+        class: className + ' ' + finalGridItemClass,
+      })}
+      {...props}
+    />
+  );
+});
 
 Grid.displayName = 'Grid';
 GridItem.displayName = 'GridItem';

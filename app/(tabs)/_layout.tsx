@@ -1,16 +1,16 @@
-import React, { useEffect } from "react";
-import { Tabs, router } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
-import { ActivityIndicator } from "react-native";
-import { Box } from "@/components/ui/box";
-import GlobalTabBar from "@/components/GlobalTabBar";
+import React, { useEffect } from 'react';
+import { Tabs, router } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
+import { ActivityIndicator } from 'react-native';
+import { Box } from '@/components/ui/box';
+import GlobalTabBar from '@/components/GlobalTabBar';
 
 export default function TabsLayout() {
   const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace("/(auth)/login");
+      router.replace('/(auth)/login');
     }
   }, [isAuthenticated, isLoading]);
 
@@ -35,25 +35,25 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: "Dashboard",
+            title: 'Dashboard',
           }}
         />
         <Tabs.Screen
           name="posts"
           options={{
-            title: "Posts",
+            title: 'Posts',
           }}
         />
         <Tabs.Screen
           name="profile"
           options={{
-            title: "Profile",
+            title: 'Profile',
           }}
         />
         <Tabs.Screen
           name="menu"
           options={{
-            title: "Menu",
+            title: 'Menu',
           }}
         />
         <Tabs.Screen
@@ -67,4 +67,3 @@ export default function TabsLayout() {
     </>
   );
 }
-
