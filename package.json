@@ -13,7 +13,9 @@
     "prettier": "prettier --write .",
     "prettier:check": "prettier --check .",
     "build:web": "expo export",
-    "build:android": "export JAVA_HOME=/home/ctas37/.gradle/jdks/eclipse_adoptium-17-amd64-linux.2 && cd android && ./gradlew assembleRelease"
+    "build:android": "export JAVA_HOME=/home/ctas37/.gradle/jdks/eclipse_adoptium-17-amd64-linux.2 && cd android && ./gradlew assembleRelease",
+    "android-build": "eas build --platform android",
+    "ios-build": "eas build --platform ios"
   },
   "jest": {
     "preset": "jest-expo"
