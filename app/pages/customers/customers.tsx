@@ -26,7 +26,6 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
-import { useAuth } from '@/context/AuthContext';
 
 const CUSTOMER_TABLE_COLUMNS: HtmlTableColumn<Customer>[] = [
   {
@@ -367,7 +366,7 @@ export default function CustomersScreen() {
   };
 
   return (
-    <Box className="flex-1 bg-[#f8fafc]">
+    <Box className="flex-1 bg-[#fff]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
         <Box className="px-5 pb-2 pt-12">
           <HStack className="mb-3 items-center justify-between">
@@ -454,6 +453,7 @@ export default function CustomersScreen() {
                 backgroundColor: '#f8fafc',
                 borderBottomWidth: 1.5,
                 borderBottomColor: '#e2e8f0',
+                paddingVertical: 4
               }}
               headerCellTextStyle={{
                 color: '#1e3a8a',
@@ -466,6 +466,7 @@ export default function CustomersScreen() {
                 borderBottomWidth: 1,
                 borderBottomColor: '#f1f5f9',
                 backgroundColor: '#ffffff',
+                paddingVertical: 0
               }}
             />
           )}
@@ -616,7 +617,7 @@ export default function CustomersScreen() {
 
             <HStack space="sm" className="mt-6">
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.saveBtnText}>Save</Text>
+                <Text style={styles.saveBtnText}>{editingCustomer ? 'Update' : 'Create'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>

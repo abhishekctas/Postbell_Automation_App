@@ -7,8 +7,6 @@ import {
   Alert,
   StyleSheet,
   Image,
-  Modal,
-  View,
   Linking,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
@@ -154,15 +152,7 @@ export default function CustomerSetupWizard() {
 
   // AI Logo Generator Modal State
   const [aiModalVisible, setAiModalVisible] = useState(false);
-  const [logoCompanyName, setLogoCompanyName] = useState('');
-  const [logoIndustry, setLogoIndustry] = useState('Technology');
-  const [logoStyle, setLogoStyle] = useState('Minimalist');
-  const [logoColorTheme, setLogoColorTheme] = useState('Royal Blue');
   const [logoPrompt, setLogoPrompt] = useState('');
-  const [logoSlogan, setLogoSlogan] = useState('');
-  const [generatedLogos, setGeneratedLogos] = useState<string[]>([]);
-  const [selectedLogoIndex, setSelectedLogoIndex] = useState<number | null>(null);
-  const [isGeneratingLogo, setIsGeneratingLogo] = useState(false);
 
   // AI Config State
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
@@ -194,7 +184,7 @@ export default function CustomerSetupWizard() {
             }
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
 
     getGeneralSettings()
@@ -230,7 +220,7 @@ export default function CustomerSetupWizard() {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [user]);
 
   const handlePickAndUploadProfileImage = async () => {
@@ -307,39 +297,39 @@ export default function CustomerSetupWizard() {
     }
   };
 
-  const handleGenerateAiLogo = () => {
-    const compName = logoCompanyName || setupData.company_name;
-    if (!compName.trim() && !logoPrompt.trim()) {
-      Alert.alert('Input Required', 'Please enter company name or logo prompt.');
-      return;
-    }
-    setIsGeneratingLogo(true);
-    setSelectedLogoIndex(null);
+  // const handleGenerateAiLogo = () => {
+  //   const compName = logoCompanyName || setupData.company_name;
+  //   if (!compName.trim() && !logoPrompt.trim()) {
+  //     Alert.alert('Input Required', 'Please enter company name or logo prompt.');
+  //     return;
+  //   }
+  //   setIsGeneratingLogo(true);
+  //   setSelectedLogoIndex(null);
 
-    setTimeout(() => {
-      const seedName = encodeURIComponent(compName || logoPrompt || 'brand');
-      const styleSeed = encodeURIComponent(logoStyle);
-      const colorSeed = encodeURIComponent(logoColorTheme);
+  //   setTimeout(() => {
+  //     const seedName = encodeURIComponent(compName || logoPrompt || 'brand');
+  //     const styleSeed = encodeURIComponent(logoStyle);
+  //     const colorSeed = encodeURIComponent(logoColorTheme);
 
-      const variation1 = `https://api.dicebear.com/7.x/identicon/png?seed=${seedName}_v1&backgroundColor=0b53f8,3b82f6`;
-      const variation2 = `https://api.dicebear.com/7.x/shapes/png?seed=${seedName}_${styleSeed}_v2&backgroundColor=ec4899,8b5cf6`;
-      const variation3 = `https://api.dicebear.com/7.x/bottts/png?seed=${seedName}_${colorSeed}_v3&backgroundColor=10b981,059669`;
+  //     const variation1 = `https://api.dicebear.com/7.x/identicon/png?seed=${seedName}_v1&backgroundColor=0b53f8,3b82f6`;
+  //     const variation2 = `https://api.dicebear.com/7.x/shapes/png?seed=${seedName}_${styleSeed}_v2&backgroundColor=ec4899,8b5cf6`;
+  //     const variation3 = `https://api.dicebear.com/7.x/bottts/png?seed=${seedName}_${colorSeed}_v3&backgroundColor=10b981,059669`;
 
-      setGeneratedLogos([variation1, variation2, variation3]);
-      setSelectedLogoIndex(0);
-      setIsGeneratingLogo(false);
-    }, 1200);
-  };
+  //     setGeneratedLogos([variation1, variation2, variation3]);
+  //     setSelectedLogoIndex(0);
+  //     setIsGeneratingLogo(false);
+  //   }, 1200);
+  // };
 
-  const handleApplySelectedLogo = () => {
-    if (selectedLogoIndex !== null && generatedLogos[selectedLogoIndex]) {
-      setSetupData((prev) => ({ ...prev, company_logo: generatedLogos[selectedLogoIndex] }));
-      setAiModalVisible(false);
-      Alert.alert('Success', 'AI Logo applied to company profile successfully!');
-    } else {
-      Alert.alert('Selection Required', 'Please select a generated logo option.');
-    }
-  };
+  // const handleApplySelectedLogo = () => {
+  //   if (selectedLogoIndex !== null && generatedLogos[selectedLogoIndex]) {
+  //     setSetupData((prev) => ({ ...prev, company_logo: generatedLogos[selectedLogoIndex] }));
+  //     setAiModalVisible(false);
+  //     Alert.alert('Success', 'AI Logo applied to company profile successfully!');
+  //   } else {
+  //     Alert.alert('Selection Required', 'Please select a generated logo option.');
+  //   }
+  // };
 
   const handleTestAiConnection = () => {
     setTestingConnection(true);

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Redirect } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Box } from '@/components/ui/box';

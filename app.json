@@ -4,21 +4,43 @@
     "slug": "postbell",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/postbell_logo.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.postbell"
+      "bundleIdentifier": "com.anonymous.postbell",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "This app needs camera access to take photos and scan documents.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload and share images.",
+        "NSPhotoLibraryAddUsageDescription": "This app needs permission to save photos to your library.",
+        "NSLocationWhenInUseUsageDescription": "This app needs your location to provide location-based features.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs your location to provide location-based features.",
+        "NSMicrophoneUsageDescription": "This app needs microphone access to record audio with video."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/postbell_logo.png",
+        "backgroundImage": "./assets/images/postbell_logo.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "softwareKeyboardLayoutMode": "pan",
-      "package": "com.anonymous.postbell"
+      "package": "com.anonymous.postbell",
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -45,8 +67,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b9265492-90d5-4b86-af5c-fa89508d63a8"
+        "projectId": "e14680a3-4a91-40af-a5aa-f441ee868b2d"
       }
-    }
+    },
+    "owner": "abhishek-dhandhukiya01"
   }
 }

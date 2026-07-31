@@ -17,7 +17,7 @@ import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
-import { Feather, FontAwesome } from '@expo/vector-icons';
+import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -99,6 +99,9 @@ export default function PostEditorScreen() {
   const [aiReferencePrompt, setAiReferencePrompt] = useState('');
   const [aiAnalyzingRef, setAiAnalyzingRef] = useState(false);
   const [aiRefAnalysisSummary, setAiRefAnalysisSummary] = useState('');
+  const [referenceImageUri, setReferenceImageUri] = useState<string>('');
+  const [referenceImagePrompt, setReferenceImagePrompt] = useState<string>('');
+  const [referenceImageProvider, setReferenceImageProvider] = useState<'auto' | 'gemini' | 'openai'>('auto');
 
   // Content Type & Platform-Specific Overrides
   const [activePlatformTab, setActivePlatformTab] = useState<string>('general');
@@ -319,20 +322,40 @@ export default function PostEditorScreen() {
     Alert.alert('Applied!', 'AI content has been transferred to the Manual Post Composer.');
   };
 
+  // Reference Image Picker Handler
+  const pickReferenceImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setReferenceImageUri(uri);
+        setAiRefImage(uri);
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to pick reference image from gallery.');
+    }
+  };
+
   // AI Marketing Image from Reference Handler
-  const handleGenerateAiMarketingImage = async () => {
-    if (!aiRefImage) {
+  const handleGenerateAiMarketingImage = async (customUri?: string): Promise<void> => {
+    const imgUri = customUri || referenceImageUri || aiRefImage;
+    if (!imgUri) {
       Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
       return;
     }
     setAiMarketingGenerating(true);
     try {
-      const res = await generateMarketingImageFromReference(aiRefImage, {
-        prompt: aiPrompt || aiReferencePrompt,
+      const res = await generateMarketingImageFromReference(imgUri, {
+        prompt: referenceImagePrompt || aiPrompt || aiReferencePrompt,
         company_name: companyName,
         company_website: companyWebsite,
         company_email: companyEmail,
-        provider: aiProvider,
+        provider: referenceImageProvider || aiProvider,
       });
       const generatedUrl =
         res?.imageUrl || res?.url || res?.image_url || res?.data?.imageUrl || res?.data?.url;
@@ -574,7 +597,7 @@ export default function PostEditorScreen() {
             <Feather
               name="cpu"
               size={16}
-              color={activeTab === 'ai' ? '#0052d4' : '#64748b'}
+              color={activeTab === 'ai' ? '#0052d4' : '#fff'}
               style={{ marginRight: 6 }}
             />
             <Text style={[styles.mainTabLabel, activeTab === 'ai' && styles.mainTabLabelActive]}>
@@ -589,7 +612,7 @@ export default function PostEditorScreen() {
             <Feather
               name="edit-3"
               size={16}
-              color={activeTab === 'manual' ? '#0052d4' : '#64748b'}
+              color={activeTab === 'manual' ? '#0052d4' : '#fff'}
               style={{ marginRight: 6 }}
             />
             <Text
@@ -701,8 +724,8 @@ export default function PostEditorScreen() {
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.primaryBtn, { backgroundColor: '#7c3aed', flex: 1 }]}
-                        onPress={handleGenerateAiMarketingImage}
+                        style={[styles.primaryBtn, { backgroundColor: '#1f1e22ff', flex: 1 }]}
+                        onPress={() => handleGenerateAiMarketingImage()}
                         disabled={aiMarketingGenerating}
                       >
                         {aiMarketingGenerating ? (
@@ -795,7 +818,296 @@ export default function PostEditorScreen() {
               </Box>
             )}
 
-            {/* Target Platforms Picker */}
+            {/* 1. AI Image Generator from Reference Card */}
+            <Box style={styles.card}>
+              <HStack className="items-center justify-between mb-2">
+                <HStack space="xs" className="items-center">
+                  <Ionicons name="sparkles" size={18} color="#2563eb" />
+                  <Heading size="sm" style={styles.cardTitle}>
+                    AI Image Generator from Reference
+                  </Heading>
+                </HStack>
+                {referenceImageUri || aiRefImage ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setReferenceImageUri('');
+                      setAiRefImage('');
+                      setAiMarketingImageUrl('');
+                    }}
+                  >
+                    <Text style={{ color: '#dc2626', fontSize: 12, fontWeight: '600' }}>Clear</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </HStack>
+              <Text style={styles.cardSub}>
+                Upload a product or reference image, and AI will create a premium marketing poster with cinematic lighting and professional composition.
+              </Text>
+
+              {!(referenceImageUri || aiRefImage) ? (
+                <TouchableOpacity
+                  style={[styles.uploadBox, { borderStyle: 'dashed', marginTop: 12, backgroundColor: '#f8fafc' }]}
+                  onPress={pickReferenceImage}
+                >
+                  <Feather name="upload" size={24} color="#2563eb" />
+                  <Text style={[styles.uploadText, { color: '#2563eb', fontWeight: '700' }]}>
+                    Upload Reference Image
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                    Select image to generate AI marketing poster
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <VStack space="md" style={{ marginTop: 12 }}>
+                  {/* Reference Image Preview */}
+                  <Box style={styles.imagePreviewBox}>
+                    <Image
+                      source={{ uri: referenceImageUri || aiRefImage }}
+                      style={styles.uploadedImage}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeImgBtn}
+                      onPress={() => {
+                        setReferenceImageUri('');
+                        setAiRefImage('');
+                        setAiMarketingImageUrl('');
+                      }}
+                    >
+                      <Feather name="trash-2" size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </Box>
+
+                  {/* Optional Custom Reference Image Prompt */}
+                  <VStack space="xs">
+                    <Text style={styles.inputLabel}>Custom Image Style / Prompt (Optional)</Text>
+                    <TextInput
+                      style={[styles.input, { fontSize: 13 }]}
+                      value={referenceImagePrompt}
+                      onChangeText={setReferenceImagePrompt}
+                      placeholder="e.g. Sleek luxury product display with soft volumetric lighting and modern reflections..."
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </VStack>
+
+                  {/* Provider Selection */}
+                  <VStack space="xs">
+                    <Text style={styles.inputLabel}>AI Model Provider</Text>
+                    <HStack space="xs">
+                      {(['auto', 'gemini', 'openai'] as const).map((prov) => (
+                        <TouchableOpacity
+                          key={prov}
+                          style={[
+                            styles.providerChip,
+                            referenceImageProvider === prov && styles.providerChipActive,
+                          ]}
+                          onPress={() => setReferenceImageProvider(prov)}
+                        >
+                          <Text
+                            style={[
+                              styles.providerChipText,
+                              referenceImageProvider === prov && styles.providerChipTextActive,
+                            ]}
+                          >
+                            {prov === 'auto' ? '⚡ Auto' : prov === 'gemini' ? '🔷 Gemini' : '🟢 OpenAI'}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </HStack>
+                  </VStack>
+
+                  {/* Generate AI Marketing Image Button */}
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { backgroundColor: '#7c3aed' }]}
+                    onPress={() => handleGenerateAiMarketingImage(referenceImageUri || aiRefImage)}
+                    disabled={aiMarketingGenerating}
+                  >
+                    {aiMarketingGenerating ? (
+                      <HStack space="xs" className="items-center">
+                        <ActivityIndicator color="#fff" size="small" />
+                        <Text style={styles.primaryBtnText}> Generating AI Marketing Image...</Text>
+                      </HStack>
+                    ) : (
+                      <HStack space="xs" className="items-center">
+                        <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
+                        <Text style={styles.primaryBtnText}>Generate AI Marketing Poster</Text>
+                      </HStack>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* AI Generated Marketing Image Preview */}
+                  {aiMarketingImageUrl ? (
+                    <Box
+                      style={{
+                        backgroundColor: '#f5f3ff',
+                        padding: 12,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: '#ddd6fe',
+                        marginTop: 8,
+                      }}
+                    >
+                      <Text style={{ fontWeight: '700', color: '#6d28d9', fontSize: 13, marginBottom: 8 }}>
+                        ✨ AI Generated Marketing Image
+                      </Text>
+                      <Box style={styles.imagePreviewBox}>
+                        <Image
+                          source={{ uri: aiMarketingImageUrl }}
+                          style={styles.uploadedImage}
+                          resizeMode="cover"
+                        />
+                      </Box>
+                      <TouchableOpacity
+                        style={[styles.primaryBtn, { backgroundColor: '#2563eb', marginTop: 10 }]}
+                        onPress={() => {
+                          setImageUrl(aiMarketingImageUrl);
+                          Alert.alert('Applied!', 'AI generated image set as post media.');
+                        }}
+                      >
+                        <Text style={styles.primaryBtnText}>Use This Image in Post ✓</Text>
+                      </TouchableOpacity>
+                    </Box>
+                  ) : null}
+                </VStack>
+              )}
+            </Box>
+
+            {/* 2. General Content Card */}
+            <Box style={styles.card}>
+              <Heading size="sm" style={styles.cardTitle}>
+                📝 General Content
+              </Heading>
+
+              {/* Company Name Field */}
+              <VStack style={{ marginTop: 12 }}>
+                <Text style={styles.inputLabel}>Company Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={companyName}
+                  onChangeText={setCompanyName}
+                  placeholder="Enter company / brand name"
+                  placeholderTextColor="#94a3b8"
+                />
+              </VStack>
+
+              {/* Title Field (Optional) */}
+              <VStack style={{ marginTop: 12 }}>
+                <Text style={styles.inputLabel}>Title</Text>
+                <TextInput
+                  style={styles.input}
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Post title (optional)"
+                  placeholderTextColor="#94a3b8"
+                />
+              </VStack>
+
+              {/* Website Link Field */}
+              <VStack style={{ marginTop: 12 }}>
+                <Text style={styles.inputLabel}>Website / Link URL</Text>
+                <TextInput
+                  style={styles.input}
+                  value={companyWebsite}
+                  onChangeText={setCompanyWebsite}
+                  placeholder="https://yourwebsite.com/link"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="url"
+                  autoCapitalize="none"
+                />
+              </VStack>
+
+              {/* Caption Field */}
+              <VStack style={{ marginTop: 12 }}>
+                <Text style={styles.inputLabel}>Caption *</Text>
+                <TextInput
+                  style={[styles.input, styles.multilineInput]}
+                  value={caption}
+                  onChangeText={setCaption}
+                  placeholder="Write your post caption..."
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  numberOfLines={4}
+                />
+              </VStack>
+
+              {/* Hashtags Field */}
+              <VStack style={{ marginTop: 12 }}>
+                <Text style={styles.inputLabel}>Hashtags (comma separated)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={hashtagsInput}
+                  onChangeText={setHashtagsInput}
+                  placeholder="marketing, promotion, offer"
+                  placeholderTextColor="#94a3b8"
+                />
+                {hashtagsInput.trim().length > 0 && (
+                  <HStack space="xs" className="mt-2 flex-wrap">
+                    {hashtagsInput.split(',').map((tag, idx) => {
+                      const trimmed = tag.trim().replace(/^#/, '');
+                      if (!trimmed) return null;
+                      return (
+                        <Box key={idx} style={styles.tagChip}>
+                          <Text style={styles.tagText}>#{trimmed}</Text>
+                        </Box>
+                      );
+                    })}
+                  </HStack>
+                )}
+              </VStack>
+
+              {/* Image Uploader inside General Content */}
+              <VStack style={{ marginTop: 14 }}>
+                <Text style={styles.inputLabel}>Image Uploader</Text>
+                {imageUrl ? (
+                  <Box style={styles.imagePreviewBox}>
+                    <Image
+                      source={{ uri: imageUrl }}
+                      style={styles.uploadedImage}
+                      resizeMode="cover"
+                    />
+                    <HStack space="xs" style={styles.imageActionOverlay}>
+                      <TouchableOpacity style={styles.imgActionBtn} onPress={pickImage}>
+                        <Feather name="refresh-cw" size={14} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.imgActionBtn, { backgroundColor: '#dc2626' }]}
+                        onPress={() => setImageUrl('')}
+                      >
+                        <Feather name="trash-2" size={14} color="#fff" />
+                      </TouchableOpacity>
+                    </HStack>
+                  </Box>
+                ) : (
+                  <VStack space="xs" style={{ marginTop: 6 }}>
+                    <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
+                      <Feather name="upload-cloud" size={28} color="#0052d4" />
+                      <Text style={styles.uploadText}>Choose Image from Gallery</Text>
+                      <Text style={{ fontSize: 11, color: '#94a3b8' }}>Supports JPG, PNG, WEBP</Text>
+                    </TouchableOpacity>
+
+                    <Text
+                      style={{
+                        textAlign: 'center',
+                        color: '#94a3b8',
+                        fontSize: 12,
+                        marginVertical: 4,
+                      }}
+                    >
+                      — OR —
+                    </Text>
+
+                    <TextInput
+                      style={styles.input}
+                      value={imageUrl}
+                      onChangeText={setImageUrl}
+                      placeholder="Paste Image URL (https://...)"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </VStack>
+                )}
+              </VStack>
+            </Box>
+
+            {/* 3. Target Platforms Picker Card */}
             <Box style={styles.card}>
               <HStack className="items-center justify-between">
                 <Heading size="sm" style={styles.cardTitle}>
@@ -910,281 +1222,220 @@ export default function PostEditorScreen() {
               }}
             >
               <Text style={{ fontSize: 15, color: '#fff', fontWeight: '900' }}>
-                ⚙️ Plateform
+                ⚙️ Platform Configuration
               </Text>
             </TouchableOpacity>
 
-            {/* Media Upload Section */}
-            <Box style={styles.card}>
-              <Heading size="sm" style={styles.cardTitle}>
-                📸 Post Media / Image Upload
-              </Heading>
+            {/* 4. Platform-Specific Content Overrides Card (Displayed when platforms are selected) */}
+            {selectedPlatforms.length > 0 && (
+              <Box style={styles.card}>
+                <Heading size="sm" style={styles.cardTitle}>
+                  🎯 Platform-Specific Content Overrides
+                </Heading>
+                <Text style={styles.cardSub}>
+                  Customize caption, link, or image specifically for each selected social platform.
+                </Text>
 
-              {currentDisplayImage ? (
-                <Box style={styles.imagePreviewBox}>
-                  <Image
-                    source={{ uri: currentDisplayImage }}
-                    style={styles.uploadedImage}
-                    resizeMode="cover"
-                  />
-                  <HStack space="xs" style={styles.imageActionOverlay}>
-                    <TouchableOpacity style={styles.imgActionBtn} onPress={pickImage}>
-                      <Feather name="refresh-cw" size={14} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.imgActionBtn, { backgroundColor: '#dc2626' }]}
-                      onPress={() => setImageUrl('')}
-                    >
-                      <Feather name="trash-2" size={14} color="#fff" />
-                    </TouchableOpacity>
-                  </HStack>
-                </Box>
-              ) : (
-                <VStack space="xs" style={{ marginTop: 10 }}>
-                  <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
-                    <Feather name="upload-cloud" size={28} color="#0052d4" />
-                    <Text style={styles.uploadText}>Choose Image from Gallery</Text>
-                    <Text style={{ fontSize: 11, color: '#94a3b8' }}>Supports JPG, PNG, WEBP</Text>
-                  </TouchableOpacity>
-
-                  <Text
-                    style={{
-                      textAlign: 'center',
-                      color: '#94a3b8',
-                      fontSize: 12,
-                      marginVertical: 4,
-                    }}
-                  >
-                    — OR —
-                  </Text>
-
-                  <TextInput
-                    style={styles.input}
-                    value={imageUrl}
-                    onChangeText={setImageUrl}
-                    placeholder="Paste Image URL (https://...)"
-                    placeholderTextColor="#94a3b8"
-                  />
-                </VStack>
-              )}
-            </Box>
-
-            {/* Platform Specific Content Tabs */}
-            <Box style={styles.card}>
-              <Heading size="sm" style={styles.cardTitle}>
-                ✍ Post Content & Caption
-              </Heading>
-
-              {/* Sub-Tabs for Platform-Specific Customization */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.subTabList}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.subTabBtn,
-                    activePlatformTab === 'general' && styles.subTabBtnActive,
-                  ]}
-                  onPress={() => setActivePlatformTab('general')}
+                {/* Sub-Tabs for Selected Platforms */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.subTabList}
+                  style={{ marginTop: 10 }}
                 >
-                  <Text
-                    style={[
-                      styles.subTabText,
-                      activePlatformTab === 'general' && styles.subTabTextActive,
-                    ]}
-                  >
-                    General (All)
-                  </Text>
-                </TouchableOpacity>
-
-                {selectedPlatforms.map((p) => (
-                  <TouchableOpacity
-                    key={p}
-                    style={[styles.subTabBtn, activePlatformTab === p && styles.subTabBtnActive]}
-                    onPress={() => setActivePlatformTab(p)}
-                  >
-                    <Text
+                  {selectedPlatforms.map((p) => (
+                    <TouchableOpacity
+                      key={p}
                       style={[
-                        styles.subTabText,
-                        activePlatformTab === p && styles.subTabTextActive,
+                        styles.subTabBtn,
+                        (activePlatformTab === p || (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
+                        styles.subTabBtnActive,
                       ]}
+                      onPress={() => setActivePlatformTab(p)}
                     >
-                      {p.charAt(0).toUpperCase() + p.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                      <Text
+                        style={[
+                          styles.subTabText,
+                          (activePlatformTab === p || (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
+                          styles.subTabTextActive,
+                        ]}
+                      >
+                        {p.charAt(0).toUpperCase() + p.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
 
-              {/* Content Type Selector (for Platform-Specific Tabs) */}
-              {activePlatformTab !== 'general' && (
-                <VStack style={{ marginTop: 10 }}>
-                  <Text style={styles.inputLabel}>
-                    Content Type ({activePlatformTab.toUpperCase()})
-                  </Text>
-                  <HStack space="xs" className="mt-1 flex-wrap">
-                    {CONTENT_TYPES.map((ct) => {
-                      const activeCt =
-                        platformOverrides[activePlatformTab]?.contentType ||
-                        contentTypeOverrides[activePlatformTab] ||
-                        'media';
-                      const isSelected = activeCt === ct.value;
-                      return (
-                        <TouchableOpacity
-                          key={ct.value}
-                          style={[
-                            styles.providerChip,
-                            isSelected && styles.providerChipActive,
-                          ]}
-                          onPress={() => {
-                            setContentTypeOverrides((prev) => ({
-                              ...prev,
-                              [activePlatformTab]: ct.value,
-                            }));
+                {(() => {
+                  const targetPlatform =
+                    activePlatformTab !== 'general' && selectedPlatforms.includes(activePlatformTab)
+                      ? activePlatformTab
+                      : selectedPlatforms[0];
+
+                  if (!targetPlatform) return null;
+
+                  const currentOverride = platformOverrides[targetPlatform] || {};
+                  const activeCt = currentOverride.contentType || contentTypeOverrides[targetPlatform] || 'media';
+
+                  return (
+                    <VStack space="sm" style={{ marginTop: 12 }}>
+                      {/* Content Type Selector */}
+                      <VStack space="xs">
+                        <Text style={styles.inputLabel}>
+                          Content Type ({targetPlatform.toUpperCase()})
+                        </Text>
+                        <HStack space="xs" className="mt-1 flex-wrap">
+                          {CONTENT_TYPES.map((ct) => {
+                            const isSelected = activeCt === ct.value;
+                            return (
+                              <TouchableOpacity
+                                key={ct.value}
+                                style={[
+                                  styles.providerChip,
+                                  isSelected && styles.providerChipActive,
+                                ]}
+                                onPress={() => {
+                                  setContentTypeOverrides((prev) => ({
+                                    ...prev,
+                                    [targetPlatform]: ct.value,
+                                  }));
+                                  setPlatformOverrides((prev) => ({
+                                    ...prev,
+                                    [targetPlatform]: {
+                                      ...prev[targetPlatform],
+                                      contentType: ct.value,
+                                    },
+                                  }));
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    styles.providerChipText,
+                                    isSelected && styles.providerChipTextActive,
+                                  ]}
+                                >
+                                  {ct.label}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </HStack>
+                      </VStack>
+
+                      {/* Platform Specific Caption Override */}
+                      <VStack space="xs" style={{ marginTop: 8 }}>
+                        <Text style={styles.inputLabel}>
+                          {targetPlatform.toUpperCase()} Caption Override
+                        </Text>
+                        <TextInput
+                          style={[styles.input, styles.multilineInput]}
+                          value={currentOverride.caption ?? caption}
+                          onChangeText={(val) => {
                             setPlatformOverrides((prev) => ({
                               ...prev,
-                              [activePlatformTab]: {
-                                ...prev[activePlatformTab],
-                                contentType: ct.value,
+                              [targetPlatform]: {
+                                ...prev[targetPlatform],
+                                caption: val,
                               },
                             }));
                           }}
-                        >
-                          <Text
-                            style={[
-                              styles.providerChipText,
-                              isSelected && styles.providerChipTextActive,
-                            ]}
+                          placeholder={`Custom caption for ${targetPlatform}...`}
+                          placeholderTextColor="#94a3b8"
+                          multiline
+                          numberOfLines={4}
+                        />
+                      </VStack>
+
+                      {/* Platform Specific Link Override */}
+                      <VStack space="xs" style={{ marginTop: 8 }}>
+                        <Text style={styles.inputLabel}>
+                          {targetPlatform.toUpperCase()} Link Override
+                        </Text>
+                        <TextInput
+                          style={styles.input}
+                          value={currentOverride.link ?? companyWebsite}
+                          onChangeText={(val) => {
+                            setPlatformOverrides((prev) => ({
+                              ...prev,
+                              [targetPlatform]: {
+                                ...prev[targetPlatform],
+                                link: val,
+                              },
+                            }));
+                          }}
+                          placeholder={`Custom link for ${targetPlatform}`}
+                          placeholderTextColor="#94a3b8"
+                          keyboardType="url"
+                          autoCapitalize="none"
+                        />
+                      </VStack>
+
+                      {/* Platform Specific Image Override */}
+                      <VStack space="xs" style={{ marginTop: 8 }}>
+                        <Text style={styles.inputLabel}>
+                          {targetPlatform.toUpperCase()} Custom Image (Optional Override)
+                        </Text>
+                        {currentOverride.image_url ? (
+                          <Box style={styles.imagePreviewBox}>
+                            <Image
+                              source={{ uri: currentOverride.image_url }}
+                              style={styles.uploadedImage}
+                              resizeMode="cover"
+                            />
+                            <TouchableOpacity
+                              style={styles.removeImgBtn}
+                              onPress={() => {
+                                setPlatformOverrides((prev) => ({
+                                  ...prev,
+                                  [targetPlatform]: {
+                                    ...prev[targetPlatform],
+                                    image_url: '',
+                                  },
+                                }));
+                              }}
+                            >
+                              <Feather name="trash-2" size={16} color="#fff" />
+                            </TouchableOpacity>
+                          </Box>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.uploadBox, { paddingVertical: 12 }]}
+                            onPress={async () => {
+                              try {
+                                const result = await ImagePicker.launchImageLibraryAsync({
+                                  mediaTypes:
+                                    (ImagePicker as any).MediaType?.Images ||
+                                    ImagePicker.MediaTypeOptions.Images,
+                                  allowsEditing: true,
+                                  quality: 0.8,
+                                });
+                                if (!result.canceled && result.assets && result.assets.length > 0) {
+                                  const uri = result.assets[0].uri;
+                                  setPlatformOverrides((prev) => ({
+                                    ...prev,
+                                    [targetPlatform]: {
+                                      ...prev[targetPlatform],
+                                      image_url: uri,
+                                    },
+                                  }));
+                                }
+                              } catch {
+                                Alert.alert('Error', 'Failed to pick platform image.');
+                              }
+                            }}
                           >
-                            {ct.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </HStack>
-                </VStack>
-              )}
-
-              {/* Company Name Field (General Content) */}
-              {activePlatformTab === 'general' && (
-                <VStack style={{ marginTop: 12 }}>
-                  <Text style={styles.inputLabel}>Company Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={companyName}
-                    onChangeText={setCompanyName}
-                    placeholder="Enter company / brand name"
-                    placeholderTextColor="#94a3b8"
-                  />
-                </VStack>
-              )}
-
-              {/* Title Field */}
-              <VStack style={{ marginTop: 12 }}>
-                <Text style={styles.inputLabel}>Title</Text>
-                <TextInput
-                  style={styles.input}
-                  value={title}
-                  onChangeText={setTitle}
-                  placeholder="Post title (optional)"
-                  placeholderTextColor="#94a3b8"
-                />
-              </VStack>
-
-              {/* Website Link Field */}
-              <VStack style={{ marginTop: 12 }}>
-                <Text style={styles.inputLabel}>
-                  {activePlatformTab === 'general'
-                    ? 'Website / Link URL'
-                    : `${activePlatformTab.toUpperCase()} Specific Link`}
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  value={
-                    activePlatformTab === 'general'
-                      ? companyWebsite
-                      : (platformOverrides[activePlatformTab]?.link ?? companyWebsite)
-                  }
-                  onChangeText={(val) => {
-                    if (activePlatformTab === 'general') {
-                      setCompanyWebsite(val);
-                    } else {
-                      setPlatformOverrides((prev) => ({
-                        ...prev,
-                        [activePlatformTab]: {
-                          ...prev[activePlatformTab],
-                          link: val,
-                        },
-                      }));
-                    }
-                  }}
-                  placeholder="https://yourwebsite.com/link"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="url"
-                  autoCapitalize="none"
-                />
-              </VStack>
-
-              {/* Caption Field */}
-              <VStack style={{ marginTop: 12 }}>
-                <Text style={styles.inputLabel}>
-                  {activePlatformTab === 'general'
-                    ? 'Caption *'
-                    : `${activePlatformTab.toUpperCase()} Specific Caption`}
-                </Text>
-                <TextInput
-                  style={[styles.input, styles.multilineInput]}
-                  value={
-                    activePlatformTab === 'general'
-                      ? caption
-                      : (platformOverrides[activePlatformTab]?.caption ?? caption)
-                  }
-                  onChangeText={(val) => {
-                    if (activePlatformTab === 'general') {
-                      setCaption(val);
-                    } else {
-                      setPlatformOverrides((prev) => ({
-                        ...prev,
-                        [activePlatformTab]: {
-                          ...prev[activePlatformTab],
-                          caption: val,
-                          image_url: prev[activePlatformTab]?.image_url || '',
-                        },
-                      }));
-                    }
-                  }}
-                  placeholder="Write your post caption..."
-                  placeholderTextColor="#94a3b8"
-                  multiline
-                  numberOfLines={4}
-                />
-              </VStack>
-
-              {/* Hashtags Field */}
-              <VStack style={{ marginTop: 12 }}>
-                <Text style={styles.inputLabel}>Hashtags (comma separated)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={hashtagsInput}
-                  onChangeText={setHashtagsInput}
-                  placeholder="marketing, promotion, offer"
-                  placeholderTextColor="#94a3b8"
-                />
-                {hashtagsInput.trim().length > 0 && (
-                  <HStack space="xs" className="mt-2 flex-wrap">
-                    {hashtagsInput.split(',').map((tag, idx) => {
-                      const trimmed = tag.trim().replace(/^#/, '');
-                      if (!trimmed) return null;
-                      return (
-                        <Box key={idx} style={styles.tagChip}>
-                          <Text style={styles.tagText}>#{trimmed}</Text>
-                        </Box>
-                      );
-                    })}
-                  </HStack>
-                )}
-              </VStack>
-            </Box>
+                            <Feather name="image" size={20} color="#0052d4" />
+                            <Text style={[styles.uploadText, { fontSize: 12 }]}>
+                              Upload Custom Image for {targetPlatform.toUpperCase()}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </VStack>
+                    </VStack>
+                  );
+                })()}
+              </Box>
+            )}
 
             {/* Publishing & Scheduling Section */}
             <Box style={styles.card}>

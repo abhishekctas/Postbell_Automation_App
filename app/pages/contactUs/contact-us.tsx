@@ -8,7 +8,6 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
-  View,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -670,9 +669,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   filterSection: {
-    paddingBottom: 12,
+    paddingBottom: 2,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
   searchInput: {
@@ -684,14 +682,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1e293b',
     backgroundColor: '#f8fafc',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   tabBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 9,
-    borderRadius: 20,
+    paddingVertical: 4,
+    borderRadius: 15,
     backgroundColor: '#f1f5f9',
     borderWidth: 1,
     borderColor: '#e2e8f0',

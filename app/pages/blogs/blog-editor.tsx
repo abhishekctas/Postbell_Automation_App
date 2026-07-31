@@ -25,7 +25,6 @@ import {
   TagFormData,
   FaqItem,
   FaqFormData,
-  GuidesListingConfig,
   GuidesConfigFormData,
   InfoPoint,
   SeoLink,

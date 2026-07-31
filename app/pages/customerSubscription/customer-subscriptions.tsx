@@ -317,7 +317,7 @@ const SUB_TABLE_COLUMNS: HtmlTableColumn<Subscription>[] = [
   {
     key: 'auto_renew',
     label: 'Auto Renew',
-    width: '110px',
+    width: '120px',
     render: (_v, row) => {
       const isAutoRenew = row.auto_renew !== false;
       return (
@@ -432,7 +432,13 @@ export default function CustomerSubscriptionsScreen() {
         }
 
         if (filter !== 'all') {
-          queryParams.append('status', filter);
+          const statusMap: Record<string, string> = {
+            active: '1',
+            expired: '0',
+            cancelled: '2',
+          };
+          const statusVal = statusMap[filter] || filter;
+          queryParams.append('columnFilters', JSON.stringify({ status: statusVal }));
         }
 
         const res = await listSubscriptions(queryParams.toString());
@@ -600,7 +606,7 @@ export default function CustomerSubscriptionsScreen() {
               }}
               iconOnlyActions={true}
               tableContainerStyle={{
-                borderWidth: 0,
+                borderWidth: 1,
                 shadowColor: 'transparent',
                 backgroundColor: 'transparent',
                 elevation: 0,
@@ -611,6 +617,10 @@ export default function CustomerSubscriptionsScreen() {
                 backgroundColor: '#f8fafc',
                 borderBottomWidth: 1.5,
                 borderBottomColor: '#e2e8f0',
+              }}
+              headerCellStyle={{
+                paddingVertical: 0,
+
               }}
               headerCellTextStyle={{
                 color: '#1e3a8a',
@@ -946,7 +956,7 @@ export default function CustomerSubscriptionsScreen() {
 const styles = StyleSheet.create({
   header: { paddingBottom: 4 },
   filterSection: {
-    padding: 16,
+    padding: 10,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
@@ -960,14 +970,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1e293b',
     backgroundColor: '#f8fafc',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   tabBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 4,
+    borderRadius: 14,
     backgroundColor: '#f1f5f9',
     borderWidth: 1,
     borderColor: '#e2e8f0',
