@@ -6,6 +6,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   TextInput,
+  Image,
+  Platform,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -14,30 +16,20 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { Button, ButtonText } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
-import { fetchWithAuth, API_ENDPOINTS } from '@/services/api';
+import { fetchWithAuth, API_ENDPOINTS, API_BASE_URL } from '@/services/api';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-
-interface ProfileData {
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  contact_no?: string;
-  address?: string;
-  role_name?: string;
-}
+import * as ImagePicker from 'expo-image-picker';
 
 function InfoRow({
   label,
   value,
-  editing,
   onChangeText,
   keyboardType,
   multiline,
 }: {
   label: string;
   value: string;
-  editing: boolean;
   onChangeText?: (v: string) => void;
   keyboardType?: any;
   multiline?: boolean;
@@ -45,7 +37,7 @@ function InfoRow({
   return (
     <VStack space="xs" style={{ marginBottom: 12 }}>
       <Text style={styles.formLabel}>{label}</Text>
-      {editing && onChangeText ? (
+      {onChangeText ? (
         <TextInput
           style={[styles.input, multiline && { minHeight: 72, textAlignVertical: 'top' }]}
           value={value}
@@ -65,12 +57,14 @@ function InfoRow({
 export default function ProfileScreen() {
   const { user, signOut, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [address, setAddress] = useState('');
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -87,15 +81,98 @@ export default function ProfileScreen() {
         setLastName(data?.last_name ?? user?.last_name ?? '');
         setContactNo(String(data?.contact_no ?? user?.contact_no ?? ''));
         setAddress(data?.address ?? '');
+        setAvatarUrl(data?.avatar ?? user?.avatar ?? null);
       } catch {
         setFirstName(user?.first_name ?? '');
         setLastName(user?.last_name ?? '');
+        setAvatarUrl(user?.avatar ?? null);
       } finally {
         setLoading(false);
       }
     };
     load();
   }, [user]);
+
+  const getAvatarUrl = (avatar?: string | null) => {
+    if (!avatar) return null;
+    if (/^https?:\/\//i.test(avatar) || avatar.startsWith('file://') || avatar.startsWith('content://')) {
+      return avatar;
+    }
+    const baseUrl = API_BASE_URL.replace(/\/v1\/?$/, '');
+    return `${baseUrl}/profile/${avatar}`;
+  };
+
+  const handlePickAndUploadImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission Denied', 'Permission to access media library is required!');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const uid = user?._id || user?.id;
+        if (!uid) {
+          Alert.alert('Error', 'User ID not found');
+          return;
+        }
+
+        setUploadingImage(true);
+
+        const formData = new FormData();
+        const filename = asset.uri.split('/').pop() || 'avatar.jpg';
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+        formData.append('image', {
+          uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
+          name: filename,
+          type,
+        } as any);
+
+        const res = await fetchWithAuth(
+          `${API_ENDPOINTS.profile}/profile/upload-profile-image/${uid}`,
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+
+        if (res && res.success !== false) {
+          const BASE = API_ENDPOINTS.profile.replace('/users', '');
+          const userRes = await fetchWithAuth(`${BASE}/users/get-user/${uid}`);
+          const updatedData = userRes?.data || userRes;
+          const newAvatar =
+            updatedData?.avatar ||
+            res?.data?.avatar ||
+            res?.avatar ||
+            res?.user?.avatar ||
+            asset.uri;
+
+          setAvatarUrl(newAvatar);
+          if (updateUser) {
+            await updateUser({ avatar: newAvatar });
+          }
+          Alert.alert('Success', 'Profile image updated successfully!');
+        } else {
+          Alert.alert('Error', res?.message || 'Failed to upload profile image.');
+        }
+      }
+    } catch (err: any) {
+      console.error('Upload profile image error:', err);
+      Alert.alert('Error', err?.message || 'Failed to upload profile image.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -113,7 +190,6 @@ export default function ProfileScreen() {
         }),
       });
       await updateUser({ first_name: firstName, last_name: lastName });
-      setEditing(false);
       Alert.alert('Success', 'Profile updated!');
     } catch {
       Alert.alert('Error', 'Failed to update profile.');
@@ -142,9 +218,6 @@ export default function ProfileScreen() {
               <Text style={styles.backBtnText}>Back</Text>
             </HStack>
           </TouchableOpacity>
-          {/* <TouchableOpacity onPress={() => Alert.alert("Settings", "App Settings coming soon")}>
-            <Feather name="settings" size={22} color="#fff" />
-          </TouchableOpacity> */}
         </HStack>
       </Box>
 
@@ -157,131 +230,80 @@ export default function ProfileScreen() {
           {/* Profile card */}
           <Box style={styles.profileCard}>
             <HStack space="lg" className="items-center">
-              {/* Initials Avatar with overlay badge */}
-              <Box style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{initials}</Text>
-                <TouchableOpacity style={styles.avatarBadge} activeOpacity={0.8}>
+              {/* Initials/Image Avatar with camera overlay badge */}
+              <TouchableOpacity
+                style={styles.avatarCircle}
+                activeOpacity={0.8}
+                onPress={handlePickAndUploadImage}
+                disabled={uploadingImage}
+              >
+                {uploadingImage ? (
+                  <ActivityIndicator size="small" color="#0369a1" />
+                ) : getAvatarUrl(avatarUrl) ? (
+                  <Image
+                    source={{ uri: getAvatarUrl(avatarUrl)! }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>{initials}</Text>
+                )}
+                <Box style={styles.avatarBadge}>
                   <Feather name="camera" size={12} color="#fff" />
-                </TouchableOpacity>
-              </Box>
+                </Box>
+              </TouchableOpacity>
 
               <VStack style={{ flex: 1 }}>
                 <Heading size="md" style={styles.nameText}>
                   {firstName} {lastName}
                 </Heading>
                 <Text style={styles.emailText}>{user?.email}</Text>
-                <TouchableOpacity
-                  style={styles.viewProfileBtn}
-                  onPress={() => setEditing((e) => !e)}
-                >
-                  <Text style={styles.viewProfileText}>
-                    {editing ? 'Hide Details' : 'View Profile'}
-                  </Text>
-                </TouchableOpacity>
               </VStack>
             </HStack>
           </Box>
 
+          {/* Inline Editable Form Details */}
+          <Box style={styles.editCard}>
+            <Heading size="sm" style={styles.editCardTitle}>
+              Edit Personal Details
+            </Heading>
+            <VStack space="md">
+              <InfoRow
+                label="First Name"
+                value={firstName}
+                onChangeText={setFirstName}
+              />
+              <InfoRow
+                label="Last Name"
+                value={lastName}
+                onChangeText={setLastName}
+              />
+              <InfoRow label="Email" value={user?.email ?? ''} />
+              <InfoRow
+                label="Phone"
+                value={contactNo}
+                onChangeText={setContactNo}
+                keyboardType="phone-pad"
+              />
+              <InfoRow
+                label="Address"
+                value={address}
+                onChangeText={setAddress}
+                multiline
+              />
+            </VStack>
+            <Button size="lg" onPress={handleSave} isDisabled={saving} style={styles.saveBtn}>
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <ButtonText style={{ fontWeight: '700', color: 'white' }}>
+                  Save Changes
+                </ButtonText>
+              )}
+            </Button>
+          </Box>
+
           {/* Settings Options List */}
           <VStack space="sm" style={{ marginBottom: 16 }}>
-            {/* Social Accounts */}
-            <TouchableOpacity
-              style={styles.menuRow}
-              activeOpacity={0.7}
-              onPress={() => Alert.alert('Social Accounts', 'Manage connected platforms')}
-            >
-              <HStack space="md" className="items-center" style={{ flex: 1 }}>
-                <Box style={[styles.menuIconBg, { backgroundColor: '#eff6ff' }]}>
-                  <Feather name="globe" size={18} color="#0052d4" />
-                </Box>
-                <VStack style={{ flex: 1 }}>
-                  <Text style={styles.menuTitle}>Social Accounts</Text>
-                  <Text style={styles.menuSubtitle}>Manage connected platforms</Text>
-                </VStack>
-                <HStack className="items-center">
-                  <Text style={styles.countText}>3</Text>
-                  <Feather
-                    name="chevron-right"
-                    size={16}
-                    color="#94a3b8"
-                    style={{ marginLeft: 4 }}
-                  />
-                </HStack>
-              </HStack>
-            </TouchableOpacity>
-
-            {/* Notification Settings */}
-            <TouchableOpacity
-              style={styles.menuRow}
-              activeOpacity={0.7}
-              onPress={() => Alert.alert('Notification Settings', 'Manage notifications settings')}
-            >
-              <HStack space="md" className="items-center" style={{ flex: 1 }}>
-                <Box style={[styles.menuIconBg, { backgroundColor: '#fef2f2' }]}>
-                  <Feather name="bell" size={18} color="#ef4444" />
-                </Box>
-                <VStack style={{ flex: 1 }}>
-                  <Text style={styles.menuTitle}>Notification Settings</Text>
-                  <Text style={styles.menuSubtitle}>Manage your notifications</Text>
-                </VStack>
-                <Feather name="chevron-right" size={16} color="#94a3b8" />
-              </HStack>
-            </TouchableOpacity>
-
-            {/* Account Settings */}
-            <TouchableOpacity
-              style={styles.menuRow}
-              activeOpacity={0.7}
-              onPress={() => setEditing((e) => !e)}
-            >
-              <HStack space="md" className="items-center" style={{ flex: 1 }}>
-                <Box style={[styles.menuIconBg, { backgroundColor: '#f0fdf4' }]}>
-                  <Feather name="settings" size={18} color="#22c55e" />
-                </Box>
-                <VStack style={{ flex: 1 }}>
-                  <Text style={styles.menuTitle}>Account Settings</Text>
-                  <Text style={styles.menuSubtitle}>Update your profile and preferences</Text>
-                </VStack>
-                <Feather name="chevron-right" size={16} color="#94a3b8" />
-              </HStack>
-            </TouchableOpacity>
-
-            {/* Subscription Plan */}
-            <TouchableOpacity
-              style={styles.menuRow}
-              activeOpacity={0.7}
-              onPress={() => Alert.alert('Subscription Plan', 'Subscription details screen')}
-            >
-              <HStack space="md" className="items-center" style={{ flex: 1 }}>
-                <Box style={[styles.menuIconBg, { backgroundColor: '#faf5ff' }]}>
-                  <Feather name="credit-card" size={18} color="#a855f7" />
-                </Box>
-                <VStack style={{ flex: 1 }}>
-                  <Text style={styles.menuTitle}>Subscription Plan</Text>
-                  <Text style={styles.menuSubtitle}>Manage your subscription</Text>
-                </VStack>
-                <Feather name="chevron-right" size={16} color="#94a3b8" />
-              </HStack>
-            </TouchableOpacity>
-
-            {/* Help & Support */}
-            <TouchableOpacity
-              style={styles.menuRow}
-              activeOpacity={0.7}
-              onPress={() => Alert.alert('Help & Support', 'Support contact details')}
-            >
-              <HStack space="md" className="items-center" style={{ flex: 1 }}>
-                <Box style={[styles.menuIconBg, { backgroundColor: '#f6ffed' }]}>
-                  <Feather name="help-circle" size={18} color="#52c41a" />
-                </Box>
-                <VStack style={{ flex: 1 }}>
-                  <Text style={styles.menuTitle}>Help & Support</Text>
-                  <Text style={styles.menuSubtitle}>Get help and contact support</Text>
-                </VStack>
-                <Feather name="chevron-right" size={16} color="#94a3b8" />
-              </HStack>
-            </TouchableOpacity>
-
             {/* Log Out */}
             <TouchableOpacity
               style={styles.menuRow}
@@ -304,53 +326,6 @@ export default function ProfileScreen() {
               </HStack>
             </TouchableOpacity>
           </VStack>
-
-          {/* Inline Editable Form Details */}
-          {editing && (
-            <Box style={styles.editCard}>
-              <Heading size="sm" style={styles.editCardTitle}>
-                Edit Personal Details
-              </Heading>
-              <VStack space="md">
-                <InfoRow
-                  label="First Name"
-                  value={firstName}
-                  editing={editing}
-                  onChangeText={setFirstName}
-                />
-                <InfoRow
-                  label="Last Name"
-                  value={lastName}
-                  editing={editing}
-                  onChangeText={setLastName}
-                />
-                <InfoRow label="Email" value={user?.email ?? ''} editing={false} />
-                <InfoRow
-                  label="Phone"
-                  value={contactNo}
-                  editing={editing}
-                  onChangeText={setContactNo}
-                  keyboardType="phone-pad"
-                />
-                <InfoRow
-                  label="Address"
-                  value={address}
-                  editing={editing}
-                  onChangeText={setAddress}
-                  multiline
-                />
-              </VStack>
-              <Button size="lg" onPress={handleSave} isDisabled={saving} style={styles.saveBtn}>
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <ButtonText style={{ fontWeight: '700', color: 'white' }}>
-                    Save Changes
-                  </ButtonText>
-                )}
-              </Button>
-            </Box>
-          )}
 
           {/* Footer version */}
           <Text style={styles.footerVersion}>PostBell v1.0.0</Text>
@@ -397,6 +372,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  avatarImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
   },
   avatarText: {
     fontSize: 26,

@@ -41,7 +41,6 @@ export const listSubscriptions = async (
   params = ''
 ): Promise<{ data: Subscription[]; pagination?: any } | Subscription[]> => {
   const res = await fetchWithAuth(`${BASE}/admin/get-all-subscription?${params}`);
-  console.log(res, "resres-list-subscriptions-customer");
   if (res && res.success === false) {
     throw new Error(res.message || 'Failed to fetch subscriptions');
   }

@@ -25,7 +25,6 @@ import {
 } from './subscription-plans.api';
 import { router } from 'expo-router';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
-import { useAuth } from '@/context/AuthContext';
 import {
   Star,
   Rocket,
@@ -37,8 +36,6 @@ import {
   Save,
   ArrowLeft,
   Tag,
-  Calendar,
-  Percent,
   FileText,
   Layers,
   ListPlus,
@@ -48,7 +45,17 @@ import {
   ChevronLeft,
   ChevronRight,
   FileClock,
+  ChevronDown,
+  Check,
 } from 'lucide-react-native';
+
+const PLAN_NAMES = [
+  'Basic',
+  'Starter',
+  'Professional',
+  'Premium',
+  'Enterprise',
+] as const;
 
 const PLAN_TABLE_COLUMNS: HtmlTableColumn[] = [
   {
@@ -377,16 +384,16 @@ export default function SubscriptionPlansScreen() {
   // Form State
   const [modalVisible, setModalVisible] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
-  const [name, setName] = useState('');
+  const [name, setName] = useState<string>('Basic');
+  const [showNameDropdown, setShowNameDropdown] = useState(false);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [pricePerMonth, setPricePerMonth] = useState('');
-  const [pricePerYear, setPricePerYear] = useState('');
-  const [annualDiscount, setAnnualDiscount] = useState('');
   const [postsPerMonth, setPostsPerMonth] = useState('');
   const [postsPerDay, setPostsPerDay] = useState('');
   const [aiLimit, setAiLimit] = useState('');
   const [description, setDescription] = useState('');
-  const [features, setFeatures] = useState('');
+  const [features, setFeatures] = useState<string[]>([]);
+  const [featureInput, setFeatureInput] = useState('');
   const [sortOrder, setSortOrder] = useState('0');
   const [isPopularMonthly, setIsPopularMonthly] = useState(false);
   const [isPopularAnnual, setIsPopularAnnual] = useState(false);
@@ -422,16 +429,16 @@ export default function SubscriptionPlansScreen() {
 
   const handleOpenAdd = () => {
     setEditingPlan(null);
-    setName('');
+    setName('Basic');
+    setShowNameDropdown(false);
     setBillingCycle('monthly');
     setPricePerMonth('');
-    setPricePerYear('');
-    setAnnualDiscount('');
     setPostsPerMonth('');
     setPostsPerDay('');
     setAiLimit('');
     setDescription('');
-    setFeatures('');
+    setFeatures([]);
+    setFeatureInput('');
     setSortOrder('0');
     setIsPopularMonthly(false);
     setIsPopularAnnual(false);
@@ -441,23 +448,34 @@ export default function SubscriptionPlansScreen() {
 
   const handleOpenEdit = (plan: SubscriptionPlan) => {
     setEditingPlan(plan);
-    setName(plan.name || '');
+    setName(plan.name || 'Basic');
+    setShowNameDropdown(false);
     setBillingCycle(plan.billing_cycle || 'monthly');
     setPricePerMonth(plan.price_per_month ? String(plan.price_per_month) : '');
-    setPricePerYear(plan.price_per_year ? String(plan.price_per_year) : '');
-    setAnnualDiscount(
-      plan.annual_discount_percentage ? String(plan.annual_discount_percentage) : ''
-    );
     setPostsPerMonth(plan.posts_per_month ? String(plan.posts_per_month) : '');
     setPostsPerDay(plan.posts_per_day ? String(plan.posts_per_day) : '');
     setAiLimit(plan.ai_content_generation_limit ? String(plan.ai_content_generation_limit) : '');
     setDescription(plan.description || '');
-    setFeatures(plan.features?.join(', ') || '');
+    setFeatures(Array.isArray(plan.features) ? plan.features : []);
+    setFeatureInput('');
     setSortOrder(plan.sort_order ? String(plan.sort_order) : '0');
     setIsPopularMonthly(plan.is_popular_monthly || false);
     setIsPopularAnnual(plan.is_popular_annual || false);
     setStatus(plan.status ?? 1);
     setModalVisible(true);
+  };
+
+  const handleAddFeature = () => {
+    const value = featureInput.trim();
+    if (!value) return;
+    if (!features.includes(value)) {
+      setFeatures((prev) => [...prev, value]);
+    }
+    setFeatureInput('');
+  };
+
+  const handleRemoveFeature = (index: number) => {
+    setFeatures((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSave = async () => {
@@ -471,21 +489,19 @@ export default function SubscriptionPlansScreen() {
     }
 
     try {
-      const featuresArray = features
-        .split(',')
-        .map((f) => f.trim())
-        .filter((f) => f.length > 0);
+      let finalFeatures = [...features];
+      if (featureInput.trim() && !finalFeatures.includes(featureInput.trim())) {
+        finalFeatures.push(featureInput.trim());
+      }
 
       const payload: Partial<SubscriptionPlan> = {
         name,
         billing_cycle: billingCycle,
         price_per_month: Number(pricePerMonth),
-        price_per_year: pricePerYear.trim() ? Number(pricePerYear) : undefined,
-        annual_discount_percentage: annualDiscount.trim() ? Number(annualDiscount) : 0,
         posts_per_month: postsPerMonth.trim() ? Number(postsPerMonth) : 0,
         posts_per_day: postsPerDay.trim() ? Number(postsPerDay) : 0,
         ai_content_generation_limit: aiLimit.trim() ? Number(aiLimit) : 0,
-        features: featuresArray,
+        features: finalFeatures,
         description,
         sort_order: Number(sortOrder),
         is_popular_monthly: isPopularMonthly,
@@ -869,13 +885,94 @@ export default function SubscriptionPlansScreen() {
               contentContainerStyle={{ paddingBottom: 24 }}
             >
               <VStack space="lg">
-                <FormInput
-                  label="Plan Name *"
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="e.g. Basic Plan"
-                  icon={Tag}
-                />
+                <VStack space="xs" style={{ zIndex: 20 }}>
+                  <Text style={styles.label}>Plan Name *</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setShowNameDropdown((prev) => !prev)}
+                    style={[
+                      styles.modalInput,
+                      {
+                        height: 44,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingLeft: 38,
+                        paddingRight: 12,
+                      },
+                    ]}
+                  >
+                    <Box style={{ position: 'absolute', left: 12, zIndex: 10, alignSelf: 'center' }}>
+                      <Tag size={16} color="#2563eb" />
+                    </Box>
+                    <Text
+                      style={{ fontSize: 14, color: name ? '#1e293b' : '#94a3b8', fontWeight: '500' }}
+                    >
+                      {name || 'Select Plan Name'}
+                    </Text>
+                    <ChevronDown
+                      size={16}
+                      color="#64748b"
+                      style={{ transform: [{ rotate: showNameDropdown ? '180deg' : '0deg' }] }}
+                    />
+                  </TouchableOpacity>
+
+                  {showNameDropdown && (
+                    <Box
+                      style={{
+                        backgroundColor: '#ffffff',
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: '#e2e8f0',
+                        marginTop: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 8,
+                        elevation: 5,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {(PLAN_NAMES.includes(name as any) || !name
+                        ? [...PLAN_NAMES]
+                        : [name, ...PLAN_NAMES]
+                      ).map((planName) => {
+                        const isSelected = name === planName;
+                        return (
+                          <TouchableOpacity
+                            key={planName}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              setName(planName);
+                              setShowNameDropdown(false);
+                            }}
+                            style={{
+                              paddingVertical: 12,
+                              paddingHorizontal: 16,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
+                              borderBottomWidth: 1,
+                              borderBottomColor: '#f1f5f9',
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 14,
+                                fontWeight: isSelected ? '700' : '500',
+                                color: isSelected ? '#2563eb' : '#334155',
+                              }}
+                            >
+                              {planName}
+                            </Text>
+                            {isSelected && <Check size={16} color="#2563eb" />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </Box>
+                  )}
+                </VStack>
 
                 <HStack space="md">
                   <VStack space="xs" style={{ flex: 1 }}>
@@ -932,26 +1029,6 @@ export default function SubscriptionPlansScreen() {
 
                 <HStack space="md">
                   <FormInput
-                    label="Price / Year"
-                    value={pricePerYear}
-                    onChangeText={setPricePerYear}
-                    keyboardType="numeric"
-                    placeholder="e.g. 182"
-                    icon={Calendar}
-                  />
-
-                  <FormInput
-                    label="Discount (%)"
-                    value={annualDiscount}
-                    onChangeText={setAnnualDiscount}
-                    keyboardType="numeric"
-                    placeholder="e.g. 15"
-                    icon={Percent}
-                  />
-                </HStack>
-
-                <HStack space="md">
-                  <FormInput
                     label="Posts / Month"
                     value={postsPerMonth}
                     onChangeText={setPostsPerMonth}
@@ -990,13 +1067,71 @@ export default function SubscriptionPlansScreen() {
                   />
                 </HStack>
 
-                <FormInput
-                  label="Features (comma separated)"
-                  value={features}
-                  onChangeText={setFeatures}
-                  placeholder="e.g. Popular Badge, Premium Support"
-                  icon={ListPlus}
-                />
+                <VStack space="xs">
+                  <Text style={styles.label}>Features *</Text>
+                  <HStack space="sm" style={{ alignItems: 'center' }}>
+                    <Box style={{ flex: 1, position: 'relative', justifyContent: 'center' }}>
+                      <Box style={{ position: 'absolute', left: 12, zIndex: 10, alignSelf: 'center' }}>
+                        <ListPlus size={16} color="#2563eb" />
+                      </Box>
+                      <TextInput
+                        style={[styles.modalInput, { paddingLeft: 38, height: 44 }]}
+                        value={featureInput}
+                        onChangeText={setFeatureInput}
+                        placeholder="Type feature and press Enter or Add…"
+                        placeholderTextColor="#94a3b8"
+                        onSubmitEditing={handleAddFeature}
+                        returnKeyType="done"
+                      />
+                    </Box>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={handleAddFeature}
+                      style={{
+                        height: 44,
+                        paddingHorizontal: 16,
+                        backgroundColor: '#2563eb',
+                        borderRadius: 12,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Plus size={16} color="#ffffff" style={{ marginRight: 4 }} />
+                      <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 13 }}>Add</Text>
+                    </TouchableOpacity>
+                  </HStack>
+
+                  {features.length > 0 && (
+                    <HStack style={{ flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      {features.map((f, i) => (
+                        <Box
+                          key={i}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: '#eff6ff',
+                            borderWidth: 1,
+                            borderColor: '#bfdbfe',
+                            paddingHorizontal: 10,
+                            paddingVertical: 6,
+                            borderRadius: 20,
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#1d4ed8', marginRight: 6 }}>
+                            {f}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => handleRemoveFeature(i)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <X size={12} color="#1d4ed8" />
+                          </TouchableOpacity>
+                        </Box>
+                      ))}
+                    </HStack>
+                  )}
+                </VStack>
 
                 <FormInput
                   label="Description"

@@ -24,7 +24,7 @@ import {
   DashboardStats,
   RecentPost,
 } from '../dashboard/dashboard.api';
-import { Feather, FontAwesome, AntDesign, FontAwesome6, Ionicons } from '@expo/vector-icons';
+import { Feather, FontAwesome, AntDesign, FontAwesome6 } from '@expo/vector-icons';
 import Svg, {
   Path,
   Defs,

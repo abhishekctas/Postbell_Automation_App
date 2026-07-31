@@ -25,6 +25,7 @@ interface HtmlTableProps {
   tableContainerStyle?: any;
   headerRowStyle?: any;
   headerCellTextStyle?: any;
+  headerCellStyle?: any;
   rowStyle?: any;
   rowEvenStyle?: any;
   rowOddStyle?: any;
@@ -80,6 +81,7 @@ export default function HtmlTable({
   tableContainerStyle,
   headerRowStyle,
   headerCellTextStyle,
+  headerCellStyle,
   rowStyle,
   rowEvenStyle,
   rowOddStyle,
@@ -113,7 +115,7 @@ export default function HtmlTable({
                     <TableHead
                       key={col.key}
                       useRNView={true}
-                      style={[styles.headerCell, { width }]}
+                      style={[styles.headerCell, headerCellStyle, { width }]}
                     >
                       <Text style={[styles.headerCellText, headerCellTextStyle]}>{col.label}</Text>
                     </TableHead>
@@ -122,7 +124,7 @@ export default function HtmlTable({
                 {hasActions && (
                   <TableHead
                     useRNView={true}
-                    style={[styles.headerCell, { width: actionColWidth }]}
+                    style={[styles.headerCell, headerCellStyle, { width: actionColWidth }]}
                   >
                     <Text style={[styles.headerCellText, headerCellTextStyle]}>Actions</Text>
                   </TableHead>
@@ -285,7 +287,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#795a9010', // Soft purple tint matching the primary-700 color: 121 90 144
   },
   headerCell: {
-    paddingVertical: 14,
+    paddingVertical: 0,
     paddingHorizontal: 16,
     justifyContent: 'center',
   },

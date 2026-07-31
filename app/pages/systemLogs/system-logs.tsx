@@ -70,7 +70,7 @@ const LOG_TABLE_COLUMNS: HtmlTableColumn<SystemLog>[] = [
   {
     key: 'operation',
     label: 'Operation',
-    width: '110px',
+    width: '120px',
     render: (v) => {
       const op = String(v || '—').toUpperCase();
       let bg = '#eff6ff';

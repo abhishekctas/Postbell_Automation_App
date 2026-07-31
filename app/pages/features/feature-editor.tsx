@@ -8,7 +8,6 @@ import {
   Modal,
   Image,
   StyleSheet,
-  View,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -17,8 +16,9 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { Button, ButtonText } from '@/components/ui/button';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import {
   createFeature,
   updateFeature,
@@ -38,6 +38,9 @@ const LIMITS = {
   maxPoints: 20,
 };
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB
+
 export default function FeatureEditorScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
@@ -56,6 +59,8 @@ export default function FeatureEditorScreen() {
   // Media
   const [image, setImage] = useState('');
   const [video, setVideo] = useState('');
+  const [imageFile, setImageFile] = useState<any>(null);
+  const [videoFile, setVideoFile] = useState<any>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [removeVideo, setRemoveVideo] = useState(false);
 
@@ -80,6 +85,8 @@ export default function FeatureEditorScreen() {
       setStatus(Number(data.status) === 0 ? 0 : 1);
       setImage(data.image || '');
       setVideo(data.video || '');
+      setImageFile(null);
+      setVideoFile(null);
       setRemoveImage(false);
       setRemoveVideo(false);
 
@@ -136,6 +143,74 @@ export default function FeatureEditorScreen() {
     setFeaturePoints((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handlePickImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission Denied', 'Permission to access media library is required.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (asset.fileSize && asset.fileSize > MAX_IMAGE_SIZE) {
+          Alert.alert('Error', 'Image size must be less than 5 MB');
+          return;
+        }
+        setImage(asset.uri);
+        const fileName = asset.fileName || asset.uri.split('/').pop() || 'feature_image.jpg';
+        const mimeType = asset.mimeType || 'image/jpeg';
+        setImageFile({
+          uri: asset.uri,
+          name: fileName,
+          type: mimeType,
+        });
+        setRemoveImage(false);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to select image.');
+    }
+  };
+
+  const handlePickVideo = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission Denied', 'Permission to access media library is required.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['videos'],
+        allowsEditing: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        if (asset.fileSize && asset.fileSize > MAX_VIDEO_SIZE) {
+          Alert.alert('Error', 'Video size must be less than 15 MB');
+          return;
+        }
+        setVideo(asset.uri);
+        const fileName = asset.fileName || asset.uri.split('/').pop() || 'feature_video.mp4';
+        const mimeType = asset.mimeType || 'video/mp4';
+        setVideoFile({
+          uri: asset.uri,
+          name: fileName,
+          type: mimeType,
+        });
+        setRemoveVideo(false);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to select video.');
+    }
+  };
+
   const handleRemoveImageAction = () => {
     Alert.alert('Remove Image', 'Are you sure you want to remove the feature image?', [
       { text: 'Cancel', style: 'cancel' },
@@ -144,6 +219,7 @@ export default function FeatureEditorScreen() {
         style: 'destructive',
         onPress: () => {
           setImage('');
+          setImageFile(null);
           setRemoveImage(true);
         },
       },
@@ -158,6 +234,7 @@ export default function FeatureEditorScreen() {
         style: 'destructive',
         onPress: () => {
           setVideo('');
+          setVideoFile(null);
           setRemoveVideo(true);
         },
       },
@@ -202,12 +279,13 @@ export default function FeatureEditorScreen() {
         status: status === 1 ? 1 : 0,
         image,
         video,
+        imageFile,
+        videoFile,
         removeImage,
         removeVideo,
         feature_points: featurePoints.map((pt) => ({
           point_title: pt.point_title.trim(),
           point_description: pt.point_description?.trim() || '',
-          icon: pt.icon || 'star',
         })),
       };
 
@@ -355,20 +433,9 @@ export default function FeatureEditorScreen() {
           </HStack>
 
           <VStack space="md">
-            {/* Feature Image URL / Path */}
+            {/* Feature Image Upload */}
             <VStack space="xs">
-              <Text style={styles.inputLabel}>Feature Image (URL or Path)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={image}
-                onChangeText={(val) => {
-                  setImage(val);
-                  if (removeImage) setRemoveImage(false);
-                }}
-                placeholder="Enter image URL or filename"
-                placeholderTextColor="#94a3b8"
-                autoCapitalize="none"
-              />
+              <Text style={styles.inputLabel}>Feature Image</Text>
               {image ? (
                 <Box style={styles.mediaPreviewCard}>
                   <Image
@@ -377,6 +444,10 @@ export default function FeatureEditorScreen() {
                     resizeMode="cover"
                   />
                   <HStack style={styles.mediaActionRow}>
+                    <TouchableOpacity style={styles.mediaBtn} onPress={handlePickImage}>
+                      <Feather name="upload" size={13} color="#2563EB" />
+                      <Text style={styles.mediaBtnText}>Upload New</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.mediaBtn}
                       onPress={() => {
@@ -396,38 +467,53 @@ export default function FeatureEditorScreen() {
                     </TouchableOpacity>
                   </HStack>
                 </Box>
-              ) : null}
+              ) : (
+                <TouchableOpacity style={styles.uploadBox} onPress={handlePickImage}>
+                  <VStack className="items-center justify-center py-4 space-y-1">
+                    <Box style={styles.uploadIconCircle}>
+                      <Feather name="upload-cloud" size={22} color="#2563EB" />
+                    </Box>
+                    <Text style={styles.uploadBoxTitle}>Upload Feature Image</Text>
+                    <Text style={styles.uploadBoxSubtitle}>Tap to choose image (JPG, PNG, WEBP)</Text>
+                  </VStack>
+                </TouchableOpacity>
+              )}
             </VStack>
 
-            {/* Feature Video URL / Path */}
+            {/* Feature Video Upload */}
             <VStack space="xs">
-              <Text style={styles.inputLabel}>Feature Video (URL or Path)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={video}
-                onChangeText={(val) => {
-                  setVideo(val);
-                  if (removeVideo) setRemoveVideo(false);
-                }}
-                placeholder="Enter video URL or filename (mp4)"
-                placeholderTextColor="#94a3b8"
-                autoCapitalize="none"
-              />
+              <Text style={styles.inputLabel}>Feature Video</Text>
               {video ? (
                 <Box style={styles.mediaPreviewCard}>
                   <Box className="flex-row items-center justify-between rounded-lg bg-slate-900 p-3">
-                    <HStack className="items-center space-x-2">
+                    <HStack className="items-center space-x-2" style={{ flex: 1, marginRight: 8 }}>
                       <Feather name="video" size={16} color="#38bdf8" />
                       <Text className="text-xs font-semibold text-white" numberOfLines={1}>
-                        {video}
+                        {video.split('/').pop() || video}
                       </Text>
                     </HStack>
-                    <TouchableOpacity onPress={handleRemoveVideoAction}>
-                      <Feather name="trash-2" size={14} color="#f87171" />
-                    </TouchableOpacity>
+                    <HStack className="items-center space-x-2">
+                      <TouchableOpacity style={styles.mediaBtnSmall} onPress={handlePickVideo}>
+                        <Feather name="upload" size={12} color="#fff" />
+                        <Text style={{ fontSize: 11, color: '#fff', fontWeight: '600' }}>Change</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={handleRemoveVideoAction}>
+                        <Feather name="trash-2" size={14} color="#f87171" />
+                      </TouchableOpacity>
+                    </HStack>
                   </Box>
                 </Box>
-              ) : null}
+              ) : (
+                <TouchableOpacity style={styles.uploadBox} onPress={handlePickVideo}>
+                  <VStack className="items-center justify-center py-4 space-y-1">
+                    <Box style={styles.uploadIconCircle}>
+                      <Feather name="video" size={22} color="#2563EB" />
+                    </Box>
+                    <Text style={styles.uploadBoxTitle}>Upload Feature Video</Text>
+                    <Text style={styles.uploadBoxSubtitle}>Tap to choose video (MP4)</Text>
+                  </VStack>
+                </TouchableOpacity>
+              )}
             </VStack>
 
             {/* Media guidelines notice */}
@@ -795,4 +881,41 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   fullModalImage: { width: '90%', height: '80%' },
+  uploadBox: {
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  uploadBoxTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  uploadBoxSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+  },
+  mediaBtnSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
 });
