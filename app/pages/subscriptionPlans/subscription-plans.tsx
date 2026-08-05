@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   RefreshControl,
   ActivityIndicator,
@@ -49,13 +49,7 @@ import {
   Check,
 } from 'lucide-react-native';
 
-const PLAN_NAMES = [
-  'Basic',
-  'Starter',
-  'Professional',
-  'Premium',
-  'Enterprise',
-] as const;
+const PLAN_NAMES = ['Basic', 'Starter', 'Professional', 'Premium', 'Enterprise'] as const;
 
 const PLAN_TABLE_COLUMNS: HtmlTableColumn[] = [
   {
@@ -327,6 +321,7 @@ const FormInput = ({
   icon: IconComponent,
   multiline = false,
   style = {},
+  error,
 }: {
   label: string;
   value: string;
@@ -336,6 +331,7 @@ const FormInput = ({
   icon?: any;
   multiline?: boolean;
   style?: any;
+  error?: string;
 }) => {
   return (
     <VStack space="xs" style={[{ flex: 1 }, style]}>
@@ -357,6 +353,7 @@ const FormInput = ({
             styles.modalInput,
             IconComponent ? { paddingLeft: 38 } : {},
             multiline ? { minHeight: 60, textAlignVertical: 'top', paddingTop: 8 } : { height: 44 },
+            error ? { borderColor: '#dc2626' } : {},
           ]}
           value={value}
           onChangeText={onChangeText}
@@ -366,6 +363,7 @@ const FormInput = ({
           multiline={multiline}
         />
       </Box>
+      {error ? <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>{error}</Text> : null}
     </VStack>
   );
 };
@@ -398,6 +396,47 @@ export default function SubscriptionPlansScreen() {
   const [isPopularMonthly, setIsPopularMonthly] = useState(false);
   const [isPopularAnnual, setIsPopularAnnual] = useState(false);
   const [status, setStatus] = useState<number>(1); // 1 = Active, 0 = Inactive
+
+  // Validation Errors State & Modal Scroll Ref
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const modalScrollRef = useRef<ScrollView>(null);
+
+  const scrollToTopModal = () => {
+    modalScrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleNameChange = (newName: string) => {
+    setName(newName);
+    if (errors.name && newName.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.name;
+        return next;
+      });
+    }
+  };
+
+  const handlePriceChange = (val: string) => {
+    setPricePerMonth(val);
+    if (errors.price_per_month && val.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.price_per_month;
+        return next;
+      });
+    }
+  };
+
+  const handlePostsPerMonthChange = (val: string) => {
+    setPostsPerMonth(val);
+    if (errors.posts_per_month && val.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.posts_per_month;
+        return next;
+      });
+    }
+  };
 
   // Reset page when search or status filter changes
   useEffect(() => {
@@ -443,6 +482,7 @@ export default function SubscriptionPlansScreen() {
     setIsPopularMonthly(false);
     setIsPopularAnnual(false);
     setStatus(1);
+    setErrors({});
     setModalVisible(true);
   };
 
@@ -462,6 +502,7 @@ export default function SubscriptionPlansScreen() {
     setIsPopularMonthly(plan.is_popular_monthly || false);
     setIsPopularAnnual(plan.is_popular_annual || false);
     setStatus(plan.status ?? 1);
+    setErrors({});
     setModalVisible(true);
   };
 
@@ -472,19 +513,50 @@ export default function SubscriptionPlansScreen() {
       setFeatures((prev) => [...prev, value]);
     }
     setFeatureInput('');
+    if (errors.features) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.features;
+        return next;
+      });
+    }
   };
 
   const handleRemoveFeature = (index: number) => {
-    setFeatures((prev) => prev.filter((_, idx) => idx !== index));
+    setFeatures((prev) => {
+      const updated = prev.filter((_, idx) => idx !== index);
+      if (updated.length === 0 && !featureInput.trim()) {
+        // Keep or validate later
+      }
+      return updated;
+    });
+  };
+
+  const validate = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!name.trim()) {
+      errs.name = 'Plan name is required.';
+    }
+    if (!pricePerMonth.trim()) {
+      errs.price_per_month = 'Price per month is required.';
+    } else if (Number(pricePerMonth) < 0) {
+      errs.price_per_month = 'Price must be 0 or greater.';
+    }
+    if (!postsPerMonth.trim()) {
+      errs.posts_per_month = 'Posts per month is required.';
+    } else if (Number(postsPerMonth) < 0) {
+      errs.posts_per_month = 'Must be 0 or greater.';
+    }
+    if (features.length === 0 && !featureInput.trim()) {
+      errs.features = 'At least one feature is required.';
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      Alert.alert('Validation Error', 'Plan name is required.');
-      return;
-    }
-    if (!pricePerMonth.trim()) {
-      Alert.alert('Validation Error', 'Price per month is required.');
+    if (!validate()) {
+      scrollToTopModal();
       return;
     }
 
@@ -881,6 +953,7 @@ export default function SubscriptionPlansScreen() {
           {/* Form container */}
           <Box style={[styles.mainCard, { flex: 1, paddingBottom: 0 }]}>
             <ScrollView
+              ref={modalScrollRef}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 24 }}
             >
@@ -899,14 +972,21 @@ export default function SubscriptionPlansScreen() {
                         justifyContent: 'space-between',
                         paddingLeft: 38,
                         paddingRight: 12,
+                        borderColor: errors.name ? '#dc2626' : '#e2e8f0',
                       },
                     ]}
                   >
-                    <Box style={{ position: 'absolute', left: 12, zIndex: 10, alignSelf: 'center' }}>
+                    <Box
+                      style={{ position: 'absolute', left: 12, zIndex: 10, alignSelf: 'center' }}
+                    >
                       <Tag size={16} color="#2563eb" />
                     </Box>
                     <Text
-                      style={{ fontSize: 14, color: name ? '#1e293b' : '#94a3b8', fontWeight: '500' }}
+                      style={{
+                        fontSize: 14,
+                        color: name ? '#1e293b' : '#94a3b8',
+                        fontWeight: '500',
+                      }}
                     >
                       {name || 'Select Plan Name'}
                     </Text>
@@ -916,6 +996,11 @@ export default function SubscriptionPlansScreen() {
                       style={{ transform: [{ rotate: showNameDropdown ? '180deg' : '0deg' }] }}
                     />
                   </TouchableOpacity>
+                  {errors.name ? (
+                    <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                      {errors.name}
+                    </Text>
+                  ) : null}
 
                   {showNameDropdown && (
                     <Box
@@ -943,7 +1028,7 @@ export default function SubscriptionPlansScreen() {
                             key={planName}
                             activeOpacity={0.7}
                             onPress={() => {
-                              setName(planName);
+                              handleNameChange(planName);
                               setShowNameDropdown(false);
                             }}
                             style={{
@@ -1020,21 +1105,23 @@ export default function SubscriptionPlansScreen() {
                   <FormInput
                     label="Price / Month *"
                     value={pricePerMonth}
-                    onChangeText={setPricePerMonth}
+                    onChangeText={handlePriceChange}
                     keyboardType="numeric"
                     placeholder="e.g. 19"
                     icon="₹"
+                    error={errors.price_per_month}
                   />
                 </HStack>
 
                 <HStack space="md">
                   <FormInput
-                    label="Posts / Month"
+                    label="Posts / Month *"
                     value={postsPerMonth}
-                    onChangeText={setPostsPerMonth}
+                    onChangeText={handlePostsPerMonthChange}
                     keyboardType="numeric"
                     placeholder="e.g. 150"
                     icon={FileText}
+                    error={errors.posts_per_month}
                   />
 
                   <FormInput
@@ -1071,11 +1158,17 @@ export default function SubscriptionPlansScreen() {
                   <Text style={styles.label}>Features *</Text>
                   <HStack space="sm" style={{ alignItems: 'center' }}>
                     <Box style={{ flex: 1, position: 'relative', justifyContent: 'center' }}>
-                      <Box style={{ position: 'absolute', left: 12, zIndex: 10, alignSelf: 'center' }}>
+                      <Box
+                        style={{ position: 'absolute', left: 12, zIndex: 10, alignSelf: 'center' }}
+                      >
                         <ListPlus size={16} color="#2563eb" />
                       </Box>
                       <TextInput
-                        style={[styles.modalInput, { paddingLeft: 38, height: 44 }]}
+                        style={[
+                          styles.modalInput,
+                          { paddingLeft: 38, height: 44 },
+                          errors.features ? { borderColor: '#dc2626' } : {},
+                        ]}
                         value={featureInput}
                         onChangeText={setFeatureInput}
                         placeholder="Type feature and press Enter or Add…"
@@ -1101,6 +1194,11 @@ export default function SubscriptionPlansScreen() {
                       <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 13 }}>Add</Text>
                     </TouchableOpacity>
                   </HStack>
+                  {errors.features ? (
+                    <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                      {errors.features}
+                    </Text>
+                  ) : null}
 
                   {features.length > 0 && (
                     <HStack style={{ flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
@@ -1118,7 +1216,14 @@ export default function SubscriptionPlansScreen() {
                             borderRadius: 20,
                           }}
                         >
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#1d4ed8', marginRight: 6 }}>
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: '600',
+                              color: '#1d4ed8',
+                              marginRight: 6,
+                            }}
+                          >
                             {f}
                           </Text>
                           <TouchableOpacity

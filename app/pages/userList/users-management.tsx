@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
@@ -9,6 +8,7 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
+  Image,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -18,6 +18,8 @@ import { Heading } from '@/components/ui/heading';
 import { listUsers, createUser, updateUser, deleteUser, User } from './user-access.api';
 import { getRoles, Role } from '../roleList/roles-management.api';
 import { Feather } from '@expo/vector-icons';
+import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
+import { API_BASE_URL } from '@/services/api';
 
 const AVATAR_COLORS = [
   { bg: '#dbeafe', text: '#1d4ed8' },
@@ -37,6 +39,155 @@ const getAvatarColor = (seed: string) => {
   return AVATAR_COLORS[idx];
 };
 
+const getUserAvatarUrl = (avatar?: string) => {
+  if (!avatar) return '';
+  if (
+    /^https?:\/\//i.test(avatar) ||
+    avatar.startsWith('file://') ||
+    avatar.startsWith('content://')
+  ) {
+    return avatar;
+  }
+
+  const baseUrl = API_BASE_URL.replace(/\/v1\/?$/, '');
+  const normalizedAvatar = avatar.startsWith('/') ? avatar : `/profile/${avatar}`;
+
+  return `${baseUrl}${normalizedAvatar}`;
+};
+
+const USER_TABLE_COLUMNS: HtmlTableColumn<User>[] = [
+  {
+    key: 'createdAt',
+    label: 'Created At',
+    width: '120px',
+    render: (v) => {
+      if (!v) return '—';
+      const date = new Date(v);
+      if (Number.isNaN(date.getTime())) return String(v);
+      return (
+        <VStack style={{ justifyContent: 'center' }}>
+          <Text style={styles.tableCellText}>
+            {date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+          </Text>
+          <Text style={styles.tableMetaText}>
+            {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+          </Text>
+        </VStack>
+      );
+    },
+  },
+  {
+    key: 'name',
+    label: 'Profile',
+    width: '100px',
+    render: (_v, row) => {
+      const userId = row._id || row.id || '';
+      const fullName = `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'User';
+      const initials =
+        `${(row.first_name || '').charAt(0)}${(row.last_name || '').charAt(0)}`.toUpperCase() ||
+        'U';
+      const avatarColor = getAvatarColor(userId || row.email || fullName);
+      const avatarField = (row as any).avatar || (row as any).image || (row as any).profile_image;
+      const avatarUrl = getUserAvatarUrl(avatarField);
+
+      return (
+        <HStack space="sm" className="items-center">
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <Box style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
+              <Text style={[styles.avatarText, { color: avatarColor.text }]}>{initials}</Text>
+            </Box>
+          )}
+        </HStack>
+      );
+    },
+  },
+  {
+    key: 'email',
+    label: 'Email',
+    width: '200px',
+    render: (v) => <Text style={styles.userEmailText}>{v || '—'}</Text>,
+  },
+  {
+    key: 'first_name',
+    label: 'First Name',
+    width: '150px',
+    render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
+  },
+  {
+    key: 'last_name',
+    label: 'Last Name',
+    width: '150px',
+    render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
+  },
+  {
+    key: 'role_name',
+    label: 'Role',
+    width: '100px',
+    render: (v, row) => {
+      const roleName = v || row.role_name || 'No Role Assigned';
+      return (
+        <Box style={styles.roleChip}>
+          <Text style={styles.roleChipText}>{roleName}</Text>
+        </Box>
+      );
+    },
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    width: '120px',
+    render: (v) => {
+      const isActive = Number(v) === 1;
+      return (
+        <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
+          <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
+            {isActive ? 'Active' : 'Inactive'}
+          </Text>
+        </Box>
+      );
+    },
+  },
+  {
+    key: 'created_by_name',
+    label: 'Created By',
+    width: '160px',
+    render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
+  },
+  {
+    key: 'updatedAt',
+    label: 'Updated At',
+    width: '120px',
+    render: (v) => {
+      if (!v) return '—';
+      const date = new Date(v);
+      if (Number.isNaN(date.getTime())) return String(v);
+      return (
+        <VStack style={{ justifyContent: 'center' }}>
+          <Text style={styles.tableCellText}>
+            {date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+          </Text>
+          <Text style={styles.tableMetaText}>
+            {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+          </Text>
+        </VStack>
+      );
+    },
+  },
+  {
+    key: 'updated_by_name',
+    label: 'Updated By',
+    width: '140px',
+    render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
+  },
+];
+
+const USER_ROW_ACTIONS = [
+  { label: 'Edit', action: 'edit' },
+  { label: 'Delete', action: 'delete', style: 'danger' },
+];
+
 export default function UsersManagementScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -53,19 +204,59 @@ export default function UsersManagementScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [contactNo, setContactNo] = useState('');
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [showRoleSelect, setShowRoleSelect] = useState(false);
   const [status, setStatus] = useState<number>(1);
 
-  const fetchRolesList = async () => {
+  // Validation Errors State & Modal Scroll Ref
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const modalScrollRef = useRef<ScrollView>(null);
+
+  const scrollToTopModal = () => {
+    modalScrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleFirstNameChange = (val: string) => {
+    setFirstName(val);
+    if (errors.first_name && val.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.first_name;
+        return next;
+      });
+    }
+  };
+
+  const handleLastNameChange = (val: string) => {
+    setLastName(val);
+    if (errors.last_name && val.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.last_name;
+        return next;
+      });
+    }
+  };
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    if (errors.email && val.trim() && val.includes('@')) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.email;
+        return next;
+      });
+    }
+  };
+
+  const fetchRolesList = useCallback(async () => {
     try {
       const r = await getRoles();
       setRoles(r);
     } catch (e) {
       console.log('Failed to fetch roles:', e);
     }
-  };
+  }, []);
 
   const fetchUsersList = useCallback(
     async (pg = 1, reset = true) => {
@@ -101,10 +292,13 @@ export default function UsersManagementScreen() {
     [search]
   );
 
+  const loadInitialData = useCallback(async () => {
+    await Promise.all([fetchRolesList(), fetchUsersList(1, true)]);
+  }, [fetchRolesList, fetchUsersList]);
+
   useEffect(() => {
-    fetchRolesList();
-    fetchUsersList(1, true);
-  }, [fetchUsersList]);
+    void loadInitialData();
+  }, [loadInitialData]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -122,9 +316,9 @@ export default function UsersManagementScreen() {
     setFirstName('');
     setLastName('');
     setEmail('');
-    setContactNo('');
     setSelectedRole(roles[0] || null);
     setStatus(1);
+    setErrors({});
     setModalVisible(true);
   };
 
@@ -133,7 +327,6 @@ export default function UsersManagementScreen() {
     setFirstName(user.first_name || '');
     setLastName(user.last_name || '');
     setEmail(user.email || '');
-    setContactNo(user.contact_no ? String(user.contact_no) : '');
 
     const userRoleId = (user as any).role_id || (user as any).roleId;
     const foundRole =
@@ -147,22 +340,41 @@ export default function UsersManagementScreen() {
       foundRole || (user.role_name ? ({ name: user.role_name } as any) : roles[0] || null)
     );
     setStatus(user.status !== undefined ? Number(user.status) : 1);
+    setErrors({});
     setModalVisible(true);
   };
 
-  const handleSave = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert('Validation Error', 'First and last names are required.');
-      return;
+  const validate = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!firstName.trim()) {
+      errs.first_name = 'First name is required.';
     }
-    if (!email.trim() || !email.includes('@')) {
-      Alert.alert('Validation Error', 'Please enter a valid email address.');
-      return;
+    if (!lastName.trim()) {
+      errs.last_name = 'Last name is required.';
     }
-    // if (!editingUser && !password.trim()) {
-    //   Alert.alert("Validation Error", "Password is required for new users.");
-    //   return;
+    if (!email.trim()) {
+      errs.email = 'Email address is required.';
+    } else if (!email.includes('@')) {
+      errs.email = 'Please enter a valid email address.';
+    }
+    // if (contactNo && contactNo.trim() && isNaN(Number(contactNo.trim()))) {
+    //   errs.contact_no = 'Contact number must be a valid number.';
     // }
+    if (
+      !selectedRole ||
+      (!selectedRole._id && !selectedRole.id && !selectedRole.name && !selectedRole.role_name)
+    ) {
+      errs.role_id = 'Role is required.';
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) {
+      scrollToTopModal();
+      return;
+    }
 
     try {
       const role_id = selectedRole?._id || selectedRole?.id || '';
@@ -170,14 +382,10 @@ export default function UsersManagementScreen() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         email: email.trim(),
-        contact_no: contactNo.trim(),
+        // contact_no: contactNo.trim(),
         status,
         role_id,
       };
-
-      // if (password.trim()) {
-      //   payload.password = password.trim();
-      // }
 
       if (editingUser) {
         const userId = editingUser._id || editingUser.id || '';
@@ -217,68 +425,6 @@ export default function UsersManagementScreen() {
     ]);
   };
 
-  const renderItem = ({ item }: { item: User }) => {
-    const userId = item._id || item.id || '';
-    const fullName = `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'User';
-    const initials =
-      `${(item.first_name || '').charAt(0)}${(item.last_name || '').charAt(0)}`.toUpperCase() ||
-      'U';
-    const isActive = Number(item.status) === 1;
-    const avatarColor = getAvatarColor(userId || item.email || fullName);
-
-    return (
-      <Box style={styles.card}>
-        <HStack className="items-start justify-between">
-          <HStack space="md" style={{ flex: 1, marginRight: 8 }} className="items-center">
-            <Box style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
-              <Text style={[styles.avatarText, { color: avatarColor.text }]}>{initials}</Text>
-            </Box>
-            <VStack space="xs" style={{ flex: 1 }}>
-              <Text style={styles.userNameText}>{fullName}</Text>
-              <Text style={styles.userEmailText}>{item.email}</Text>
-              {item.contact_no ? (
-                <Text style={styles.userContactText}>Contact: {item.contact_no}</Text>
-              ) : null}
-
-              {item.role_name ? (
-                <Box style={styles.roleChip}>
-                  <Text style={styles.roleChipText}>{item.role_name}</Text>
-                </Box>
-              ) : (
-                <Text style={styles.noRoleText}>No Role Assigned</Text>
-              )}
-            </VStack>
-          </HStack>
-
-          <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
-            <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
-              {isActive ? 'Active' : 'Inactive'}
-            </Text>
-          </Box>
-        </HStack>
-
-        <HStack space="sm" className="mt-4 justify-end">
-          <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
-            <HStack className="items-center space-x-1">
-              <Feather name="edit-2" size={12} color="#2563EB" />
-              <Text style={styles.actionBtnText}>Edit</Text>
-            </HStack>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnDanger]}
-            onPress={() => handleDelete(item)}
-          >
-            <HStack className="items-center space-x-1">
-              <Feather name="trash-2" size={12} color="#dc2626" />
-              <Text style={[styles.actionBtnText, { color: '#dc2626' }]}>Delete</Text>
-            </HStack>
-          </TouchableOpacity>
-        </HStack>
-      </Box>
-    );
-  };
-
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Top Search & Filter Bar */}
@@ -312,29 +458,65 @@ export default function UsersManagementScreen() {
           <ActivityIndicator size="large" color="#2563EB" />
         </Box>
       ) : (
-        <FlatList
-          data={users}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
           }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={
-            <Box className="items-center justify-center py-16">
-              <Feather name="users" size={40} color="#cbd5e1" />
-              <Text className="mt-2 text-base text-typography-400">No staff users found</Text>
-            </Box>
-          }
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator size="small" color="#2563EB" style={{ marginVertical: 20 }} />
-            ) : null
-          }
-          renderItem={renderItem}
-        />
+        >
+          <HtmlTable
+            columns={USER_TABLE_COLUMNS}
+            data={users}
+            rowActions={USER_ROW_ACTIONS}
+            onRowAction={(action, rowId) => {
+              const user = users.find((item) => String(item._id || item.id) === String(rowId));
+              if (!user) return;
+              if (action === 'edit') handleOpenEdit(user);
+              if (action === 'delete') handleDelete(user);
+            }}
+            iconOnlyActions={true}
+            tableContainerStyle={{
+              borderWidth: 0,
+              shadowColor: 'transparent',
+              backgroundColor: 'transparent',
+              elevation: 0,
+              marginHorizontal: 0,
+              marginVertical: 0,
+            }}
+            headerRowStyle={{
+              backgroundColor: '#f8fafc',
+              borderBottomWidth: 1.5,
+              borderBottomColor: '#e2e8f0',
+              paddingVertical: 4,
+            }}
+            headerCellStyle={styles.tableHeaderCell}
+            headerCellTextStyle={{
+              color: '#1e3a8a',
+              fontWeight: '700',
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+            rowStyle={{
+              borderBottomWidth: 1,
+              borderBottomColor: '#f1f5f9',
+              backgroundColor: '#ffffff',
+              paddingVertical: 0,
+            }}
+            rowEvenStyle={styles.tableRowEven}
+            rowOddStyle={styles.tableRowOdd}
+            cellStyle={styles.tableCell}
+          />
+          {loadingMore ? (
+            <ActivityIndicator size="small" color="#2563EB" style={{ marginVertical: 20 }} />
+          ) : null}
+          {hasMore && !loadingMore ? (
+            <TouchableOpacity style={styles.loadMoreBtn} onPress={loadMore}>
+              <Text style={styles.loadMoreBtnText}>Load More</Text>
+            </TouchableOpacity>
+          ) : null}
+        </ScrollView>
       )}
 
       {/* Add / Edit Modal */}
@@ -349,39 +531,64 @@ export default function UsersManagementScreen() {
             <Heading size="md" className="mb-4">
               {editingUser ? 'Edit User' : 'Add User'}
             </Heading>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+            <ScrollView
+              ref={modalScrollRef}
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: 420 }}
+            >
               <VStack space="md">
                 <HStack space="md">
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>First Name *</Text>
                     <TextInput
-                      style={styles.modalInput}
+                      style={[
+                        styles.modalInput,
+                        errors.first_name ? { borderColor: '#dc2626' } : {},
+                      ]}
                       value={firstName}
-                      onChangeText={setFirstName}
+                      onChangeText={handleFirstNameChange}
                       placeholder="John"
                     />
+                    {errors.first_name ? (
+                      <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                        {errors.first_name}
+                      </Text>
+                    ) : null}
                   </VStack>
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>Last Name *</Text>
                     <TextInput
-                      style={styles.modalInput}
+                      style={[
+                        styles.modalInput,
+                        errors.last_name ? { borderColor: '#dc2626' } : {},
+                      ]}
                       value={lastName}
-                      onChangeText={setLastName}
+                      onChangeText={handleLastNameChange}
                       placeholder="Doe"
                     />
+                    {errors.last_name ? (
+                      <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                        {errors.last_name}
+                      </Text>
+                    ) : null}
                   </VStack>
                 </HStack>
 
                 <VStack space="xs">
                   <Text style={styles.label}>Email Address *</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[styles.modalInput, errors.email ? { borderColor: '#dc2626' } : {}]}
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={handleEmailChange}
                     placeholder="john@company.com"
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
+                  {errors.email ? (
+                    <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                      {errors.email}
+                    </Text>
+                  ) : null}
                 </VStack>
 
                 {/* <VStack space="xs">
@@ -404,23 +611,26 @@ export default function UsersManagementScreen() {
                     </TouchableOpacity>
                   </HStack>
                 </VStack> */}
-
+                {/* 
                 <VStack space="xs">
                   <Text style={styles.label}>Contact Number</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[styles.modalInput, errors.contact_no ? { borderColor: '#dc2626' } : {}]}
                     value={contactNo}
-                    onChangeText={setContactNo}
+                    onChangeText={handleContactNoChange}
                     placeholder="+1234567890"
                     keyboardType="phone-pad"
                   />
-                </VStack>
+                  {errors.contact_no ? (
+                    <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>{errors.contact_no}</Text>
+                  ) : null}
+                </VStack> */}
 
                 {/* Role Dropdown */}
                 <VStack space="xs">
-                  <Text style={styles.label}>Assign Role</Text>
+                  <Text style={styles.label}>Assign Role *</Text>
                   <TouchableOpacity
-                    style={styles.roleSelectBtn}
+                    style={[styles.roleSelectBtn, errors.role_id ? { borderColor: '#dc2626' } : {}]}
                     onPress={() => setShowRoleSelect(!showRoleSelect)}
                   >
                     <Text style={styles.roleSelectBtnText}>
@@ -445,6 +655,13 @@ export default function UsersManagementScreen() {
                             onPress={() => {
                               setSelectedRole(r);
                               setShowRoleSelect(false);
+                              if (errors.role_id) {
+                                setErrors((prev) => {
+                                  const next = { ...prev };
+                                  delete next.role_id;
+                                  return next;
+                                });
+                              }
                             }}
                           >
                             <Text style={[styles.roleItemText, isSel && styles.roleItemTextActive]}>
@@ -455,6 +672,11 @@ export default function UsersManagementScreen() {
                         );
                       })}
                     </Box>
+                  ) : null}
+                  {errors.role_id ? (
+                    <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                      {errors.role_id}
+                    </Text>
                   ) : null}
                 </VStack>
 
@@ -528,6 +750,21 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 14, color: '#1e293b', padding: 0 },
   listContent: { padding: 16, paddingBottom: 40 },
+  tableHeaderCell: { paddingVertical: 12, borderBottomColor: '#e2e8f0' },
+  tableRowEven: { backgroundColor: '#ffffff' },
+  tableRowOdd: { backgroundColor: '#fcfbff' },
+  tableCell: { paddingVertical: 12 },
+  loadMoreBtn: {
+    alignSelf: 'center',
+    marginTop: 12,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  loadMoreBtnText: { color: '#2563EB', fontWeight: '700', fontSize: 12 },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
@@ -540,15 +777,24 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 62,
+    height: 62,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 62,
+    height: 62,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   avatarText: { fontSize: 14, fontWeight: '700' },
   userNameText: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
   userEmailText: { fontSize: 12, color: '#64748b' },
+  tableCellText: { fontSize: 13, color: '#334155', fontWeight: '600' },
+  tableMetaText: { fontSize: 11, color: '#64748b', marginTop: 2 },
   userContactText: { fontSize: 11, color: '#94a3b8', marginTop: 2 },
   roleChip: {
     alignSelf: 'flex-start',

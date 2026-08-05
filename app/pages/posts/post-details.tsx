@@ -87,8 +87,39 @@ export default function PostDetailsScreen() {
   }, [id]);
 
   useEffect(() => {
-    fetchPostDetails();
-  }, [fetchPostDetails]);
+    let isMounted = true;
+
+    const loadPostDetails = async () => {
+      if (!id) return;
+      setLoading(true);
+      try {
+        const mainPost = await getPost(id);
+        if (!isMounted) return;
+        setPost(mainPost);
+
+        try {
+          const fullDetails = await getPostDetails(id);
+          if (!isMounted) return;
+          setDetails(fullDetails);
+        } catch {
+          // Fallback to basic post if detailed stats API fails.
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+        Alert.alert('Error', err.message || 'Failed to load post details.');
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadPostDetails();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   const handlePublish = async () => {
     if (!id) return;

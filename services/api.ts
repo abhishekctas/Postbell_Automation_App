@@ -127,7 +127,9 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 
   const isFormData =
     options.body instanceof FormData ||
-    (options.body && typeof options.body === 'object' && (options.body as any)._parts !== undefined) ||
+    (options.body &&
+      typeof options.body === 'object' &&
+      (options.body as any)._parts !== undefined) ||
     options.body?.constructor?.name === 'FormData';
 
   const headers: HeadersInit = {

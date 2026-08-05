@@ -64,7 +64,11 @@ export default function FeaturesScreen() {
   );
 
   useEffect(() => {
-    fetchFeaturesList(1, true);
+    const timeoutId = setTimeout(() => {
+      void fetchFeaturesList(1, true);
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [fetchFeaturesList]);
 
   useFocusEffect(

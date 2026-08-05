@@ -347,7 +347,11 @@ export default function CustomerDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchCustomerData();
+    const timeoutId = setTimeout(() => {
+      void fetchCustomerData();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [fetchCustomerData]);
 
   const onRefresh = () => {
@@ -475,10 +479,7 @@ export default function CustomerDashboard() {
               </View>
             </VStack>
           </HStack>
-          <TouchableOpacity
-            onPress={handleSignOut}
-            style={styles.headerIconButton}
-          >
+          <TouchableOpacity onPress={handleSignOut} style={styles.headerIconButton}>
             <Feather name="log-out" size={18} color="white" />
           </TouchableOpacity>
         </HStack>
@@ -689,80 +690,80 @@ export default function CustomerDashboard() {
           <VStack space="sm">
             {recentPosts.length > 0
               ? recentPosts.map((post) => (
-                <View key={post.id} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
-                  <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <VStack style={{ flex: 1, paddingRight: 10 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
-                        {post.title || 'Untitled Post'}
-                      </Text>
-                      <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
-                        {renderPlatformIcons(post.platform || [])}
-                        <View style={styles.timeDivider} />
-                        <Feather
-                          name="clock"
-                          size={11}
-                          color="#94a3b8"
-                          style={{ marginRight: 3 }}
-                        />
-                        <Text style={{ fontSize: 11, color: '#64748b' }}>
-                          {formatDate(post.date || '')}
+                  <View key={post.id} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
+                    <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <VStack style={{ flex: 1, paddingRight: 10 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
+                          {post.title || 'Untitled Post'}
                         </Text>
-                      </HStack>
-                    </VStack>
-                    <StatusBadge status={post.status || 'published'} />
-                  </HStack>
-                </View>
-              ))
+                        <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
+                          {renderPlatformIcons(post.platform || [])}
+                          <View style={styles.timeDivider} />
+                          <Feather
+                            name="clock"
+                            size={11}
+                            color="#94a3b8"
+                            style={{ marginRight: 3 }}
+                          />
+                          <Text style={{ fontSize: 11, color: '#64748b' }}>
+                            {formatDate(post.date || '')}
+                          </Text>
+                        </HStack>
+                      </VStack>
+                      <StatusBadge status={post.status || 'published'} />
+                    </HStack>
+                  </View>
+                ))
               : [
-                {
-                  title: 'Diwali Special Offer Banner',
-                  platform: ['instagram', 'facebook'],
-                  date: new Date().toISOString(),
-                  status: 'published',
-                },
-                {
-                  title: 'New Product Teaser Story',
-                  platform: ['instagram'],
-                  date: new Date(Date.now() - 3600000 * 2).toISOString(),
-                  status: 'scheduled',
-                },
-                {
-                  title: 'Weekend Promotion Broadcast',
-                  platform: ['whatsapp'],
-                  date: new Date(Date.now() - 3600000 * 5).toISOString(),
-                  status: 'published',
-                },
-                {
-                  title: 'Customer Festival Wishes Post',
-                  platform: ['facebook', 'twitter'],
-                  date: new Date(Date.now() - 3600000 * 24).toISOString(),
-                  status: 'draft',
-                },
-              ].map((item, idx) => (
-                <View key={idx} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
-                  <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <VStack style={{ flex: 1, paddingRight: 10 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
-                        {item.title}
-                      </Text>
-                      <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
-                        {renderPlatformIcons(item.platform)}
-                        <View style={styles.timeDivider} />
-                        <Feather
-                          name="clock"
-                          size={11}
-                          color="#94a3b8"
-                          style={{ marginRight: 3 }}
-                        />
-                        <Text style={{ fontSize: 11, color: '#64748b' }}>
-                          {formatDate(item.date)}
+                  {
+                    title: 'Diwali Special Offer Banner',
+                    platform: ['instagram', 'facebook'],
+                    date: new Date().toISOString(),
+                    status: 'published',
+                  },
+                  {
+                    title: 'New Product Teaser Story',
+                    platform: ['instagram'],
+                    date: new Date(Date.now() - 3600000 * 2).toISOString(),
+                    status: 'scheduled',
+                  },
+                  {
+                    title: 'Weekend Promotion Broadcast',
+                    platform: ['whatsapp'],
+                    date: new Date(Date.now() - 3600000 * 5).toISOString(),
+                    status: 'published',
+                  },
+                  {
+                    title: 'Customer Festival Wishes Post',
+                    platform: ['facebook', 'twitter'],
+                    date: new Date(Date.now() - 3600000 * 24).toISOString(),
+                    status: 'draft',
+                  },
+                ].map((item, idx) => (
+                  <View key={idx} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
+                    <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <VStack style={{ flex: 1, paddingRight: 10 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
+                          {item.title}
                         </Text>
-                      </HStack>
-                    </VStack>
-                    <StatusBadge status={item.status} />
-                  </HStack>
-                </View>
-              ))}
+                        <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
+                          {renderPlatformIcons(item.platform)}
+                          <View style={styles.timeDivider} />
+                          <Feather
+                            name="clock"
+                            size={11}
+                            color="#94a3b8"
+                            style={{ marginRight: 3 }}
+                          />
+                          <Text style={{ fontSize: 11, color: '#64748b' }}>
+                            {formatDate(item.date)}
+                          </Text>
+                        </HStack>
+                      </VStack>
+                      <StatusBadge status={item.status} />
+                    </HStack>
+                  </View>
+                ))}
           </VStack>
         </VStack>
       </ScrollView>

@@ -95,7 +95,11 @@ export default function ProfileScreen() {
 
   const getAvatarUrl = (avatar?: string | null) => {
     if (!avatar) return null;
-    if (/^https?:\/\//i.test(avatar) || avatar.startsWith('file://') || avatar.startsWith('content://')) {
+    if (
+      /^https?:\/\//i.test(avatar) ||
+      avatar.startsWith('file://') ||
+      avatar.startsWith('content://')
+    ) {
       return avatar;
     }
     const baseUrl = API_BASE_URL.replace(/\/v1\/?$/, '');
@@ -240,10 +244,7 @@ export default function ProfileScreen() {
                 {uploadingImage ? (
                   <ActivityIndicator size="small" color="#0369a1" />
                 ) : getAvatarUrl(avatarUrl) ? (
-                  <Image
-                    source={{ uri: getAvatarUrl(avatarUrl)! }}
-                    style={styles.avatarImage}
-                  />
+                  <Image source={{ uri: getAvatarUrl(avatarUrl)! }} style={styles.avatarImage} />
                 ) : (
                   <Text style={styles.avatarText}>{initials}</Text>
                 )}
@@ -267,16 +268,8 @@ export default function ProfileScreen() {
               Edit Personal Details
             </Heading>
             <VStack space="md">
-              <InfoRow
-                label="First Name"
-                value={firstName}
-                onChangeText={setFirstName}
-              />
-              <InfoRow
-                label="Last Name"
-                value={lastName}
-                onChangeText={setLastName}
-              />
+              <InfoRow label="First Name" value={firstName} onChangeText={setFirstName} />
+              <InfoRow label="Last Name" value={lastName} onChangeText={setLastName} />
               <InfoRow label="Email" value={user?.email ?? ''} />
               <InfoRow
                 label="Phone"
@@ -284,20 +277,13 @@ export default function ProfileScreen() {
                 onChangeText={setContactNo}
                 keyboardType="phone-pad"
               />
-              <InfoRow
-                label="Address"
-                value={address}
-                onChangeText={setAddress}
-                multiline
-              />
+              <InfoRow label="Address" value={address} onChangeText={setAddress} multiline />
             </VStack>
             <Button size="lg" onPress={handleSave} isDisabled={saving} style={styles.saveBtn}>
               {saving ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <ButtonText style={{ fontWeight: '700', color: 'white' }}>
-                  Save Changes
-                </ButtonText>
+                <ButtonText style={{ fontWeight: '700', color: 'white' }}>Save Changes</ButtonText>
               )}
             </Button>
           </Box>

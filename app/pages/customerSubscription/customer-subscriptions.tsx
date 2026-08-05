@@ -156,7 +156,7 @@ function UsageProgressBar({
 
   return (
     <Box style={{ marginBottom: 12 }}>
-      <HStack className="items-center justify-between mb-1.5">
+      <HStack className="mb-1.5 items-center justify-between">
         <HStack space="xs" className="items-center">
           {icon}
           <Text style={{ fontSize: 12, fontWeight: '600', color: '#475569' }}>{label}</Text>
@@ -216,11 +216,11 @@ const SUB_TABLE_COLUMNS: HtmlTableColumn<Subscription>[] = [
       const initials =
         name !== '—'
           ? name
-            .split(' ')
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((w) => w.charAt(0).toUpperCase())
-            .join('')
+              .split(' ')
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((w) => w.charAt(0).toUpperCase())
+              .join('')
           : '—';
 
       return (
@@ -464,8 +464,12 @@ export default function CustomerSubscriptionsScreen() {
   );
 
   useEffect(() => {
-    fetchSubscriptionsList(1, true);
-  }, [search, filter]);
+    const timeoutId = setTimeout(() => {
+      void fetchSubscriptionsList(1, true);
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [fetchSubscriptionsList]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -620,7 +624,6 @@ export default function CustomerSubscriptionsScreen() {
               }}
               headerCellStyle={{
                 paddingVertical: 0,
-
               }}
               headerCellTextStyle={{
                 color: '#1e3a8a',
@@ -682,7 +685,9 @@ export default function CustomerSubscriptionsScreen() {
               {loadingCustomer ? (
                 <Box className="items-center justify-center py-12">
                   <ActivityIndicator size="large" color="#193867" />
-                  <Text style={{ marginTop: 12, color: '#64748b', fontSize: 13, fontWeight: '500' }}>
+                  <Text
+                    style={{ marginTop: 12, color: '#64748b', fontSize: 13, fontWeight: '500' }}
+                  >
                     Loading customer details...
                   </Text>
                 </Box>
@@ -691,7 +696,7 @@ export default function CustomerSubscriptionsScreen() {
                   {/* User Profile Card */}
                   {customerDetails && (
                     <Box style={styles.detailsCard}>
-                      <HStack space="md" className="items-center mb-3">
+                      <HStack space="md" className="mb-3 items-center">
                         <Box style={styles.avatarCircle}>
                           <User size={22} color="#193867" />
                         </Box>
@@ -699,7 +704,7 @@ export default function CustomerSubscriptionsScreen() {
                           <Text style={{ fontSize: 16, fontWeight: '700', color: '#0f172a' }}>
                             {customerDetails.first_name || ''} {customerDetails.last_name || ''}
                           </Text>
-                          <HStack space="xs" className="items-center mt-0.5">
+                          <HStack space="xs" className="mt-0.5 items-center">
                             <Mail size={12} color="#64748b" />
                             <Text style={{ fontSize: 12, color: '#64748b' }}>
                               {customerDetails.email || 'No email'}
@@ -714,7 +719,9 @@ export default function CustomerSubscriptionsScreen() {
                             paddingHorizontal: 8,
                             paddingVertical: 3,
                             borderRadius: 6,
-                            backgroundColor: customerDetails.is_email_verified ? '#dcfce7' : '#fee2e2',
+                            backgroundColor: customerDetails.is_email_verified
+                              ? '#dcfce7'
+                              : '#fee2e2',
                           }}
                         >
                           <Text
@@ -724,7 +731,9 @@ export default function CustomerSubscriptionsScreen() {
                               color: customerDetails.is_email_verified ? '#15803d' : '#dc2626',
                             }}
                           >
-                            {customerDetails.is_email_verified ? '✓ Email Verified' : '✕ Unverified'}
+                            {customerDetails.is_email_verified
+                              ? '✓ Email Verified'
+                              : '✕ Unverified'}
                           </Text>
                         </Box>
 
@@ -766,7 +775,7 @@ export default function CustomerSubscriptionsScreen() {
                           {renderStatusChip(selectedSubscription.status)}
                         </HStack>
 
-                        <HStack space="xs" className="items-center mt-1">
+                        <HStack space="xs" className="mt-1 items-center">
                           <Box
                             style={{
                               paddingHorizontal: 10,
@@ -779,7 +788,7 @@ export default function CustomerSubscriptionsScreen() {
                           >
                             <Text style={{ fontSize: 13, fontWeight: '700', color: '#1d4ed8' }}>
                               {selectedSubscription.plan_price ||
-                                selectedSubscription.plan_id?.price_per_month
+                              selectedSubscription.plan_id?.price_per_month
                                 ? `₹${selectedSubscription.plan_price || selectedSubscription.plan_id?.price_per_month} / ${selectedSubscription.billing_cycle === 'annual' ? 'year' : 'month'}`
                                 : 'Standard Plan'}
                             </Text>
@@ -800,9 +809,9 @@ export default function CustomerSubscriptionsScreen() {
                                 textTransform: 'capitalize',
                               }}
                             >
-                              {(selectedSubscription.billing_cycle ||
+                              {selectedSubscription.billing_cycle ||
                                 selectedSubscription.plan_id?.billing_cycle ||
-                                'monthly')}{' '}
+                                'monthly'}{' '}
                               Cycle
                             </Text>
                           </Box>
@@ -872,10 +881,11 @@ export default function CustomerSubscriptionsScreen() {
                             icon={<MapPin size={13} color="#64748b" />}
                             label="Address"
                             value={
-                              `${customerDetails.address.address_line_1 || ''}${customerDetails.address.city
-                                ? ', ' + customerDetails.address.city
-                                : ''
-                                }`.trim() || 'N/A'
+                              `${customerDetails.address.address_line_1 || ''}${
+                                customerDetails.address.city
+                                  ? ', ' + customerDetails.address.city
+                                  : ''
+                              }`.trim() || 'N/A'
                             }
                           />
                         )}
@@ -891,11 +901,11 @@ export default function CustomerSubscriptionsScreen() {
                     </Box>
                   )}
 
-                  {console.log(customerDetails, "customerDetails")}
+                  {console.log(customerDetails, 'customerDetails')}
                   {/* Usage Statistics Card */}
                   {customerDetails?.postUsage && (
                     <Box style={styles.detailsCard}>
-                      <HStack className="items-center justify-between mb-3">
+                      <HStack className="mb-3 items-center justify-between">
                         <HStack space="xs" className="items-center">
                           <BarChart3 size={18} color="#193867" />
                           <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a' }}>
@@ -938,7 +948,9 @@ export default function CustomerSubscriptionsScreen() {
                       <UsageProgressBar
                         label="AI Content Today"
                         used={customerDetails.postUsage.ai_content_used_today || 0}
-                        limit={customerDetails.postUsage.plan_snapshot?.ai_content_generation_limit || 0}
+                        limit={
+                          customerDetails.postUsage.plan_snapshot?.ai_content_generation_limit || 0
+                        }
                         icon={<Sparkles size={14} color="#64748b" />}
                       />
                     </Box>

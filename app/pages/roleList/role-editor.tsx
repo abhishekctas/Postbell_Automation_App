@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ScrollView,
   TouchableOpacity,
@@ -44,6 +44,25 @@ export default function RoleEditorScreen() {
   // Basic Info
   const [roleName, setRoleName] = useState('');
   const [status, setStatus] = useState<number>(1);
+
+  // Validation State & Scroll Ref
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const scrollToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleRoleNameChange = (val: string) => {
+    setRoleName(val);
+    if (errors.role_name && val.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.role_name;
+        return next;
+      });
+    }
+  };
 
   // Sections & Matrix
   const [sections, setSections] = useState<SectionItem[]>([]);
@@ -149,15 +168,20 @@ export default function RoleEditorScreen() {
   };
 
   const validate = (): boolean => {
+    const errs: Record<string, string> = {};
     if (!roleName.trim()) {
-      Alert.alert('Validation Error', 'Role name is required.');
-      return false;
+      errs.role_name = 'Role name is required.';
     }
-    return true;
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleSave = async () => {
-    if (!validate() || saving) return;
+    if (!validate()) {
+      scrollToTop();
+      return;
+    }
+    if (saving) return;
 
     try {
       setSaving(true);
@@ -250,7 +274,11 @@ export default function RoleEditorScreen() {
         </Box>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Card 1: Role Basic Details */}
         <Box style={styles.card}>
           <HStack className="mb-4 items-center space-x-2">
@@ -262,12 +290,17 @@ export default function RoleEditorScreen() {
             <VStack space="xs">
               <Text style={styles.label}>Role Name *</Text>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, errors.role_name ? { borderColor: '#dc2626' } : {}]}
                 value={roleName}
-                onChangeText={setRoleName}
+                onChangeText={handleRoleNameChange}
                 placeholder="e.g. Sales Manager"
                 placeholderTextColor="#94a3b8"
               />
+              {errors.role_name ? (
+                <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                  {errors.role_name}
+                </Text>
+              ) : null}
             </VStack>
 
             <VStack space="xs">

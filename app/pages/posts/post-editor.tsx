@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ScrollView,
   TouchableOpacity,
@@ -50,11 +50,23 @@ const SOCIAL_PLATFORMS = [
   { id: 'youtube', label: 'YouTube', icon: 'youtube-play', color: '#ff0000' },
 ];
 
+const getInitialScheduledDate = () => {
+  const nextHour = new Date();
+  nextHour.setHours(nextHour.getHours() + 1);
+  return nextHour;
+};
+
 export default function PostEditorScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
 
   const isEditing = Boolean(id);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const scrollToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'ai' | 'manual'>('manual');
@@ -86,7 +98,7 @@ export default function PostEditorScreen() {
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [postStatus, setPostStatus] = useState<'draft' | 'scheduled' | 'published'>('draft');
   const [isScheduled, setIsScheduled] = useState(false);
-  const [scheduledDate, setScheduledDate] = useState<Date>(new Date(Date.now() + 3600000));
+  const [scheduledDate, setScheduledDate] = useState<Date>(getInitialScheduledDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
@@ -101,7 +113,9 @@ export default function PostEditorScreen() {
   const [aiRefAnalysisSummary, setAiRefAnalysisSummary] = useState('');
   const [referenceImageUri, setReferenceImageUri] = useState<string>('');
   const [referenceImagePrompt, setReferenceImagePrompt] = useState<string>('');
-  const [referenceImageProvider, setReferenceImageProvider] = useState<'auto' | 'gemini' | 'openai'>('auto');
+  const [referenceImageProvider, setReferenceImageProvider] = useState<
+    'auto' | 'gemini' | 'openai'
+  >('auto');
 
   // Content Type & Platform-Specific Overrides
   const [activePlatformTab, setActivePlatformTab] = useState<string>('general');
@@ -121,9 +135,6 @@ export default function PostEditorScreen() {
 
   // Connected Social Accounts
   const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
-
-  // Preview Specific Account Selection
-  const [previewAccountId, setPreviewAccountId] = useState<string>('');
 
   // Validation Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -162,7 +173,11 @@ export default function PostEditorScreen() {
           );
           setImagePath(postData.image_path || postData.generalContent?.media?.[0]?.imagePath || '');
 
-          if (postData.selectedNetworks && Array.isArray(postData.selectedNetworks) && postData.selectedNetworks.length > 0) {
+          if (
+            postData.selectedNetworks &&
+            Array.isArray(postData.selectedNetworks) &&
+            postData.selectedNetworks.length > 0
+          ) {
             setSelectedPlatforms(postData.selectedNetworks);
           }
 
@@ -181,26 +196,33 @@ export default function PostEditorScreen() {
             setSelectedAccounts(loadedAccIds);
           } else if (loadedAccounts.length > 0) {
             const autoSelected = loadedAccounts
-              .filter((acc) => (postData.selectedNetworks || ['facebook', 'instagram']).includes(acc.platform))
+              .filter((acc) =>
+                (postData.selectedNetworks || ['facebook', 'instagram']).includes(acc.platform)
+              )
               .map((acc) => acc.account_id);
             setSelectedAccounts(autoSelected);
           }
 
           // Parse platformSpecificContent overrides
-          if (postData.platformSpecificContent && typeof postData.platformSpecificContent === 'object') {
+          if (
+            postData.platformSpecificContent &&
+            typeof postData.platformSpecificContent === 'object'
+          ) {
             const overridesMap: Record<string, any> = {};
-            Object.entries(postData.platformSpecificContent).forEach(([plat, entries]: [string, any]) => {
-              const entryList = Array.isArray(entries) ? entries : [];
-              if (entryList.length > 0) {
-                const first = entryList[0];
-                overridesMap[plat] = {
-                  caption: first.caption || '',
-                  link: first.link || '',
-                  hashtags: first.hashtags || [],
-                  image_url: first.mediaUrl || first.media_url || '',
-                };
+            Object.entries(postData.platformSpecificContent).forEach(
+              ([plat, entries]: [string, any]) => {
+                const entryList = Array.isArray(entries) ? entries : [];
+                if (entryList.length > 0) {
+                  const first = entryList[0];
+                  overridesMap[plat] = {
+                    caption: first.caption || '',
+                    link: first.link || '',
+                    hashtags: first.hashtags || [],
+                    image_url: first.mediaUrl || first.media_url || '',
+                  };
+                }
               }
-            });
+            );
             setPlatformOverrides(overridesMap);
           }
 
@@ -248,6 +270,7 @@ export default function PostEditorScreen() {
             if (activePlatformTab === 'general') {
               setImageUrl(serverUrl);
               setImagePath(serverPath);
+              setErrors((prev) => ({ ...prev, imageUrl: '' }));
             } else {
               setPlatformOverrides((prev) => ({
                 ...prev,
@@ -383,7 +406,10 @@ export default function PostEditorScreen() {
     try {
       const res = await analyzeReferenceMedia(aiRefImage);
       const summary =
-        res?.summary || res?.data?.summary || res?.message || 'Reference media analyzed successfully.';
+        res?.summary ||
+        res?.data?.summary ||
+        res?.message ||
+        'Reference media analyzed successfully.';
       setAiRefAnalysisSummary(summary);
       if (summary) {
         setAiPrompt((prev) =>
@@ -403,11 +429,26 @@ export default function PostEditorScreen() {
   // Form Validation
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!caption.trim() && !title.trim() && !imageUrl) {
-      newErrors.main = 'Please provide at least a Title, Caption, or Image for your post.';
+    if (!companyName.trim()) {
+      newErrors.companyName = 'Company name is required.';
+    }
+    if (!caption.trim()) {
+      newErrors.caption = 'Caption is required.';
+    }
+    if (!imageUrl) {
+      newErrors.imageUrl = 'Image is required.';
+    }
+    if (
+      companyWebsite.trim() &&
+      !/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/.*)?$/i.test(companyWebsite.trim())
+    ) {
+      newErrors.companyWebsite = 'Please enter a valid URL (e.g. https://example.com).';
     }
     if (selectedPlatforms.length === 0) {
       newErrors.platforms = 'Select at least one social platform.';
+    }
+    if (socialAccounts.length > 0 && selectedAccounts.length === 0) {
+      newErrors.selectedAccounts = 'Please select at least one connected social account.';
     }
     if (isScheduled && scheduledDate < new Date()) {
       newErrors.schedule = 'Scheduled date/time must be in the future.';
@@ -418,11 +459,9 @@ export default function PostEditorScreen() {
 
   // Save / Publish Post
   const handleSavePost = async (targetStatus?: 'draft' | 'published' | 'scheduled') => {
-    if (!validateForm()) {
-      Alert.alert(
-        'Validation Error',
-        errors.main || errors.platforms || errors.schedule || 'Please fix validation errors.'
-      );
+    const isValid = validateForm();
+    if (!isValid) {
+      scrollToTop();
       return;
     }
 
@@ -500,12 +539,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-              {
-                type: 'image',
-                url: imageUrl,
-                imagePath: imagePath || imageUrl,
-              },
-            ]
+                {
+                  type: 'image',
+                  url: imageUrl,
+                  imagePath: imagePath || imageUrl,
+                },
+              ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -624,7 +663,11 @@ export default function PostEditorScreen() {
         </HStack>
       </Box>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ================================================================= */}
         {/* TAB 1: AI AUTO POST */}
         {/* ================================================================= */}
@@ -690,7 +733,9 @@ export default function PostEditorScreen() {
 
               {/* Reference Image Attachment */}
               <VStack style={{ marginTop: 14 }}>
-                <Text style={styles.inputLabel}>Optional Reference Image (AI Marketing Image Generator)</Text>
+                <Text style={styles.inputLabel}>
+                  Optional Reference Image (AI Marketing Image Generator)
+                </Text>
                 {aiRefImage ? (
                   <Box style={styles.imagePreviewBox}>
                     <Image source={{ uri: aiRefImage }} style={styles.uploadedImage} />
@@ -717,8 +762,15 @@ export default function PostEditorScreen() {
                           <ActivityIndicator color="#fff" size="small" />
                         ) : (
                           <>
-                            <Feather name="search" size={14} color="#fff" style={{ marginRight: 4 }} />
-                            <Text style={[styles.primaryBtnText, { fontSize: 12 }]}>Analyze Media</Text>
+                            <Feather
+                              name="search"
+                              size={14}
+                              color="#fff"
+                              style={{ marginRight: 4 }}
+                            />
+                            <Text style={[styles.primaryBtnText, { fontSize: 12 }]}>
+                              Analyze Media
+                            </Text>
                           </>
                         )}
                       </TouchableOpacity>
@@ -732,15 +784,31 @@ export default function PostEditorScreen() {
                           <ActivityIndicator color="#fff" size="small" />
                         ) : (
                           <>
-                            <Feather name="image" size={14} color="#fff" style={{ marginRight: 4 }} />
-                            <Text style={[styles.primaryBtnText, { fontSize: 12 }]}>Generate AI Image</Text>
+                            <Feather
+                              name="image"
+                              size={14}
+                              color="#fff"
+                              style={{ marginRight: 4 }}
+                            />
+                            <Text style={[styles.primaryBtnText, { fontSize: 12 }]}>
+                              Generate AI Image
+                            </Text>
                           </>
                         )}
                       </TouchableOpacity>
                     </HStack>
 
                     {aiRefAnalysisSummary ? (
-                      <Box style={{ backgroundColor: '#f0f9ff', padding: 8, borderRadius: 6, borderWidth: 1, borderColor: '#bae6fd', marginTop: 4 }}>
+                      <Box
+                        style={{
+                          backgroundColor: '#f0f9ff',
+                          padding: 8,
+                          borderRadius: 6,
+                          borderWidth: 1,
+                          borderColor: '#bae6fd',
+                          marginTop: 4,
+                        }}
+                      >
                         <Text style={{ fontSize: 11, color: '#0369a1', fontWeight: '600' }}>
                           🔍 Analysis Summary: {aiRefAnalysisSummary}
                         </Text>
@@ -820,7 +888,7 @@ export default function PostEditorScreen() {
 
             {/* 1. AI Image Generator from Reference Card */}
             <Box style={styles.card}>
-              <HStack className="items-center justify-between mb-2">
+              <HStack className="mb-2 items-center justify-between">
                 <HStack space="xs" className="items-center">
                   <Ionicons name="sparkles" size={18} color="#2563eb" />
                   <Heading size="sm" style={styles.cardTitle}>
@@ -840,12 +908,16 @@ export default function PostEditorScreen() {
                 ) : null}
               </HStack>
               <Text style={styles.cardSub}>
-                Upload a product or reference image, and AI will create a premium marketing poster with cinematic lighting and professional composition.
+                Upload a product or reference image, and AI will create a premium marketing poster
+                with cinematic lighting and professional composition.
               </Text>
 
               {!(referenceImageUri || aiRefImage) ? (
                 <TouchableOpacity
-                  style={[styles.uploadBox, { borderStyle: 'dashed', marginTop: 12, backgroundColor: '#f8fafc' }]}
+                  style={[
+                    styles.uploadBox,
+                    { borderStyle: 'dashed', marginTop: 12, backgroundColor: '#f8fafc' },
+                  ]}
                   onPress={pickReferenceImage}
                 >
                   <Feather name="upload" size={24} color="#2563eb" />
@@ -908,7 +980,11 @@ export default function PostEditorScreen() {
                               referenceImageProvider === prov && styles.providerChipTextActive,
                             ]}
                           >
-                            {prov === 'auto' ? '⚡ Auto' : prov === 'gemini' ? '🔷 Gemini' : '🟢 OpenAI'}
+                            {prov === 'auto'
+                              ? '⚡ Auto'
+                              : prov === 'gemini'
+                                ? '🔷 Gemini'
+                                : '🟢 OpenAI'}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -928,7 +1004,12 @@ export default function PostEditorScreen() {
                       </HStack>
                     ) : (
                       <HStack space="xs" className="items-center">
-                        <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
+                        <Ionicons
+                          name="sparkles"
+                          size={16}
+                          color="#fff"
+                          style={{ marginRight: 6 }}
+                        />
                         <Text style={styles.primaryBtnText}>Generate AI Marketing Poster</Text>
                       </HStack>
                     )}
@@ -946,7 +1027,14 @@ export default function PostEditorScreen() {
                         marginTop: 8,
                       }}
                     >
-                      <Text style={{ fontWeight: '700', color: '#6d28d9', fontSize: 13, marginBottom: 8 }}>
+                      <Text
+                        style={{
+                          fontWeight: '700',
+                          color: '#6d28d9',
+                          fontSize: 13,
+                          marginBottom: 8,
+                        }}
+                      >
                         ✨ AI Generated Marketing Image
                       </Text>
                       <Box style={styles.imagePreviewBox}>
@@ -981,64 +1069,95 @@ export default function PostEditorScreen() {
               <VStack style={{ marginTop: 12 }}>
                 <Text style={styles.inputLabel}>Company Name *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.companyName ? styles.inputError : null]}
                   value={companyName}
-                  onChangeText={setCompanyName}
+                  onChangeText={(text) => {
+                    setCompanyName(text);
+                    if (errors.companyName) setErrors((prev) => ({ ...prev, companyName: '' }));
+                  }}
                   placeholder="Enter company / brand name"
                   placeholderTextColor="#94a3b8"
                 />
+                {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
               </VStack>
 
               {/* Title Field (Optional) */}
               <VStack style={{ marginTop: 12 }}>
                 <Text style={styles.inputLabel}>Title</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.title ? styles.inputError : null]}
                   value={title}
-                  onChangeText={setTitle}
+                  onChangeText={(text) => {
+                    setTitle(text);
+                    if (errors.title || errors.main)
+                      setErrors((prev) => ({ ...prev, title: '', main: '' }));
+                  }}
                   placeholder="Post title (optional)"
                   placeholderTextColor="#94a3b8"
                 />
+                {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
               </VStack>
 
               {/* Website Link Field */}
               <VStack style={{ marginTop: 12 }}>
                 <Text style={styles.inputLabel}>Website / Link URL</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.companyWebsite ? styles.inputError : null]}
                   value={companyWebsite}
-                  onChangeText={setCompanyWebsite}
+                  onChangeText={(text) => {
+                    setCompanyWebsite(text);
+                    if (errors.companyWebsite)
+                      setErrors((prev) => ({ ...prev, companyWebsite: '' }));
+                  }}
                   placeholder="https://yourwebsite.com/link"
                   placeholderTextColor="#94a3b8"
                   keyboardType="url"
                   autoCapitalize="none"
                 />
+                {errors.companyWebsite && (
+                  <Text style={styles.errorText}>{errors.companyWebsite}</Text>
+                )}
               </VStack>
 
               {/* Caption Field */}
               <VStack style={{ marginTop: 12 }}>
                 <Text style={styles.inputLabel}>Caption *</Text>
                 <TextInput
-                  style={[styles.input, styles.multilineInput]}
+                  style={[
+                    styles.input,
+                    styles.multilineInput,
+                    errors.caption ? styles.inputError : null,
+                  ]}
                   value={caption}
-                  onChangeText={setCaption}
+                  onChangeText={(text) => {
+                    setCaption(text);
+                    if (errors.caption || errors.main)
+                      setErrors((prev) => ({ ...prev, caption: '', main: '' }));
+                  }}
                   placeholder="Write your post caption..."
                   placeholderTextColor="#94a3b8"
                   multiline
                   numberOfLines={4}
                 />
+                {errors.caption && <Text style={styles.errorText}>{errors.caption}</Text>}
               </VStack>
 
               {/* Hashtags Field */}
               <VStack style={{ marginTop: 12 }}>
                 <Text style={styles.inputLabel}>Hashtags (comma separated)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.hashtagsInput ? styles.inputError : null]}
                   value={hashtagsInput}
-                  onChangeText={setHashtagsInput}
+                  onChangeText={(text) => {
+                    setHashtagsInput(text);
+                    if (errors.hashtagsInput) setErrors((prev) => ({ ...prev, hashtagsInput: '' }));
+                  }}
                   placeholder="marketing, promotion, offer"
                   placeholderTextColor="#94a3b8"
                 />
+                {errors.hashtagsInput && (
+                  <Text style={styles.errorText}>{errors.hashtagsInput}</Text>
+                )}
                 {hashtagsInput.trim().length > 0 && (
                   <HStack space="xs" className="mt-2 flex-wrap">
                     {hashtagsInput.split(',').map((tag, idx) => {
@@ -1056,7 +1175,7 @@ export default function PostEditorScreen() {
 
               {/* Image Uploader inside General Content */}
               <VStack style={{ marginTop: 14 }}>
-                <Text style={styles.inputLabel}>Image Uploader</Text>
+                <Text style={styles.inputLabel}>Image Uploader *</Text>
                 {imageUrl ? (
                   <Box style={styles.imagePreviewBox}>
                     <Image
@@ -1078,10 +1197,15 @@ export default function PostEditorScreen() {
                   </Box>
                 ) : (
                   <VStack space="xs" style={{ marginTop: 6 }}>
-                    <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
+                    <TouchableOpacity
+                      style={[styles.uploadBox, errors.imageUrl ? styles.inputError : null]}
+                      onPress={pickImage}
+                    >
                       <Feather name="upload-cloud" size={28} color="#0052d4" />
                       <Text style={styles.uploadText}>Choose Image from Gallery</Text>
-                      <Text style={{ fontSize: 11, color: '#94a3b8' }}>Supports JPG, PNG, WEBP</Text>
+                      <Text style={{ fontSize: 11, color: '#94a3b8' }}>
+                        Supports JPG, PNG, WEBP
+                      </Text>
                     </TouchableOpacity>
 
                     <Text
@@ -1096,14 +1220,19 @@ export default function PostEditorScreen() {
                     </Text>
 
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, errors.imageUrl ? styles.inputError : null]}
                       value={imageUrl}
-                      onChangeText={setImageUrl}
+                      onChangeText={(text) => {
+                        setImageUrl(text);
+                        if (errors.imageUrl || errors.main)
+                          setErrors((prev) => ({ ...prev, imageUrl: '', main: '' }));
+                      }}
                       placeholder="Paste Image URL (https://...)"
                       placeholderTextColor="#94a3b8"
                     />
                   </VStack>
                 )}
+                {errors.imageUrl && <Text style={styles.errorText}>{errors.imageUrl}</Text>}
               </VStack>
             </Box>
 
@@ -1164,16 +1293,16 @@ export default function PostEditorScreen() {
                   >
                     Select Connected Accounts ({selectedAccounts.length}/{socialAccounts.length})
                   </Text>
+                  {errors.selectedAccounts && (
+                    <Text style={styles.errorText}>{errors.selectedAccounts}</Text>
+                  )}
                   <HStack space="xs" className="flex-wrap">
                     {socialAccounts.map((acc) => {
                       const isAccSelected = selectedAccounts.includes(acc.account_id);
                       return (
                         <TouchableOpacity
                           key={acc.account_id}
-                          style={[
-                            styles.accountPill,
-                            isAccSelected && styles.accountPillActive,
-                          ]}
+                          style={[styles.accountPill, isAccSelected && styles.accountPillActive]}
                           onPress={() => {
                             setSelectedAccounts((prev) =>
                               prev.includes(acc.account_id)
@@ -1207,14 +1336,14 @@ export default function PostEditorScreen() {
             <TouchableOpacity
               onPress={() => setNetworksModalOpen(true)}
               style={{
-                backgroundColor: "#2563EB",
+                backgroundColor: '#2563EB',
                 height: 42,
                 paddingHorizontal: 18,
                 borderRadius: 12,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#2563EB",
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#2563EB',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.25,
                 shadowRadius: 8,
@@ -1248,16 +1377,18 @@ export default function PostEditorScreen() {
                       key={p}
                       style={[
                         styles.subTabBtn,
-                        (activePlatformTab === p || (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                        styles.subTabBtnActive,
+                        (activePlatformTab === p ||
+                          (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
+                          styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
                       <Text
                         style={[
                           styles.subTabText,
-                          (activePlatformTab === p || (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabTextActive,
+                          (activePlatformTab === p ||
+                            (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
+                            styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -1275,7 +1406,8 @@ export default function PostEditorScreen() {
                   if (!targetPlatform) return null;
 
                   const currentOverride = platformOverrides[targetPlatform] || {};
-                  const activeCt = currentOverride.contentType || contentTypeOverrides[targetPlatform] || 'media';
+                  const activeCt =
+                    currentOverride.contentType || contentTypeOverrides[targetPlatform] || 'media';
 
                   return (
                     <VStack space="sm" style={{ marginTop: 12 }}>
@@ -1472,6 +1604,7 @@ export default function PostEditorScreen() {
                   }}
                 >
                   <Text style={styles.inputLabel}>Scheduled Date & Time</Text>
+                  {errors.schedule && <Text style={styles.errorText}>{errors.schedule}</Text>}
                   <HStack space="sm" className="mt-1">
                     <TouchableOpacity
                       style={styles.datePickerBtn}
@@ -1544,10 +1677,7 @@ export default function PostEditorScreen() {
                     contentContainerStyle={{ gap: 4 }}
                   >
                     <TouchableOpacity
-                      style={[
-                        styles.miniPrevTab,
-                        previewTab === 'all' && styles.miniPrevTabActive,
-                      ]}
+                      style={[styles.miniPrevTab, previewTab === 'all' && styles.miniPrevTabActive]}
                       onPress={() => setPreviewTab('all')}
                     >
                       <Text
@@ -1595,9 +1725,23 @@ export default function PostEditorScreen() {
                 // If no platforms are selected
                 if (selectedPlatforms.length === 0) {
                   return (
-                    <Box style={{ paddingVertical: 24, alignItems: 'center', justifyContent: 'center' }}>
+                    <Box
+                      style={{
+                        paddingVertical: 24,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
                       <Feather name="eye-off" size={32} color="#cbd5e1" />
-                      <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, fontStyle: 'italic', textAlign: 'center' }}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: '#94a3b8',
+                          marginTop: 8,
+                          fontStyle: 'italic',
+                          textAlign: 'center',
+                        }}
+                      >
                         Select target social platforms in '⚙️ Platform' modal to see preview
                       </Text>
                     </Box>
@@ -1607,9 +1751,23 @@ export default function PostEditorScreen() {
                 // If platforms selected but no image uploaded yet
                 if (!hasImageUploaded) {
                   return (
-                    <Box style={{ paddingVertical: 24, alignItems: 'center', justifyContent: 'center' }}>
+                    <Box
+                      style={{
+                        paddingVertical: 24,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
                       <Feather name="image" size={32} color="#cbd5e1" />
-                      <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, fontStyle: 'italic', textAlign: 'center' }}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: '#94a3b8',
+                          marginTop: 8,
+                          fontStyle: 'italic',
+                          textAlign: 'center',
+                        }}
+                      >
                         Upload an image to see live post preview
                       </Text>
                     </Box>
@@ -1624,10 +1782,24 @@ export default function PostEditorScreen() {
 
                 if (activeNetworks.length === 0) {
                   return (
-                    <Box style={{ paddingVertical: 18, alignItems: 'center', justifyContent: 'center' }}>
+                    <Box
+                      style={{
+                        paddingVertical: 18,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
                       <Feather name="info" size={24} color="#94a3b8" />
-                      <Text style={{ fontSize: 12, color: '#64748b', marginTop: 6, textAlign: 'center' }}>
-                        Platform '{previewTab.toUpperCase()}' is not selected in target social platforms.
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: '#64748b',
+                          marginTop: 6,
+                          textAlign: 'center',
+                        }}
+                      >
+                        Platform '{previewTab.toUpperCase()}' is not selected in target social
+                        platforms.
                       </Text>
                     </Box>
                   );
@@ -1636,13 +1808,12 @@ export default function PostEditorScreen() {
                 return (
                   <VStack space="md">
                     {activeNetworks.map((network) => {
-                      const platformConfig =
-                        SOCIAL_PLATFORMS.find((p) => p.id === network) || {
-                          id: network,
-                          label: network.charAt(0).toUpperCase() + network.slice(1),
-                          icon: 'share-2',
-                          color: '#0052d4',
-                        };
+                      const platformConfig = SOCIAL_PLATFORMS.find((p) => p.id === network) || {
+                        id: network,
+                        label: network.charAt(0).toUpperCase() + network.slice(1),
+                        icon: 'share-2',
+                        color: '#0052d4',
+                      };
 
                       // Get all accounts selected for this platform
                       const platformAccounts = socialAccounts.filter(
@@ -1654,7 +1825,9 @@ export default function PostEditorScreen() {
                         const accountId = acct?.account_id || 'default';
                         const accountName =
                           acct?.account_name ||
-                          (acct?.first_name ? `${acct.first_name} ${acct.last_name || ''}`.trim() : '') ||
+                          (acct?.first_name
+                            ? `${acct.first_name} ${acct.last_name || ''}`.trim()
+                            : '') ||
                           acct?.username ||
                           companyName ||
                           platformConfig.label;
@@ -1690,12 +1863,20 @@ export default function PostEditorScreen() {
                             ]}
                           >
                             {/* Card Header (Panel lines 5552-5616) */}
-                            <HStack className="mb-2 items-center justify-between pb-2" style={{ borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+                            <HStack
+                              className="mb-2 items-center justify-between pb-2"
+                              style={{ borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}
+                            >
                               <HStack space="xs" className="items-center" style={{ flex: 1 }}>
                                 <Box
                                   style={[
                                     styles.mockAvatar,
-                                    { backgroundColor: platformConfig.color, width: 32, height: 32, borderRadius: 16 },
+                                    {
+                                      backgroundColor: platformConfig.color,
+                                      width: 32,
+                                      height: 32,
+                                      borderRadius: 16,
+                                    },
                                   ]}
                                 >
                                   <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>
@@ -1704,7 +1885,10 @@ export default function PostEditorScreen() {
                                 </Box>
                                 <VStack style={{ flex: 1, marginLeft: 4 }}>
                                   <HStack space="xs" className="items-center">
-                                    <Text style={{ fontWeight: '700', fontSize: 13, color: '#0f172a' }} numberOfLines={1}>
+                                    <Text
+                                      style={{ fontWeight: '700', fontSize: 13, color: '#0f172a' }}
+                                      numberOfLines={1}
+                                    >
                                       {accountName}
                                     </Text>
                                     <FontAwesome
@@ -1714,7 +1898,8 @@ export default function PostEditorScreen() {
                                     />
                                   </HStack>
                                   <Text style={{ fontSize: 10, color: '#64748b' }}>
-                                    {acct?.username ? `@${acct.username} • ` : ''}{platformConfig.label} Preview
+                                    {acct?.username ? `@${acct.username} • ` : ''}
+                                    {platformConfig.label} Preview
                                   </Text>
                                 </VStack>
                               </HStack>
@@ -1727,7 +1912,13 @@ export default function PostEditorScreen() {
                                   borderRadius: 10,
                                 }}
                               >
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: platformConfig.color }}>
+                                <Text
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: '700',
+                                    color: platformConfig.color,
+                                  }}
+                                >
                                   {platformConfig.label}
                                 </Text>
                               </Box>
@@ -1750,7 +1941,14 @@ export default function PostEditorScreen() {
 
                             {/* Media Image (Panel lines 5618-5642) */}
                             {acctMediaUrl ? (
-                              <Box style={{ borderRadius: 8, overflow: 'hidden', marginBottom: 8, marginTop: 2 }}>
+                              <Box
+                                style={{
+                                  borderRadius: 8,
+                                  overflow: 'hidden',
+                                  marginBottom: 8,
+                                  marginTop: 2,
+                                }}
+                              >
                                 <Image
                                   source={{ uri: acctMediaUrl }}
                                   style={styles.mockPostImage}
@@ -1806,8 +2004,21 @@ export default function PostEditorScreen() {
                                   alignItems: 'center',
                                 }}
                               >
-                                <Feather name="link" size={12} color="#2563eb" style={{ marginRight: 5 }} />
-                                <Text style={{ fontSize: 11, color: '#1d4ed8', fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                                <Feather
+                                  name="link"
+                                  size={12}
+                                  color="#2563eb"
+                                  style={{ marginRight: 5 }}
+                                />
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    color: '#1d4ed8',
+                                    fontWeight: '600',
+                                    flex: 1,
+                                  }}
+                                  numberOfLines={1}
+                                >
                                   {acctLink}
                                 </Text>
                               </View>
@@ -1817,7 +2028,15 @@ export default function PostEditorScreen() {
                             {acctHashtags.length > 0 && (
                               <HStack space="xs" className="mb-2 flex-wrap">
                                 {acctHashtags.map((tag: string, idx: number) => (
-                                  <Text key={idx} style={{ fontSize: 11, color: platformConfig.color, fontWeight: '600', marginRight: 4 }}>
+                                  <Text
+                                    key={idx}
+                                    style={{
+                                      fontSize: 11,
+                                      color: platformConfig.color,
+                                      fontWeight: '600',
+                                      marginRight: 4,
+                                    }}
+                                  >
                                     #{tag.replace(/^#/, '')}
                                   </Text>
                                 ))}
@@ -1825,11 +2044,31 @@ export default function PostEditorScreen() {
                             )}
 
                             {/* Action Bar Footer (Panel lines 5689-5736) */}
-                            <View style={{ borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 6, marginTop: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <View
+                              style={{
+                                borderTopWidth: 1,
+                                borderTopColor: '#f1f5f9',
+                                paddingTop: 6,
+                                marginTop: 4,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                              }}
+                            >
                               <HStack space="sm" className="items-center">
                                 <FontAwesome name="heart-o" size={13} color="#64748b" />
-                                <FontAwesome name="comment-o" size={13} color="#64748b" style={{ marginLeft: 8 }} />
-                                <FontAwesome name="share" size={13} color="#64748b" style={{ marginLeft: 8 }} />
+                                <FontAwesome
+                                  name="comment-o"
+                                  size={13}
+                                  color="#64748b"
+                                  style={{ marginLeft: 8 }}
+                                />
+                                <FontAwesome
+                                  name="share"
+                                  size={13}
+                                  color="#64748b"
+                                  style={{ marginLeft: 8 }}
+                                />
                               </HStack>
                               <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '600' }}>
                                 {acctMediaUrl ? '1 image' : `${activeContentType} post`}
@@ -1897,7 +2136,7 @@ export default function PostEditorScreen() {
           onPress={() => setNetworksModalOpen(false)}
         >
           <TouchableOpacity activeOpacity={1} style={styles.optionsModalCard}>
-            <HStack className="items-center justify-between mb-4">
+            <HStack className="mb-4 items-center justify-between">
               <Heading size="md" style={{ color: '#0f172a', fontWeight: '700' }}>
                 🌐 Select Platforms & Accounts
               </Heading>
@@ -1912,9 +2151,21 @@ export default function PostEditorScreen() {
                 const platformAccounts = socialAccounts.filter((a) => a.platform === plat.id);
 
                 return (
-                  <Box key={plat.id} style={{ marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+                  <Box
+                    key={plat.id}
+                    style={{
+                      marginBottom: 14,
+                      paddingBottom: 10,
+                      borderBottomWidth: 1,
+                      borderBottomColor: '#f1f5f9',
+                    }}
+                  >
                     <TouchableOpacity
-                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
                       onPress={() => togglePlatform(plat.id)}
                     >
                       <HStack space="sm" className="items-center">
@@ -1940,7 +2191,11 @@ export default function PostEditorScreen() {
                           return (
                             <TouchableOpacity
                               key={acc.account_id}
-                              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                paddingVertical: 4,
+                              }}
                               onPress={() => {
                                 setSelectedAccounts((prev) =>
                                   prev.includes(acc.account_id)

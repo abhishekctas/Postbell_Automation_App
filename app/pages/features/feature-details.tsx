@@ -41,7 +41,11 @@ export default function FeatureDetailsScreen() {
   }, [id]);
 
   useEffect(() => {
-    fetchDetails();
+    const timeoutId = setTimeout(() => {
+      void fetchDetails();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [fetchDetails]);
 
   const formatDate = (dateStr?: string) => {

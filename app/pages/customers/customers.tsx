@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   RefreshControl,
   ActivityIndicator,
@@ -162,24 +162,6 @@ const CUSTOMER_ROW_ACTIONS = [
   { label: 'Delete', action: 'delete', style: 'danger' },
 ];
 
-// const AVATAR_COLORS = [
-//   { bg: "#dbeafe", text: "#1d4ed8" },
-//   { bg: "#ede9fe", text: "#6d28d9" },
-//   { bg: "#ffedd5", text: "#c2410c" },
-//   { bg: "#f3e8ff", text: "#7e22ce" },
-//   { bg: "#ccfbf1", text: "#0f766e" },
-//   { bg: "#fef9c3", text: "#a16207" },
-// ];
-
-// const getAvatarColor = (seed: string) => {
-//   let hash = 0;
-//   for (let i = 0; i < (seed || "").length; i++) {
-//     hash = seed.charCodeAt(i) + ((hash << 5) - hash);
-//   }
-//   const idx = Math.abs(hash) % AVATAR_COLORS.length;
-//   return AVATAR_COLORS[idx];
-// };
-
 export default function CustomersScreen() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -196,12 +178,75 @@ export default function CustomersScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // const [password, setPassword] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [gender, setGender] = useState<number>(1); // 1 = Male, 2 = Female, 3 = Other
   const [dob, setDob] = useState('');
   const [status, setStatus] = useState<number>(1); // 1 = Active, 0 = Inactive
-  const [showPassword, setShowPassword] = useState(false);
+  // const [showPassword, setShowPassword] = useState(false);
+
+  // Validation State & Modal Scroll Ref
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const modalScrollRef = useRef<ScrollView>(null);
+
+  const scrollToTopModal = () => {
+    modalScrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleFirstNameChange = (val: string) => {
+    setFirstName(val);
+    if (errors.first_name && val.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.first_name;
+        return next;
+      });
+    }
+  };
+
+  const handleLastNameChange = (val: string) => {
+    setLastName(val);
+    if (errors.last_name && val.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.last_name;
+        return next;
+      });
+    }
+  };
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    if (errors.email && val.trim() && val.includes('@')) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.email;
+        return next;
+      });
+    }
+  };
+
+  // const handlePasswordChange = (val: string) => {
+  //   setPassword(val);
+  //   if (errors.password && val.trim()) {
+  //     setErrors((prev) => {
+  //       const next = { ...prev };
+  //       delete next.password;
+  //       return next;
+  //     });
+  //   }
+  // };
+
+  const handleContactNoChange = (val: string) => {
+    setContactNo(val);
+    if (errors.contact_no && (!val.trim() || !isNaN(Number(val.trim())))) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.contact_no;
+        return next;
+      });
+    }
+  };
 
   const fetchCustomersList = useCallback(
     async (pg = 1, reset = true) => {
@@ -239,7 +284,11 @@ export default function CustomersScreen() {
   );
 
   useEffect(() => {
-    fetchCustomersList(1, true);
+    const timeoutId = setTimeout(() => {
+      void fetchCustomersList(1, true);
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [fetchCustomersList]);
 
   useFocusEffect(
@@ -258,12 +307,13 @@ export default function CustomersScreen() {
     setFirstName('');
     setLastName('');
     setEmail('');
-    setPassword('');
-    setShowPassword(false);
+    // setPassword('');
+    // setShowPassword(false);
     setContactNo('');
     setGender(1);
     setDob('');
     setStatus(1);
+    setErrors({});
     setModalVisible(true);
   };
 
@@ -272,12 +322,13 @@ export default function CustomersScreen() {
     setFirstName(customer.first_name || '');
     setLastName(customer.last_name || '');
     setEmail(customer.email || '');
-    setPassword('');
-    setShowPassword(false);
+    // setPassword('');
+    // setShowPassword(false);
     setContactNo(customer.contact_no ? String(customer.contact_no) : '');
     setGender(customer.gender || 1);
     setDob(customer.dob || '');
     setStatus(customer.status ?? 1);
+    setErrors({});
     setModalVisible(true);
   };
 
@@ -289,17 +340,35 @@ export default function CustomersScreen() {
     });
   };
 
+  const validate = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!firstName.trim()) {
+      errs.first_name = 'First name is required.';
+    }
+    if (!lastName.trim()) {
+      errs.last_name = 'Last name is required.';
+    }
+    if (!email.trim()) {
+      errs.email = 'Email address is required.';
+    } else if (!email.includes('@')) {
+      errs.email = 'Please enter a valid email.';
+    }
+    // if (!editingCustomer && !password.trim()) {
+    //   errs.password = 'Password is required for new customers.';
+    // }
+    if (contactNo && contactNo.trim()) {
+      const parsedContact = Number(contactNo.trim());
+      if (isNaN(parsedContact)) {
+        errs.contact_no = 'Contact number must be a valid number.';
+      }
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSave = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert('Validation Error', 'First and last names are required.');
-      return;
-    }
-    if (!email.trim() || !email.includes('@')) {
-      Alert.alert('Validation Error', 'Please enter a valid email.');
-      return;
-    }
-    if (!editingCustomer && !password.trim()) {
-      Alert.alert('Validation Error', 'Password is required for new customers.');
+    if (!validate()) {
+      scrollToTopModal();
       return;
     }
 
@@ -314,10 +383,6 @@ export default function CustomersScreen() {
 
       if (contactNo && contactNo.trim()) {
         const parsedContact = Number(contactNo.trim());
-        if (isNaN(parsedContact)) {
-          Alert.alert('Validation Error', 'Contact number must be a valid number.');
-          return;
-        }
         payload.contact_no = parsedContact;
       }
 
@@ -325,10 +390,9 @@ export default function CustomersScreen() {
         payload.dob = dob.trim();
       }
 
-      if (password.trim()) {
-        payload.password = password;
-      }
-      console.log(payload, "payload");
+      // if (password.trim()) {
+      //   payload.password = password;
+      // }
 
       if (editingCustomer) {
         await updateCustomer(editingCustomer._id || editingCustomer.id || '', payload);
@@ -453,7 +517,7 @@ export default function CustomersScreen() {
                 backgroundColor: '#f8fafc',
                 borderBottomWidth: 1.5,
                 borderBottomColor: '#e2e8f0',
-                paddingVertical: 4
+                paddingVertical: 4,
               }}
               headerCellTextStyle={{
                 color: '#1e3a8a',
@@ -466,7 +530,7 @@ export default function CustomersScreen() {
                 borderBottomWidth: 1,
                 borderBottomColor: '#f1f5f9',
                 backgroundColor: '#ffffff',
-                paddingVertical: 0
+                paddingVertical: 0,
               }}
             />
           )}
@@ -489,50 +553,79 @@ export default function CustomersScreen() {
             <Heading size="md" className="mb-4">
               {editingCustomer ? 'Edit Customer' : 'Add Customer'}
             </Heading>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+            <ScrollView
+              ref={modalScrollRef}
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: 420 }}
+            >
               <VStack space="md">
                 <HStack space="md">
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>First Name *</Text>
                     <TextInput
-                      style={styles.modalInput}
+                      style={[
+                        styles.modalInput,
+                        errors.first_name ? { borderColor: '#dc2626' } : {},
+                      ]}
                       value={firstName}
-                      onChangeText={setFirstName}
+                      onChangeText={handleFirstNameChange}
                       placeholder="John"
                     />
+                    {errors.first_name ? (
+                      <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                        {errors.first_name}
+                      </Text>
+                    ) : null}
                   </VStack>
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>Last Name *</Text>
                     <TextInput
-                      style={styles.modalInput}
+                      style={[
+                        styles.modalInput,
+                        errors.last_name ? { borderColor: '#dc2626' } : {},
+                      ]}
                       value={lastName}
-                      onChangeText={setLastName}
+                      onChangeText={handleLastNameChange}
                       placeholder="Doe"
                     />
+                    {errors.last_name ? (
+                      <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                        {errors.last_name}
+                      </Text>
+                    ) : null}
                   </VStack>
                 </HStack>
 
                 <VStack space="xs">
                   <Text style={styles.label}>Email Address *</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[styles.modalInput, errors.email ? { borderColor: '#dc2626' } : {}]}
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={handleEmailChange}
                     placeholder="john@example.com"
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
+                  {errors.email ? (
+                    <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                      {errors.email}
+                    </Text>
+                  ) : null}
                 </VStack>
-
+                {/* 
                 <VStack space="xs">
                   <Text style={styles.label}>
                     {editingCustomer ? 'New Password (Leave empty to keep current)' : 'Password *'}
                   </Text>
                   <HStack style={{ position: 'relative', alignItems: 'center' }}>
                     <TextInput
-                      style={[styles.modalInput, { flex: 1, paddingRight: 40 }]}
+                      style={[
+                        styles.modalInput,
+                        { flex: 1, paddingRight: 40 },
+                        errors.password ? { borderColor: '#dc2626' } : {},
+                      ]}
                       value={password}
-                      onChangeText={setPassword}
+                      onChangeText={handlePasswordChange}
                       placeholder="••••••••"
                       secureTextEntry={!showPassword}
                     />
@@ -543,17 +636,25 @@ export default function CustomersScreen() {
                       <Feather name={showPassword ? 'eye-off' : 'eye'} size={16} color="#94a3b8" />
                     </TouchableOpacity>
                   </HStack>
-                </VStack>
+                  {errors.password ? (
+                    <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>{errors.password}</Text>
+                  ) : null}
+                </VStack> */}
 
                 <VStack space="xs">
                   <Text style={styles.label}>Contact Number</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[styles.modalInput, errors.contact_no ? { borderColor: '#dc2626' } : {}]}
                     value={contactNo}
-                    onChangeText={setContactNo}
+                    onChangeText={handleContactNoChange}
                     placeholder="+1234567890"
                     keyboardType="phone-pad"
                   />
+                  {errors.contact_no ? (
+                    <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+                      {errors.contact_no}
+                    </Text>
+                  ) : null}
                 </VStack>
 
                 <HStack space="md">

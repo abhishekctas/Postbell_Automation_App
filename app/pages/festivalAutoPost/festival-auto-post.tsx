@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -326,6 +326,7 @@ export default function FestivalAutoPostScreen() {
   });
 
   const [modalVisible, setModalVisible] = useState(false);
+  const modalScrollViewRef = useRef<ScrollView>(null);
   const [editingPost, setEditingPost] = useState<FestivalPost | null>(null);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
@@ -382,8 +383,12 @@ export default function FestivalAutoPostScreen() {
   );
 
   useEffect(() => {
-    fetchFestivalPostsList(1, true);
-  }, [search]);
+    const timeoutId = setTimeout(() => {
+      void fetchFestivalPostsList(1, true);
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [fetchFestivalPostsList]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -618,10 +623,7 @@ export default function FestivalAutoPostScreen() {
       !hasHashtags ||
       !hasImage
     ) {
-      Alert.alert(
-        'Validation Error',
-        'Please fill all required fields: name, date, category, caption, hashtags, and image.'
-      );
+      modalScrollViewRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
 
@@ -890,6 +892,7 @@ export default function FestivalAutoPostScreen() {
             </Box>
 
             <ScrollView
+              ref={modalScrollViewRef}
               showsVerticalScrollIndicator={false}
               style={{ maxHeight: Dimensions.get('window').height * 0.55 }}
             >
@@ -932,6 +935,9 @@ export default function FestivalAutoPostScreen() {
                         minimumDate={new Date()}
                         onChange={handleDateChange}
                       />
+                    )}
+                    {touched.date && !hasDate && (
+                      <Text style={styles.errorText}>Date is required</Text>
                     )}
                     {touched.date && isDateInPast && (
                       <Text style={styles.errorText}>Date cannot be in the past</Text>

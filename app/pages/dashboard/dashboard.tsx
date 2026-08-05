@@ -693,48 +693,112 @@ function TopContributorsSection({ users }: { users: TopUser[] }) {
 }
 
 // ── 3. Subscription Analytics Section Component ──────────────────────────────────
-function SubscriptionAnalyticsSection({ data }: { data: SubscriptionAnalytics | null }) {
+function SubscriptionAnalyticsSection({
+  data,
+  onRefresh,
+}: {
+  data: SubscriptionAnalytics | null;
+  onRefresh?: () => void;
+}) {
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
+
   if (!data) return null;
 
-  const plans = (data.planDistribution ?? []).map((p) => ({
-    name: p._id || p.name || 'Unknown',
-    count: p.count ?? 0,
-    revenue: p.revenue ?? 0,
+  const plans = (data.planDistribution ?? []).map((p: any) => ({
+    name: p._id || p.name || p.planName || 'Unknown',
+    count: billing === 'monthly' ? (p.monthly ?? p.count ?? 0) : (p.annual ?? p.count ?? 0),
+    revenue:
+      billing === 'monthly'
+        ? (p.monthlyRevenue ?? p.revenue ?? 0)
+        : (p.annualRevenue ?? p.revenue ?? 0),
   }));
 
-  const totalSubscribers = plans.reduce((s, p) => s + p.count, 0);
-  const totalRev = plans.reduce((s, p) => s + p.revenue, 0);
-  const avgRev = totalSubscribers > 0 ? totalRev / totalSubscribers : 0;
+  const totalSubscribers = data.summary?.totalSubscribers ?? plans.reduce((s, p) => s + p.count, 0);
+
+  const totalRev =
+    billing === 'monthly'
+      ? (data.billingCycle?.monthly?.revenue ?? plans.reduce((s, p) => s + p.revenue, 0))
+      : (data.billingCycle?.annual?.revenue ?? plans.reduce((s, p) => s + p.revenue, 0));
+
+  const activePlansCount =
+    data.summary?.activeSubscriptionCount ?? plans.filter((p) => p.count > 0).length;
+
   const maxCount = Math.max(...plans.map((p) => p.count), 1);
 
   const PLAN_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e'];
 
-  const statusEntries = data.statusBreakdown ? Object.entries(data.statusBreakdown) : [];
+  const statusEntries: { name: string; count: number; revenue: number }[] = Array.isArray(
+    data.statusBreakdown
+  )
+    ? (data.statusBreakdown as any[]).map((s: any) => ({
+        name: s.status || s._id || s.name || 'Unknown',
+        count: s.count ?? 0,
+        revenue: s.revenue ?? 0,
+      }))
+    : Object.entries(data.statusBreakdown ?? {}).map(([status, item]: [string, any]) => ({
+        name: status,
+        count: item?.count ?? 0,
+        revenue: item?.revenue ?? 0,
+      }));
 
   return (
     <Box style={styles.cardWrapper}>
-      <HStack style={{ alignItems: 'center', marginBottom: 14 }}>
-        <Box style={[styles.sectionIconBg, { backgroundColor: '#fef3c7' }]}>
-          <Feather name="credit-card" size={18} color="#d97706" />
-        </Box>
-        <Heading size="md" style={styles.sectionTitleNoMargin}>
-          Subscription Analytics
-        </Heading>
+      {/* Header with Title, Refresh Icon, and Monthly/Annual Toggle */}
+      <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <HStack style={{ alignItems: 'center', flex: 1 }}>
+          <Box style={[styles.sectionIconBg, { backgroundColor: '#fef3c7' }]}>
+            <Feather name="credit-card" size={18} color="#d97706" />
+          </Box>
+          <Heading size="md" style={styles.sectionTitleNoMargin}>
+            Subscription Analytics
+          </Heading>
+          {onRefresh && (
+            <TouchableOpacity onPress={onRefresh} activeOpacity={0.7} style={styles.refreshIconBtn}>
+              <Feather name="rotate-cw" size={13} color="#64748b" />
+            </TouchableOpacity>
+          )}
+        </HStack>
+
+        {/* Toggle Group */}
+        <HStack style={styles.toggleGroupContainer}>
+          <TouchableOpacity
+            onPress={() => setBilling('monthly')}
+            style={[styles.toggleBtn, billing === 'monthly' && styles.toggleBtnActive]}
+          >
+            <Text
+              style={[styles.toggleBtnText, billing === 'monthly' && styles.toggleBtnTextActive]}
+            >
+              Monthly
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setBilling('annual')}
+            style={[styles.toggleBtn, billing === 'annual' && styles.toggleBtnActive]}
+          >
+            <Text
+              style={[styles.toggleBtnText, billing === 'annual' && styles.toggleBtnTextActive]}
+            >
+              Annual
+            </Text>
+          </TouchableOpacity>
+        </HStack>
       </HStack>
 
       {/* Summary Cards */}
       <HStack style={{ justifyContent: 'space-between', marginBottom: 16 }}>
         <Box style={styles.subSummaryCard}>
-          <Text style={styles.subSummaryLabel}>Total Revenue</Text>
-          <Text style={styles.subSummaryVal}>{formatRevenue(totalRev)}</Text>
-        </Box>
-        <Box style={styles.subSummaryCard}>
           <Text style={styles.subSummaryLabel}>Subscribers</Text>
           <Text style={styles.subSummaryVal}>{totalSubscribers}</Text>
         </Box>
         <Box style={styles.subSummaryCard}>
-          <Text style={styles.subSummaryLabel}>Avg Rev/User</Text>
-          <Text style={styles.subSummaryVal}>{formatRevenue(avgRev)}</Text>
+          <Text style={styles.subSummaryLabel}>
+            {billing === 'monthly' ? 'Monthly Rev' : 'Annual Rev'}
+          </Text>
+          <Text style={styles.subSummaryVal}>{formatRevenue(totalRev)}</Text>
+        </Box>
+        <Box style={styles.subSummaryCard}>
+          <Text style={styles.subSummaryLabel}>Active Plans</Text>
+          <Text style={styles.subSummaryVal}>{activePlansCount}</Text>
         </Box>
       </HStack>
 
@@ -745,7 +809,7 @@ function SubscriptionAnalyticsSection({ data }: { data: SubscriptionAnalytics | 
           {plans.map((p, idx) => {
             const color = PLAN_COLORS[idx % PLAN_COLORS.length];
             return (
-              <VStack key={p.name} space="xs" style={{ marginBottom: 10 }}>
+              <VStack key={p.name + idx} space="xs" style={{ marginBottom: 10 }}>
                 <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={styles.planNameText} numberOfLines={1}>
                     {p.name}
@@ -776,9 +840,9 @@ function SubscriptionAnalyticsSection({ data }: { data: SubscriptionAnalytics | 
         <VStack space="xs">
           <Text style={styles.subHeaderCaption}>CUSTOMER SUBSCRIPTION STATUS</Text>
           <HStack style={{ flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-            {statusEntries.map(([status, item]) => (
-              <Box key={status} style={styles.statusPill}>
-                <Text style={styles.statusPillTitle}>{status}</Text>
+            {statusEntries.map((item, idx) => (
+              <Box key={item.name + idx} style={styles.statusPill}>
+                <Text style={styles.statusPillTitle}>{item.name}</Text>
                 <HStack space="xs" style={{ alignItems: 'center', marginTop: 2 }}>
                   <Text style={styles.statusPillCount}>{item.count} subs</Text>
                   <Text style={styles.statusPillRev}>({formatRevenue(item.revenue)})</Text>
@@ -788,15 +852,25 @@ function SubscriptionAnalyticsSection({ data }: { data: SubscriptionAnalytics | 
           </HStack>
         </VStack>
       )}
+
+      {plans.length === 0 && statusEntries.length === 0 && (
+        <Box style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No subscription data available</Text>
+        </Box>
+      )}
     </Box>
   );
 }
 
 // ── 4. Website Visitors Section Component ──────────────────────────────────────
-function WebsiteVisitorsSection({ data }: { data: WebsiteVisitorDay[] }) {
-  if (!data || data.length === 0) return null;
-
-  const sortedData = [...data].sort((a, b) => a._id.localeCompare(b._id));
+function WebsiteVisitorsSection({
+  data,
+  onRefresh,
+}: {
+  data: WebsiteVisitorDay[];
+  onRefresh?: () => void;
+}) {
+  const sortedData = [...(data ?? [])].sort((a, b) => a._id.localeCompare(b._id));
   const dates = sortedData.map((d) => {
     const parts = d._id.split('-');
     if (parts.length === 3) {
@@ -842,22 +916,33 @@ function WebsiteVisitorsSection({ data }: { data: WebsiteVisitorDay[] }) {
     return { x, y, val };
   });
 
-  let linePath = `M ${points[0].x} ${points[0].y}`;
+  let linePath = points.length > 0 ? `M ${points[0].x} ${points[0].y}` : '';
   for (let i = 1; i < points.length; i++) {
     linePath += ` L ${points[i].x} ${points[i].y}`;
   }
 
-  const fillPath = `${linePath} L ${points[points.length - 1].x} ${chartHeight - paddingBottom} L ${points[0].x} ${chartHeight - paddingBottom} Z`;
+  const fillPath =
+    points.length > 0
+      ? `${linePath} L ${points[points.length - 1].x} ${chartHeight - paddingBottom} L ${points[0].x} ${chartHeight - paddingBottom} Z`
+      : '';
 
   return (
     <Box style={styles.cardWrapper}>
-      <HStack style={{ alignItems: 'center', marginBottom: 14 }}>
-        <Box style={[styles.sectionIconBg, { backgroundColor: '#e0e7ff' }]}>
-          <Feather name="globe" size={18} color="#4f46e5" />
-        </Box>
-        <Heading size="md" style={styles.sectionTitleNoMargin}>
-          Website Visitors
-        </Heading>
+      <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <HStack style={{ alignItems: 'center' }}>
+          <Box style={[styles.sectionIconBg, { backgroundColor: '#e0e7ff' }]}>
+            <Feather name="globe" size={18} color="#4f46e5" />
+          </Box>
+          <Heading size="md" style={styles.sectionTitleNoMargin}>
+            Website Visitors
+          </Heading>
+        </HStack>
+
+        {onRefresh && (
+          <TouchableOpacity onPress={onRefresh} activeOpacity={0.7} style={styles.refreshIconBtn}>
+            <Feather name="rotate-cw" size={13} color="#64748b" />
+          </TouchableOpacity>
+        )}
       </HStack>
 
       <HStack style={{ gap: 20, marginBottom: 12 }}>
@@ -873,51 +958,57 @@ function WebsiteVisitorsSection({ data }: { data: WebsiteVisitorDay[] }) {
         </Box>
       </HStack>
 
-      <View style={{ height: chartHeight + 20, width: '100%' }}>
-        <Svg height={chartHeight} width={chartWidth}>
-          <Defs>
-            <SvgLinearGradient id="visGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#378ADD" stopOpacity={0.25} />
-              <Stop offset="100%" stopColor="#378ADD" stopOpacity={0.02} />
-            </SvgLinearGradient>
-          </Defs>
+      {values.length > 0 ? (
+        <View style={{ height: chartHeight + 20, width: '100%' }}>
+          <Svg height={chartHeight} width={chartWidth}>
+            <Defs>
+              <SvgLinearGradient id="visGrad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0%" stopColor="#378ADD" stopOpacity={0.25} />
+                <Stop offset="100%" stopColor="#378ADD" stopOpacity={0.02} />
+              </SvgLinearGradient>
+            </Defs>
 
-          <Path d={fillPath} fill="url(#visGrad)" />
-          <Path d={linePath} fill="none" stroke="#378ADD" strokeWidth={2.5} />
+            <Path d={fillPath} fill="url(#visGrad)" />
+            <Path d={linePath} fill="none" stroke="#378ADD" strokeWidth={2.5} />
 
-          {points.map((p, i) => (
-            <Circle
-              key={i}
-              cx={p.x}
-              cy={p.y}
-              r={3.5}
-              fill="#ffffff"
-              stroke="#378ADD"
-              strokeWidth={1.8}
-            />
-          ))}
-        </Svg>
+            {points.map((p, i) => (
+              <Circle
+                key={i}
+                cx={p.x}
+                cy={p.y}
+                r={3.5}
+                fill="#ffffff"
+                stroke="#378ADD"
+                strokeWidth={1.8}
+              />
+            ))}
+          </Svg>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            width: chartWidth,
-            paddingLeft: paddingLeft,
-            paddingRight: paddingRight,
-            justifyContent: 'space-between',
-            marginTop: 4,
-          }}
-        >
-          {dates.map((d, i) => (
-            <Text
-              key={i}
-              style={{ fontSize: 9, color: '#94a3b8', fontWeight: '600', textAlign: 'center' }}
-            >
-              {d}
-            </Text>
-          ))}
+          <View
+            style={{
+              flexDirection: 'row',
+              width: chartWidth,
+              paddingLeft: paddingLeft,
+              paddingRight: paddingRight,
+              justifyContent: 'space-between',
+              marginTop: 4,
+            }}
+          >
+            {dates.map((d, i) => (
+              <Text
+                key={i}
+                style={{ fontSize: 9, color: '#94a3b8', fontWeight: '600', textAlign: 'center' }}
+              >
+                {d}
+              </Text>
+            ))}
+          </View>
         </View>
-      </View>
+      ) : (
+        <Box style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No visitor data available</Text>
+        </Box>
+      )}
     </Box>
   );
 }
@@ -928,9 +1019,6 @@ export default function DashboardScreen() {
   const isCustomer =
     user?.loginType === 'customer' || user?.role_name?.toLowerCase().includes('customer');
 
-  if (isCustomer) {
-    return <CustomerDashboard />;
-  }
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -975,13 +1063,21 @@ export default function DashboardScreen() {
   }, [user]);
 
   useEffect(() => {
-    fetchAll();
+    const timeoutId = setTimeout(() => {
+      void fetchAll();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [fetchAll]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchAll();
   };
+
+  if (isCustomer) {
+    return <CustomerDashboard />;
+  }
 
   if (loading) {
     return (
@@ -1035,10 +1131,7 @@ export default function DashboardScreen() {
               </Box>
             </TouchableOpacity> */}
 
-            <TouchableOpacity
-              onPress={handleSignOut}
-              style={styles.headerIconButton}
-            >
+            <TouchableOpacity onPress={handleSignOut} style={styles.headerIconButton}>
               <Feather name="log-out" size={18} color="white" />
             </TouchableOpacity>
           </HStack>
@@ -1046,7 +1139,9 @@ export default function DashboardScreen() {
 
         <VStack style={styles.headerWelcomeSection} space="xs">
           <Text style={styles.headerGreeting}>Welcome back, {firstName}! 👋</Text>
-          <Text style={styles.headerSubtitle}>Here's what's happening with your content.</Text>
+          <Text style={styles.headerSubtitle}>
+            Here&apos;s what is happening with your content.
+          </Text>
         </VStack>
       </LinearGradient>
 
@@ -1083,7 +1178,9 @@ export default function DashboardScreen() {
                 iconColor="#16a34a"
                 value={stats.publishedPosts}
                 label="Published"
-                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'published' } })}
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'published' } })
+                }
               />
               <StatColumn
                 icon="calendar"
@@ -1091,7 +1188,9 @@ export default function DashboardScreen() {
                 iconColor="#d97706"
                 value={stats.scheduledPosts}
                 label="Scheduled"
-                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'scheduled' } })}
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'scheduled' } })
+                }
               />
               <StatColumn
                 icon="edit-2"
@@ -1099,7 +1198,9 @@ export default function DashboardScreen() {
                 iconColor="#7c3aed"
                 value={stats.draftPosts}
                 label="Drafts"
-                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'draft' } })}
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'draft' } })
+                }
               />
             </HStack>
 
@@ -1122,7 +1223,9 @@ export default function DashboardScreen() {
                 iconColor="#dc2626"
                 value={stats.failedPosts}
                 label="Failed"
-                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'failed' } })}
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'failed' } })
+                }
               />
               <StatColumn
                 icon="layers"
@@ -1130,7 +1233,9 @@ export default function DashboardScreen() {
                 iconColor="#ea580c"
                 value={stats.partialPublishedPosts}
                 label="Partial"
-                onPress={() => router.push({ pathname: '/pages/posts/posts', params: { status: 'partial' } })}
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'partial' } })
+                }
               />
             </HStack>
           </View>
@@ -1272,14 +1377,14 @@ export default function DashboardScreen() {
         {/* ── SUBSCRIPTION ANALYTICS ─────────────────────────────────────────── */}
         {subscriptionAnalytics && (
           <Box style={styles.sectionMargin}>
-            <SubscriptionAnalyticsSection data={subscriptionAnalytics} />
+            <SubscriptionAnalyticsSection data={subscriptionAnalytics} onRefresh={onRefresh} />
           </Box>
         )}
 
         {/* ── WEBSITE VISITORS ────────────────────────────────────────────────── */}
         {websiteVisitors.length > 0 && (
           <Box style={styles.sectionMargin}>
-            <WebsiteVisitorsSection data={websiteVisitors} />
+            <WebsiteVisitorsSection data={websiteVisitors} onRefresh={onRefresh} />
           </Box>
         )}
       </ScrollView>
@@ -1857,5 +1962,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748b',
     fontWeight: '600',
+  },
+  refreshIconBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  toggleGroupContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  toggleBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  toggleBtnActive: {
+    backgroundColor: '#3b82f6',
+  },
+  toggleBtnText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  toggleBtnTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  emptyContainer: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontWeight: '500',
   },
 });

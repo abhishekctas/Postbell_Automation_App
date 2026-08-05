@@ -21,3 +21,5 @@ export const LinearGradient = React.forwardRef(({ className, ...props }: any, re
     />
   );
 });
+
+LinearGradient.displayName = 'LinearGradient';

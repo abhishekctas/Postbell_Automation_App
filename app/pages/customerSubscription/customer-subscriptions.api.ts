@@ -81,10 +81,10 @@ export const listSubscriptions = async (
           (typeof item.user_id === 'object'
             ? item.user_id?._id || item.user_id?.id
             : item.user_id) ||
-          (typeof item.customer_id === 'object'
-            ? item.customer_id?._id || item.customer_id?.id
-            : item.customer_id) ||
-          ''
+            (typeof item.customer_id === 'object'
+              ? item.customer_id?._id || item.customer_id?.id
+              : item.customer_id) ||
+            ''
         );
         const matchedCust = customerMap.get(uId);
         if (matchedCust) {

@@ -60,8 +60,28 @@ export interface PlatformAnalytics {
 }
 
 export interface SubscriptionAnalytics {
-  planDistribution: { _id?: string; name?: string; count: number; revenue: number }[];
-  statusBreakdown: Record<string, { count: number; revenue: number }>;
+  planDistribution: {
+    _id?: string;
+    name?: string;
+    planName?: string;
+    count?: number;
+    revenue?: number;
+    monthly?: number;
+    annual?: number;
+    monthlyRevenue?: number;
+    annualRevenue?: number;
+  }[];
+  statusBreakdown:
+    | Record<string, { count?: number; revenue?: number }>
+    | { status?: string; _id?: string; count?: number; revenue?: number }[];
+  summary?: {
+    totalSubscribers?: number;
+    activeSubscriptionCount?: number;
+  };
+  billingCycle?: {
+    monthly?: { count?: number; revenue?: number };
+    annual?: { count?: number; revenue?: number };
+  };
 }
 
 export interface AIUsageStats {

@@ -19,13 +19,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getCustomerDetails, getCustomerAvatarUrl, Customer } from './customers.api';
 
 const PLATFORM_CONFIG: Record<string, { label: string; icon: string; color: string; bg: string }> =
-{
-  instagram: { label: 'Instagram', icon: 'instagram', color: '#E1306C', bg: '#fdf2f8' },
-  facebook: { label: 'Facebook', icon: 'facebook', color: '#1877F2', bg: '#eff6ff' },
-  twitter: { label: 'Twitter', icon: 'twitter', color: '#1DA1F2', bg: '#f0f9ff' },
-  linkedin: { label: 'LinkedIn', icon: 'linkedin', color: '#0A66C2', bg: '#f0fdf4' },
-  whatsapp: { label: 'WhatsApp', icon: 'message-circle', color: '#25D366', bg: '#f0fdf4' },
-};
+  {
+    instagram: { label: 'Instagram', icon: 'instagram', color: '#E1306C', bg: '#fdf2f8' },
+    facebook: { label: 'Facebook', icon: 'facebook', color: '#1877F2', bg: '#eff6ff' },
+    twitter: { label: 'Twitter', icon: 'twitter', color: '#1DA1F2', bg: '#f0f9ff' },
+    linkedin: { label: 'LinkedIn', icon: 'linkedin', color: '#0A66C2', bg: '#f0fdf4' },
+    whatsapp: { label: 'WhatsApp', icon: 'message-circle', color: '#25D366', bg: '#f0fdf4' },
+  };
 
 export default function CustomerDetailsScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -79,7 +79,11 @@ export default function CustomerDetailsScreen() {
   }, [id]);
 
   useEffect(() => {
-    fetchCustomer();
+    const timeoutId = setTimeout(() => {
+      void fetchCustomer();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [fetchCustomer]);
 
   const formatDate = (dateStr?: string) => {
