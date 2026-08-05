@@ -55,12 +55,17 @@ export const generateFeatureSlug = (title: string): string => {
 function prepareFeaturePayload(payload: FeatureFormData | any): FormData | string {
   if (payload instanceof FormData) return payload;
 
-  const cleanedPoints = payload.feature_points?.map((pt: any) => ({
-    point_title: (pt.point_title || '').trim(),
-    point_description: (pt.point_description || '').trim(),
-  })) || [];
+  const cleanedPoints =
+    payload.feature_points?.map((pt: any) => ({
+      point_title: (pt.point_title || '').trim(),
+      point_description: (pt.point_description || '').trim(),
+    })) || [];
 
-  const statusBool = payload.status === 1 || payload.status === true || payload.status === '1' || payload.status === 'true';
+  const statusBool =
+    payload.status === 1 ||
+    payload.status === true ||
+    payload.status === '1' ||
+    payload.status === 'true';
 
   const hasFiles = Boolean(
     payload.imageFile ||
@@ -156,7 +161,7 @@ export const createFeature = async (payload: FeatureFormData | any): Promise<any
     headers: isForm ? undefined : { 'Content-Type': 'application/json' },
     body: body as any,
   });
-  console.log(res, "resres-create-features");
+  console.log(res, 'resres-create-features');
   if (
     res &&
     (res.success === false ||

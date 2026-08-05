@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ScrollView,
   TouchableOpacity,
@@ -46,8 +46,17 @@ export default function FeatureEditorScreen() {
   const router = useRouter();
   const isEditMode = Boolean(id);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const scrollToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
+
+  // Validation Errors State
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -104,15 +113,49 @@ export default function FeatureEditorScreen() {
   }, [id, router]);
 
   useEffect(() => {
-    if (isEditMode) {
-      loadFeatureData();
-    }
+    if (!isEditMode) return;
+
+    const timeoutId = setTimeout(() => {
+      void loadFeatureData();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [isEditMode, loadFeatureData]);
 
   const handleTitleChange = (val: string) => {
     setTitle(val);
     if (!isEditMode) {
-      setSlug(generateFeatureSlug(val));
+      const generatedSlug = generateFeatureSlug(val);
+      setSlug(generatedSlug);
+      if (
+        errors.slug &&
+        generatedSlug.trim() &&
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(generatedSlug.trim())
+      ) {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next.slug;
+          return next;
+        });
+      }
+    }
+    if (errors.title && val.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.title;
+        return next;
+      });
+    }
+  };
+
+  const handleSlugChange = (val: string) => {
+    setSlug(val);
+    if (errors.slug && val.trim() && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(val.trim())) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.slug;
+        return next;
+      });
     }
   };
 
@@ -133,6 +176,13 @@ export default function FeatureEditorScreen() {
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
+    if (field === 'point_title' && errors[`fp_${index}_title`] && value.trim()) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[`fp_${index}_title`];
+        return next;
+      });
+    }
   };
 
   const handleRemovePoint = (index: number) => {
@@ -141,6 +191,15 @@ export default function FeatureEditorScreen() {
       return;
     }
     setFeaturePoints((prev) => prev.filter((_, i) => i !== index));
+    setErrors((prev) => {
+      const next: Record<string, string> = {};
+      Object.keys(prev).forEach((k) => {
+        if (!k.startsWith('fp_')) {
+          next[k] = prev[k];
+        }
+      });
+      return next;
+    });
   };
 
   const handlePickImage = async () => {
@@ -171,6 +230,12 @@ export default function FeatureEditorScreen() {
           type: mimeType,
         });
         setRemoveImage(false);
+        setErrors((prev) => {
+          if (!prev.media) return prev;
+          const next = { ...prev };
+          delete next.media;
+          return next;
+        });
       }
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to select image.');
@@ -205,6 +270,12 @@ export default function FeatureEditorScreen() {
           type: mimeType,
         });
         setRemoveVideo(false);
+        setErrors((prev) => {
+          if (!prev.media) return prev;
+          const next = { ...prev };
+          delete next.media;
+          return next;
+        });
       }
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to select video.');
@@ -242,32 +313,38 @@ export default function FeatureEditorScreen() {
   };
 
   const validate = (): boolean => {
+    const errs: Record<string, string> = {};
+
     if (!title.trim()) {
-      Alert.alert('Validation Error', 'Feature title is required.');
-      return false;
+      errs.title = 'Feature title is required.';
     }
     if (!slug.trim()) {
-      Alert.alert('Validation Error', 'Slug is required.');
-      return false;
+      errs.slug = 'Slug is required.';
+    } else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.trim())) {
+      errs.slug =
+        'Slug must contain only lowercase letters, numbers, and hyphens (e.g., ai-editor).';
     }
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.trim())) {
-      Alert.alert(
-        'Validation Error',
-        'Slug must contain only lowercase letters, numbers, and hyphens (e.g., ai-editor).'
-      );
-      return false;
+
+    if (!image && !video && !imageFile && !videoFile) {
+      errs.media = 'Either feature image or video is required.';
     }
-    for (let i = 0; i < featurePoints.length; i++) {
-      if (!featurePoints[i].point_title.trim()) {
-        Alert.alert('Validation Error', `Point #${i + 1} title is required.`);
-        return false;
+
+    featurePoints.forEach((point, i) => {
+      if (!point.point_title.trim()) {
+        errs[`fp_${i}_title`] = 'Point title is required.';
       }
-    }
-    return true;
+    });
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleSave = async () => {
-    if (!validate() || saving) return;
+    if (!validate()) {
+      scrollToTop();
+      return;
+    }
+    if (saving) return;
 
     try {
       setSaving(true);
@@ -355,7 +432,11 @@ export default function FeatureEditorScreen() {
       </LinearGradient>
 
       {/* Main Content Form */}
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Section 1: Basic Info */}
         <Box style={styles.sectionCard}>
           <HStack className="mb-4 items-center space-x-2">
@@ -373,13 +454,14 @@ export default function FeatureEditorScreen() {
                 </Text>
               </HStack>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, errors.title ? styles.inputError : null]}
                 value={title}
                 onChangeText={handleTitleChange}
                 placeholder="e.g. AI Writer & Editor"
                 placeholderTextColor="#94a3b8"
                 maxLength={LIMITS.title}
               />
+              {errors.title ? <Text style={styles.errorText}>{errors.title}</Text> : null}
             </VStack>
 
             {/* Slug */}
@@ -391,15 +473,19 @@ export default function FeatureEditorScreen() {
                 </Text>
               </HStack>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, errors.slug ? styles.inputError : null]}
                 value={slug}
-                onChangeText={setSlug}
+                onChangeText={handleSlugChange}
                 placeholder="e.g. ai-writer-editor"
                 placeholderTextColor="#94a3b8"
                 autoCapitalize="none"
                 maxLength={LIMITS.slug}
               />
-              <Text style={styles.helpText}>Lowercase letters, numbers and hyphens only</Text>
+              {errors.slug ? (
+                <Text style={styles.errorText}>{errors.slug}</Text>
+              ) : (
+                <Text style={styles.helpText}>Lowercase letters, numbers and hyphens only</Text>
+              )}
             </VStack>
 
             {/* Description */}
@@ -429,8 +515,12 @@ export default function FeatureEditorScreen() {
         <Box style={styles.sectionCard}>
           <HStack className="mb-4 items-center space-x-2">
             <Feather name="image" size={18} color="#2563EB" />
-            <Text style={styles.sectionTitle}>Media Content</Text>
+            <Text style={styles.sectionTitle}>Media Content *</Text>
           </HStack>
+
+          {errors.media ? (
+            <Text style={[styles.errorText, { marginBottom: 12 }]}>{errors.media}</Text>
+          ) : null}
 
           <VStack space="md">
             {/* Feature Image Upload */}
@@ -468,13 +558,18 @@ export default function FeatureEditorScreen() {
                   </HStack>
                 </Box>
               ) : (
-                <TouchableOpacity style={styles.uploadBox} onPress={handlePickImage}>
-                  <VStack className="items-center justify-center py-4 space-y-1">
+                <TouchableOpacity
+                  style={[styles.uploadBox, errors.media ? styles.uploadBoxError : null]}
+                  onPress={handlePickImage}
+                >
+                  <VStack className="items-center justify-center space-y-1 py-4">
                     <Box style={styles.uploadIconCircle}>
                       <Feather name="upload-cloud" size={22} color="#2563EB" />
                     </Box>
                     <Text style={styles.uploadBoxTitle}>Upload Feature Image</Text>
-                    <Text style={styles.uploadBoxSubtitle}>Tap to choose image (JPG, PNG, WEBP)</Text>
+                    <Text style={styles.uploadBoxSubtitle}>
+                      Tap to choose image (JPG, PNG, WEBP)
+                    </Text>
                   </VStack>
                 </TouchableOpacity>
               )}
@@ -495,7 +590,9 @@ export default function FeatureEditorScreen() {
                     <HStack className="items-center space-x-2">
                       <TouchableOpacity style={styles.mediaBtnSmall} onPress={handlePickVideo}>
                         <Feather name="upload" size={12} color="#fff" />
-                        <Text style={{ fontSize: 11, color: '#fff', fontWeight: '600' }}>Change</Text>
+                        <Text style={{ fontSize: 11, color: '#fff', fontWeight: '600' }}>
+                          Change
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={handleRemoveVideoAction}>
                         <Feather name="trash-2" size={14} color="#f87171" />
@@ -504,8 +601,11 @@ export default function FeatureEditorScreen() {
                   </Box>
                 </Box>
               ) : (
-                <TouchableOpacity style={styles.uploadBox} onPress={handlePickVideo}>
-                  <VStack className="items-center justify-center py-4 space-y-1">
+                <TouchableOpacity
+                  style={[styles.uploadBox, errors.media ? styles.uploadBoxError : null]}
+                  onPress={handlePickVideo}
+                >
+                  <VStack className="items-center justify-center space-y-1 py-4">
                     <Box style={styles.uploadIconCircle}>
                       <Feather name="video" size={22} color="#2563EB" />
                     </Box>
@@ -627,13 +727,19 @@ export default function FeatureEditorScreen() {
                   <VStack space="xs">
                     <Text style={styles.inputLabel}>Point Title *</Text>
                     <TextInput
-                      style={styles.subformInput}
+                      style={[
+                        styles.subformInput,
+                        errors[`fp_${index}_title`] ? styles.subformInputError : null,
+                      ]}
                       value={point.point_title}
                       onChangeText={(val) => handlePointChange(index, 'point_title', val)}
                       placeholder="e.g. Instant Content Generation"
                       placeholderTextColor="#94a3b8"
                       maxLength={LIMITS.pointTitle}
                     />
+                    {errors[`fp_${index}_title`] ? (
+                      <Text style={styles.errorText}>{errors[`fp_${index}_title`]}</Text>
+                    ) : null}
                   </VStack>
 
                   <VStack space="xs">
@@ -917,5 +1023,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+  },
+  inputError: {
+    borderColor: '#dc2626',
+  },
+  subformInputError: {
+    borderColor: '#dc2626',
+  },
+  uploadBoxError: {
+    borderColor: '#dc2626',
+    backgroundColor: '#fef2f2',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#dc2626',
+    marginTop: 4,
   },
 });

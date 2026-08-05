@@ -162,65 +162,78 @@ export default function CustomerSetupWizard() {
   const [connectionLatency, setConnectionLatency] = useState<number | null>(null);
 
   useEffect(() => {
-    const custId = user?.id || user?._id;
-    if (user?.image) {
-      setCustProfileImage(user.image);
-    }
-    if (custId) {
-      getCustomerDetails(custId)
-        .then((data) => {
-          if (data) {
-            if (data.first_name) setCustFirstName(data.first_name);
-            if (data.last_name) setCustLastName(data.last_name);
-            if (data.email) setCustEmail(data.email);
-            if (data.contact_no) setCustPhone(String(data.contact_no));
-            if (data.gender) setCustGender(data.gender);
-            if (data.image) setCustProfileImage(data.image);
-            if (data.address) {
-              setCustAddressLine1(data.address.address_line_1 || '');
-              setCustCity(data.address.city || '');
-              setCustState(data.address.state || '');
-              setCustPincode(data.address.pincode || '');
-            }
-          }
-        })
-        .catch(() => { });
-    }
+    let isMounted = true;
 
-    getGeneralSettings()
-      .then((data) => {
-        if (data) {
-          setSetupData((prev) => ({
-            ...prev,
-            company_name: data.company_name || prev.company_name,
-            company_email: data.company_email || prev.company_email,
-            company_phone: data.company_phone || prev.company_phone,
-            company_address: data.company_address || prev.company_address,
-            company_website: data.website || prev.company_website,
-            company_logo: data.logo_url || prev.company_logo,
-            social_links: {
-              facebook_url: data.social_links?.facebook_url || prev.social_links.facebook_url,
-              instagram_url: data.social_links?.instagram_url || prev.social_links.instagram_url,
-              twitter_url: data.social_links?.twitter_url || prev.social_links.twitter_url,
-              linkedin_url: data.social_links?.linkedin_url || prev.social_links.linkedin_url,
-              whatsapp_number: data.whatsapp_no || prev.social_links.whatsapp_number,
-            },
-            branding_preferences: {
-              ...prev.branding_preferences,
-              default_hashtags: data.default_hashtags || prev.branding_preferences.default_hashtags,
-            },
-            ai_config: {
-              ...prev.ai_config,
-              gemini_api_key: data.gemini_api_key || prev.ai_config.gemini_api_key,
-              openai_api_key: data.openai_api_key || prev.ai_config.openai_api_key,
-            },
-          }));
-          if (data.default_hashtags && data.default_hashtags.length > 0) {
-            setHashtagsText(data.default_hashtags.join(', '));
+    const loadData = async () => {
+      const custId = user?.id || user?._id;
+      if (user?.image && isMounted) {
+        setCustProfileImage(user.image);
+      }
+
+      if (custId) {
+        try {
+          const data = await getCustomerDetails(custId);
+          if (!isMounted || !data) return;
+
+          if (data.first_name) setCustFirstName(data.first_name);
+          if (data.last_name) setCustLastName(data.last_name);
+          if (data.email) setCustEmail(data.email);
+          if (data.contact_no) setCustPhone(String(data.contact_no));
+          if (data.gender) setCustGender(data.gender);
+          if (data.image) setCustProfileImage(data.image);
+          if (data.address) {
+            setCustAddressLine1(data.address.address_line_1 || '');
+            setCustCity(data.address.city || '');
+            setCustState(data.address.state || '');
+            setCustPincode(data.address.pincode || '');
           }
+        } catch {
+          // Ignore customer profile fetch errors.
         }
-      })
-      .catch(() => { });
+      }
+
+      try {
+        const data = await getGeneralSettings();
+        if (!isMounted || !data) return;
+
+        setSetupData((prev) => ({
+          ...prev,
+          company_name: data.company_name || prev.company_name,
+          company_email: data.company_email || prev.company_email,
+          company_phone: data.company_phone || prev.company_phone,
+          company_address: data.company_address || prev.company_address,
+          company_website: data.website || prev.company_website,
+          company_logo: data.logo_url || prev.company_logo,
+          social_links: {
+            facebook_url: data.social_links?.facebook_url || prev.social_links.facebook_url,
+            instagram_url: data.social_links?.instagram_url || prev.social_links.instagram_url,
+            twitter_url: data.social_links?.twitter_url || prev.social_links.twitter_url,
+            linkedin_url: data.social_links?.linkedin_url || prev.social_links.linkedin_url,
+            whatsapp_number: data.whatsapp_no || prev.social_links.whatsapp_number,
+          },
+          branding_preferences: {
+            ...prev.branding_preferences,
+            default_hashtags: data.default_hashtags || prev.branding_preferences.default_hashtags,
+          },
+          ai_config: {
+            ...prev.ai_config,
+            gemini_api_key: data.gemini_api_key || prev.ai_config.gemini_api_key,
+            openai_api_key: data.openai_api_key || prev.ai_config.openai_api_key,
+          },
+        }));
+        if (data.default_hashtags && data.default_hashtags.length > 0) {
+          setHashtagsText(data.default_hashtags.join(', '));
+        }
+      } catch {
+        // Ignore settings fetch errors.
+      }
+    };
+
+    void loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const handlePickAndUploadProfileImage = async () => {
@@ -1337,8 +1350,9 @@ export default function CustomerSetupWizard() {
                 </Text>
               </HStack>
               <Text style={{ fontSize: 12, color: '#334155', fontStyle: 'italic', lineHeight: 18 }}>
-                "{setupData.company_name || 'Postbell'} helps you elevate your social media presence
-                with {setupData.branding_preferences.brand_tone.toLowerCase()} messaging."
+                &quot;{setupData.company_name || 'Postbell'} helps you elevate your social media
+                presence with {setupData.branding_preferences.brand_tone.toLowerCase()}{' '}
+                messaging.&quot;
               </Text>
               <HStack
                 style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}

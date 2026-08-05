@@ -213,7 +213,9 @@ export default function PostsScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState(statusParam && FILTERS.includes(statusParam) ? statusParam : 'all');
+  const [filter, setFilter] = useState(
+    statusParam && FILTERS.includes(statusParam) ? statusParam : 'all'
+  );
 
   useEffect(() => {
     if (statusParam && FILTERS.includes(statusParam)) {
@@ -389,17 +391,9 @@ export default function PostsScreen() {
             return (
               <TouchableOpacity
                 onPress={() => setPlatformFilter(item.id)}
-                style={[
-                  styles.platformChip,
-                  isActive && styles.platformChipActive,
-                ]}
+                style={[styles.platformChip, isActive && styles.platformChipActive]}
               >
-                <Text
-                  style={[
-                    styles.platformChipText,
-                    isActive && styles.platformChipTextActive,
-                  ]}
-                >
+                <Text style={[styles.platformChipText, isActive && styles.platformChipTextActive]}>
                   {item.label}
                 </Text>
               </TouchableOpacity>
@@ -664,7 +658,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === 'ios' ? 8 : 4,
-    marginBottom: 8
+    marginBottom: 8,
   },
   searchInput: {
     flex: 1,

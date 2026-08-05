@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
   Alert,
   StyleSheet,
+  ScrollView,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -15,6 +15,12 @@ import { Text } from '@/components/ui/text';
 import { getRoles, deleteRole, Role } from './roles-management.api';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
+
+const ROLE_ROW_ACTIONS = [
+  { label: 'Edit', action: 'edit' },
+  { label: 'Delete', action: 'delete', style: 'danger' },
+];
 
 export default function RolesManagementScreen() {
   const router = useRouter();
@@ -22,6 +28,135 @@ export default function RolesManagementScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  const ROLE_TABLE_COLUMNS: HtmlTableColumn<Role>[] = [
+    {
+      key: 'createdAt',
+      label: 'Created At',
+      width: '120px',
+      render: (v) => {
+        if (!v) return '—';
+        const date = new Date(v);
+        if (Number.isNaN(date.getTime())) return String(v);
+        return (
+          <VStack style={{ justifyContent: 'center' }}>
+            <Text style={styles.tableCellText}>{date.toLocaleDateString('en-IN')}</Text>
+            <Text style={styles.tableMetaText}>
+              {date.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })}
+            </Text>
+          </VStack>
+        );
+      },
+    },
+    {
+      key: 'name',
+      label: 'Role Name',
+      width: '200px',
+      render: (_v, row) => {
+        const roleName = row.name || row.role_name || 'Untitled Role';
+        const permsCount = row.sectionMatrix?.length || row.section_list?.length || 0;
+        return (
+          <VStack style={{ justifyContent: 'center' }}>
+            <Text style={styles.roleNameText}>{roleName}</Text>
+            {permsCount > 0 ? (
+              <Box style={styles.permsBadge}>
+                <Text style={styles.permsBadgeText}>{permsCount} Modules</Text>
+              </Box>
+            ) : null}
+          </VStack>
+        );
+      },
+    },
+    {
+      key: 'section_list',
+      label: 'Sections',
+      width: '280px',
+      render: (v, row) => {
+        const sections = Array.isArray(v) ? v : [];
+        const accessibleSections = sections.filter((section: any) => section?.isAccessable);
+        const rowId = String(row._id || row.id || '');
+        const expanded = !!expandedSections[rowId];
+        const visibleSections = expanded ? accessibleSections : accessibleSections.slice(0, 3);
+
+        if (!accessibleSections.length)
+          return <Text style={styles.tableMetaText}>No accessible sections</Text>;
+
+        return (
+          <VStack style={{ gap: 6 }}>
+            <HStack style={{ flexWrap: 'wrap' }}>
+              {visibleSections.map((section: any, index: number) => (
+                <Box key={`${section?.id || section?.title || index}`} style={styles.sectionChip}>
+                  <Text style={styles.sectionChipText}>{section?.title || 'Section'}</Text>
+                </Box>
+              ))}
+            </HStack>
+            {accessibleSections.length > 3 ? (
+              <TouchableOpacity
+                onPress={() =>
+                  setExpandedSections((prev) => ({
+                    ...prev,
+                    [rowId]: !prev[rowId],
+                  }))
+                }
+              >
+                <Text style={styles.sectionToggleText}>
+                  {expanded ? 'Show less' : `+${accessibleSections.length - 3} more`}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </VStack>
+        );
+      },
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      width: '120px',
+      render: (v) => {
+        const isActive = v !== 0;
+        return (
+          <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
+            <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
+              {isActive ? 'Active' : 'Inactive'}
+            </Text>
+          </Box>
+        );
+      },
+    },
+    {
+      key: 'created_by_name',
+      label: 'Created By',
+      width: '150px',
+      render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
+    },
+    {
+      key: 'updatedAt',
+      label: 'Updated At',
+      width: '120px',
+      render: (v) => {
+        if (!v) return '—';
+        const date = new Date(v);
+        if (Number.isNaN(date.getTime())) return String(v);
+        return (
+          <VStack style={{ justifyContent: 'center' }}>
+            <Text style={styles.tableCellText}>{date.toLocaleDateString('en-IN')}</Text>
+            <Text style={styles.tableMetaText}>
+              {date.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })}
+            </Text>
+          </VStack>
+        );
+      },
+    },
+  ];
 
   const fetchRolesList = useCallback(async () => {
     try {
@@ -93,61 +228,6 @@ export default function RolesManagementScreen() {
     return nameStr.includes(q) || descStr.includes(q);
   });
 
-  const renderItem = ({ item }: { item: Role }) => {
-    const roleId = item._id || item.id || '';
-    const roleName = item.name || item.role_name || 'Untitled Role';
-    const isActive = item.status !== 0;
-    const permsCount = item.sectionMatrix?.length || item.section_list?.length || 0;
-
-    return (
-      <TouchableOpacity activeOpacity={0.9} onPress={() => handleOpenEdit(item)}>
-        <Box style={styles.card}>
-          <HStack className="items-start justify-between">
-            <VStack space="xs" style={{ flex: 1, marginRight: 8 }}>
-              <HStack className="items-center space-x-2">
-                <Text style={styles.roleNameText}>{roleName}</Text>
-                {permsCount > 0 ? (
-                  <Box style={styles.permsBadge}>
-                    <Text style={styles.permsBadgeText}>{permsCount} Modules</Text>
-                  </Box>
-                ) : null}
-              </HStack>
-
-              <Text style={styles.roleDescText} numberOfLines={2}>
-                {item.description || 'No description provided for this role.'}
-              </Text>
-            </VStack>
-
-            <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
-              <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
-                {isActive ? 'Active' : 'Inactive'}
-              </Text>
-            </Box>
-          </HStack>
-
-          <HStack space="sm" className="mt-4 justify-end">
-            <TouchableOpacity style={styles.actionBtn} onPress={() => handleOpenEdit(item)}>
-              <HStack className="items-center space-x-1">
-                <Feather name="edit-2" size={12} color="#2563EB" />
-                <Text style={styles.actionBtnText}>Edit Role</Text>
-              </HStack>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnDanger]}
-              onPress={() => handleDelete(item)}
-            >
-              <HStack className="items-center space-x-1">
-                <Feather name="trash-2" size={12} color="#dc2626" />
-                <Text style={[styles.actionBtnText, { color: '#dc2626' }]}>Delete</Text>
-              </HStack>
-            </TouchableOpacity>
-          </HStack>
-        </Box>
-      </TouchableOpacity>
-    );
-  };
-
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Top Search & Action Bar */}
@@ -181,22 +261,59 @@ export default function RolesManagementScreen() {
           <ActivityIndicator size="large" color="#2563EB" />
         </Box>
       ) : (
-        <FlatList
-          data={filteredRoles}
-          keyExtractor={(item) => item._id || item.id || Math.random().toString()}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
           }
-          ListEmptyComponent={
-            <Box className="items-center justify-center py-16">
-              <Feather name="shield" size={40} color="#cbd5e1" />
-              <Text className="mt-2 text-base text-typography-400">No roles found</Text>
-            </Box>
-          }
-          renderItem={renderItem}
-        />
+        >
+          <HtmlTable
+            columns={ROLE_TABLE_COLUMNS}
+            data={filteredRoles}
+            rowActions={ROLE_ROW_ACTIONS}
+            onRowAction={(action, rowId) => {
+              const role = filteredRoles.find(
+                (item) => String(item._id || item.id) === String(rowId)
+              );
+              if (!role) return;
+              if (action === 'edit') handleOpenEdit(role);
+              if (action === 'delete') handleDelete(role);
+            }}
+            iconOnlyActions={true}
+            tableContainerStyle={{
+              borderWidth: 0,
+              shadowColor: 'transparent',
+              backgroundColor: 'transparent',
+              elevation: 0,
+              marginHorizontal: 0,
+              marginVertical: 0,
+            }}
+            headerRowStyle={{
+              backgroundColor: '#f8fafc',
+              borderBottomWidth: 1.5,
+              borderBottomColor: '#e2e8f0',
+              paddingVertical: 4,
+            }}
+            headerCellStyle={styles.tableHeaderCell}
+            headerCellTextStyle={{
+              color: '#1e3a8a',
+              fontWeight: '700',
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+            rowStyle={{
+              borderBottomWidth: 1,
+              borderBottomColor: '#f1f5f9',
+              backgroundColor: '#ffffff',
+              paddingVertical: 0,
+            }}
+            rowEvenStyle={styles.tableRowEven}
+            rowOddStyle={styles.tableRowOdd}
+            cellStyle={styles.tableCell}
+          />
+        </ScrollView>
       )}
     </Box>
   );
@@ -242,6 +359,25 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   roleNameText: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
+  tableCellText: { fontSize: 13, color: '#334155', fontWeight: '600' },
+  tableMetaText: { fontSize: 11, color: '#64748b', marginTop: 2 },
+  sectionChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  sectionChipText: { fontSize: 10, fontWeight: '700', color: '#2563EB' },
+  sectionToggleText: { fontSize: 11, fontWeight: '700', color: '#2563EB' },
+  tableHeaderCell: { paddingVertical: 12, borderBottomColor: '#e2e8f0' },
+  tableRowEven: { backgroundColor: '#ffffff' },
+  tableRowOdd: { backgroundColor: '#fcfbff' },
+  tableCell: { paddingVertical: 12 },
   permsBadge: {
     backgroundColor: '#eff6ff',
     paddingHorizontal: 8,

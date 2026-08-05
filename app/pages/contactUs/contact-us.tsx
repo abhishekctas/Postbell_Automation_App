@@ -42,7 +42,22 @@ function getPageNumbers(currentPage: number, lastPage: number) {
   return pages;
 }
 
-const CONTACT_TABLE_COLUMNS: HtmlTableColumn<ContactRequest>[] = [
+const STATUS_STYLES: Record<number, { label: string; bg: string; color: string; border: string }> =
+  {
+    0: { label: 'Pending', bg: '#fef9c3', color: '#a16207', border: '#fef08a' },
+    1: { label: 'Processing', bg: '#dbeafe', color: '#1d4ed8', border: '#bfdbfe' },
+    2: { label: 'Closed', bg: '#dcfce7', color: '#15803d', border: '#bbf7d0' },
+  };
+
+const getStatusValue = (item: any) => {
+  const rawValue = item?.contactStatus ?? item?.contact_status ?? item?.status ?? 0;
+  const numericValue = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
+const getContactTableColumns = (
+  onStatusPress: (item: ContactRequest) => void
+): HtmlTableColumn<ContactRequest>[] => [
   {
     key: 'createdAt',
     label: 'Created At',
@@ -186,39 +201,29 @@ const CONTACT_TABLE_COLUMNS: HtmlTableColumn<ContactRequest>[] = [
   {
     key: 'contactStatus',
     label: 'Status',
-    width: '130px',
-    render: (v, row) => {
-      const statusNum =
-        v !== undefined
-          ? Number(v)
-          : (row as any).contact_status !== undefined
-            ? Number((row as any).contact_status)
-            : 0;
-      const isResolved = statusNum === 1 || statusNum === 2;
-      let label = 'Pending';
-      let bg = '#fef9c3';
-      let color = '#a16207';
-      let border = '#fef08a';
-      if (isResolved) {
-        label = 'Resolved';
-        bg = '#dcfce7';
-        color = '#15803d';
-        border = '#bbf7d0';
-      }
+    width: '140px',
+    render: (_v, row) => {
+      const statusNum = getStatusValue(row);
+      const statusStyle = STATUS_STYLES[statusNum] || STATUS_STYLES[0];
+
       return (
-        <Box
-          style={{
-            alignSelf: 'flex-start',
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 12,
-            backgroundColor: bg,
-            borderWidth: 1,
-            borderColor: border,
-          }}
-        >
-          <Text style={{ color: color, fontWeight: '700', fontSize: 11 }}>• {label}</Text>
-        </Box>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => onStatusPress(row as ContactRequest)}>
+          <Box
+            style={{
+              alignSelf: 'flex-start',
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 12,
+              backgroundColor: statusStyle.bg,
+              borderWidth: 1,
+              borderColor: statusStyle.border,
+            }}
+          >
+            <Text style={{ color: statusStyle.color, fontWeight: '700', fontSize: 11 }}>
+              • {statusStyle.label}
+            </Text>
+          </Box>
+        </TouchableOpacity>
       );
     },
   },
@@ -260,10 +265,11 @@ export default function ContactUsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'resolved'>('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedRequest, setSelectedRequest] = useState<ContactRequest | null>(null);
+  const [statusPickerVisible, setStatusPickerVisible] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<ContactRequest | null>(null);
 
   const fetchRequestsList = useCallback(
     async (pg = 1, reset = true) => {
@@ -271,8 +277,6 @@ export default function ContactUsScreen() {
       try {
         const queryParams = new URLSearchParams({ page: pg.toString(), limit: '10' });
         if (search.trim()) queryParams.append('search', search.trim());
-        if (filter === 'pending') queryParams.append('contactStatus', '0');
-        else if (filter === 'resolved') queryParams.append('contactStatus', '1');
         const res = await listContactRequests(queryParams.toString());
         const items = res?.data || (Array.isArray(res) ? res : []);
         setRequests(items);
@@ -286,34 +290,52 @@ export default function ContactUsScreen() {
         setRefreshing(false);
       }
     },
-    [search, filter]
+    [search]
   );
 
   useEffect(() => {
     fetchRequestsList(1, true);
-  }, [search, filter]);
+  }, [search]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchRequestsList(1, true);
   };
 
-  const handleToggleStatus = async (item: ContactRequest) => {
+  const handleUpdateStatus = async (item: ContactRequest, nextStatus: number) => {
     const id = item._id || item.id || '';
-    const nextStatus = item.contactStatus === 1 ? 0 : 1;
-    const label = nextStatus === 1 ? 'Resolved' : 'Pending';
+    const label = nextStatus === 0 ? 'Pending' : nextStatus === 1 ? 'Processing' : 'Closed';
     try {
       await updateContactStatus(id, nextStatus);
       setRequests((prev) =>
-        prev.map((r) => ((r._id || r.id) === id ? { ...r, contactStatus: nextStatus } : r))
+        prev.map((r) => {
+          const rowId = r._id || r.id;
+          return rowId === id ? { ...r, contactStatus: nextStatus, contact_status: nextStatus } : r;
+        })
       );
       if (selectedRequest && (selectedRequest._id || selectedRequest.id) === id) {
-        setSelectedRequest((prev) => (prev ? { ...prev, contactStatus: nextStatus } : null));
+        setSelectedRequest((prev) =>
+          prev ? { ...prev, contactStatus: nextStatus, contact_status: nextStatus } : null
+        );
       }
       Alert.alert('Success', `Inquiry status changed to ${label}.`);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to update inquiry status.');
+    } finally {
+      setStatusPickerVisible(false);
+      setStatusTarget(null);
     }
+  };
+
+  const handleToggleStatus = async (item: ContactRequest) => {
+    const currentStatus = getStatusValue(item);
+    const nextStatus = currentStatus === 2 ? 0 : currentStatus + 1;
+    await handleUpdateStatus(item, nextStatus);
+  };
+
+  const handleOpenStatusPicker = (item: ContactRequest) => {
+    setStatusTarget(item);
+    setStatusPickerVisible(true);
   };
 
   const handleDelete = (item: ContactRequest) => {
@@ -379,35 +401,6 @@ export default function ContactUsScreen() {
             value={search}
             onChangeText={setSearch}
           />
-          <HStack space="sm" className="w-full">
-            {(['all', 'pending', 'resolved'] as const).map((btn) => {
-              const icon = btn === 'all' ? '▦' : btn === 'pending' ? '🕐' : '✓';
-              const isActive = filter === btn;
-              return (
-                <TouchableOpacity
-                  key={btn}
-                  style={[
-                    styles.tabBtn,
-                    isActive && styles.tabBtnActive,
-                    btn === 'pending' && !isActive && styles.tabBtnPending,
-                    btn === 'resolved' && !isActive && styles.tabBtnResolved,
-                  ]}
-                  onPress={() => setFilter(btn)}
-                >
-                  <Text
-                    style={[
-                      styles.tabText,
-                      isActive && styles.tabTextActive,
-                      btn === 'pending' && !isActive && styles.tabTextPending,
-                      btn === 'resolved' && !isActive && styles.tabTextResolved,
-                    ]}
-                  >
-                    {icon} {btn.charAt(0).toUpperCase() + btn.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </HStack>
         </VStack>
         {loading ? (
           <Box className="flex-1 items-center justify-center py-20">
@@ -428,7 +421,7 @@ export default function ContactUsScreen() {
             ) : (
               <React.Fragment>
                 <HtmlTable
-                  columns={CONTACT_TABLE_COLUMNS}
+                  columns={getContactTableColumns(handleOpenStatusPicker)}
                   data={requests}
                   rowActions={CONTACT_ROW_ACTIONS}
                   onRowAction={(action, rowId) => {
@@ -526,6 +519,57 @@ export default function ContactUsScreen() {
           </ScrollView>
         )}
       </Box>
+      <Modal
+        visible={statusPickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setStatusPickerVisible(false);
+          setStatusTarget(null);
+        }}
+      >
+        <Box style={styles.modalOverlay}>
+          <Box style={styles.modalContainer}>
+            <Box style={styles.closeIconContainer}>
+              <Heading size="md">Update Status</Heading>
+              <TouchableOpacity
+                style={styles.closeModalBtn}
+                onPress={() => {
+                  setStatusPickerVisible(false);
+                  setStatusTarget(null);
+                }}
+              >
+                <Feather name="x" size={20} color="#193867" />
+              </TouchableOpacity>
+            </Box>
+            <VStack space="sm">
+              {[
+                { label: 'Pending', value: 0 },
+                { label: 'Processing', value: 1 },
+                { label: 'Closed', value: 2 },
+              ].map((option) => {
+                const isActive = getStatusValue(statusTarget) === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: isActive ? '#193867' : '#e2e8f0',
+                      borderRadius: 12,
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      backgroundColor: isActive ? '#eff6ff' : '#fff',
+                    }}
+                    onPress={() => statusTarget && handleUpdateStatus(statusTarget, option.value)}
+                  >
+                    <Text style={{ color: '#1e293b', fontWeight: '700' }}>{option.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </VStack>
+          </Box>
+        </Box>
+      </Modal>
       <Modal
         visible={selectedRequest !== null}
         transparent

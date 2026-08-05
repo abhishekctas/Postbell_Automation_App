@@ -228,7 +228,11 @@ export default function BlogEditorScreen() {
   }, [currentBlogId, isEditMode]);
 
   useEffect(() => {
-    loadInitialData();
+    const timeoutId = setTimeout(() => {
+      void loadInitialData();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [loadInitialData]);
 
   // ─── TAB 0 HANDLERS (BLOG CONFIGURATION) ──────────────────────────────────
@@ -1151,7 +1155,10 @@ export default function BlogEditorScreen() {
             {/* ACTION BUTTONS FOR BLOG EDITOR */}
             <HStack space="md" style={{ marginTop: 8 }}>
               <TouchableOpacity
-                style={[styles.saveBtn, { flex: 1, backgroundColor: '#64748b', paddingVertical: 8 }]}
+                style={[
+                  styles.saveBtn,
+                  { flex: 1, backgroundColor: '#64748b', paddingVertical: 8 },
+                ]}
                 onPress={() => handleSaveBlog(0)}
                 disabled={saving}
               >
@@ -1159,7 +1166,10 @@ export default function BlogEditorScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.saveBtn, { flex: 1, backgroundColor: '#16a34a', paddingVertical: 8 }]}
+                style={[
+                  styles.saveBtn,
+                  { flex: 1, backgroundColor: '#16a34a', paddingVertical: 8 },
+                ]}
                 onPress={() => handleSaveBlog(1)}
                 disabled={saving}
               >
