@@ -344,14 +344,20 @@ export default function CustomersScreen() {
     const errs: Record<string, string> = {};
     if (!firstName.trim()) {
       errs.first_name = 'First name is required.';
+    } else if (firstName.trim().length > 50) {
+      errs.first_name = 'First name cannot exceed 50 characters.';
     }
     if (!lastName.trim()) {
       errs.last_name = 'Last name is required.';
+    } else if (lastName.trim().length > 50) {
+      errs.last_name = 'Last name cannot exceed 50 characters.';
     }
     if (!email.trim()) {
       errs.email = 'Email address is required.';
     } else if (!email.includes('@')) {
       errs.email = 'Please enter a valid email.';
+    } else if (email.trim().length > 100) {
+      errs.email = 'Email address cannot exceed 100 characters.';
     }
     // if (!editingCustomer && !password.trim()) {
     //   errs.password = 'Password is required for new customers.';
@@ -360,6 +366,8 @@ export default function CustomersScreen() {
       const parsedContact = Number(contactNo.trim());
       if (isNaN(parsedContact)) {
         errs.contact_no = 'Contact number must be a valid number.';
+      } else if (contactNo.trim().length > 20) {
+        errs.contact_no = 'Contact number cannot exceed 20 characters.';
       }
     }
     setErrors(errs);
@@ -570,6 +578,7 @@ export default function CustomersScreen() {
                       value={firstName}
                       onChangeText={handleFirstNameChange}
                       placeholder="John"
+                      maxLength={50}
                     />
                     {errors.first_name ? (
                       <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
@@ -587,6 +596,7 @@ export default function CustomersScreen() {
                       value={lastName}
                       onChangeText={handleLastNameChange}
                       placeholder="Doe"
+                      maxLength={50}
                     />
                     {errors.last_name ? (
                       <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
@@ -605,6 +615,7 @@ export default function CustomersScreen() {
                     placeholder="john@example.com"
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    maxLength={100}
                   />
                   {errors.email ? (
                     <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
@@ -649,6 +660,7 @@ export default function CustomersScreen() {
                     onChangeText={handleContactNoChange}
                     placeholder="+1234567890"
                     keyboardType="phone-pad"
+                    maxLength={20}
                   />
                   {errors.contact_no ? (
                     <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
@@ -711,6 +723,7 @@ export default function CustomersScreen() {
                     value={dob}
                     onChangeText={setDob}
                     placeholder="1995-08-15"
+                    maxLength={10}
                   />
                 </VStack>
               </VStack>

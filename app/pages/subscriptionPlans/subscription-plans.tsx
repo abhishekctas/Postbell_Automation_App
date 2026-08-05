@@ -714,8 +714,8 @@ export default function SubscriptionPlansScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#0d53fc', '#1d68f6']} style={styles.header}>
-        <Box className="px-5 pb-6">
-          <HStack className="mb-4 items-center justify-between">
+        <Box className="px-5 pb-3">
+          <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity
               onPress={() => router.back()}
               style={{ flexDirection: 'row', alignItems: 'center' }}
@@ -844,7 +844,7 @@ export default function SubscriptionPlansScreen() {
           </Box>
         ) : (
           <ScrollView
-            contentContainerStyle={{ paddingBottom: 40 }}
+            contentContainerStyle={{ paddingBottom: 80 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563eb" />
@@ -921,8 +921,8 @@ export default function SubscriptionPlansScreen() {
       >
         <Box style={{ flex: 1, backgroundColor: '#f8fafc' }}>
           <LinearGradient colors={['#0d53fc', '#1d68f6']} style={styles.header}>
-            <Box className="px-5 pb-6">
-              <HStack className="mb-4 items-center justify-between">
+            <Box className="px-5 pb-2 pt-0">
+              <HStack className="mb-2 items-center justify-between">
                 <TouchableOpacity
                   onPress={() => setModalVisible(false)}
                   style={{ flexDirection: 'row', alignItems: 'center' }}
@@ -1386,8 +1386,8 @@ export default function SubscriptionPlansScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 54,
-    paddingBottom: 20,
+    paddingTop: 45,
+    paddingBottom: 25,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     shadowColor: '#0b5cf8',

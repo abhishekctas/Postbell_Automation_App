@@ -725,7 +725,12 @@ export default function FeatureEditorScreen() {
 
                 <VStack space="sm">
                   <VStack space="xs">
-                    <Text style={styles.inputLabel}>Point Title *</Text>
+                    <HStack className="items-center justify-between">
+                      <Text style={styles.inputLabel}>Point Title *</Text>
+                      <Text style={styles.charCounter}>
+                        {point.point_title.length} / {LIMITS.pointTitle}
+                      </Text>
+                    </HStack>
                     <TextInput
                       style={[
                         styles.subformInput,
@@ -743,7 +748,12 @@ export default function FeatureEditorScreen() {
                   </VStack>
 
                   <VStack space="xs">
-                    <Text style={styles.inputLabel}>Point Description</Text>
+                    <HStack className="items-center justify-between">
+                      <Text style={styles.inputLabel}>Point Description</Text>
+                      <Text style={styles.charCounter}>
+                        {(point.point_description || '').length} / {LIMITS.pointDescription}
+                      </Text>
+                    </HStack>
                     <TextInput
                       style={[styles.subformInput, { minHeight: 46 }]}
                       value={point.point_description}
@@ -821,7 +831,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   headerSaveBtnText: { color: '#1D4ED8', fontSize: 13, fontWeight: '700' },
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  scrollContent: { padding: 16, paddingBottom: 5 },
   sectionCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
