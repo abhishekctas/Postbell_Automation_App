@@ -42,6 +42,7 @@ import {
   FontAwesome6,
   MaterialCommunityIcons,
 } from '@expo/vector-icons';
+import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import Svg, {
   Path,
   Defs,
@@ -444,6 +445,67 @@ const renderPlatformIcons = (platform: string | string[]) => {
     </HStack>
   );
 };
+
+// ── Recent Posts Table Columns ─────────────────────────────────────────
+const RECENT_POST_COLUMNS: HtmlTableColumn<RecentPost>[] = [
+  {
+    key: 'title',
+    label: 'Title',
+    width: '310px',
+    render: (v, row) => {
+      const titleText = v || row.title || 'Untitled Post';
+      const formattedDate = row.date
+        ? new Date(row.date)
+            .toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            })
+            .replace(',', '')
+        : '—';
+      return (
+        <VStack style={{ justifyContent: 'center' }}>
+          <Text
+            style={{ fontSize: 13, fontWeight: '600', color: '#1e293b', lineHeight: 18 }}
+            numberOfLines={1}
+          >
+            {titleText}
+          </Text>
+          <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{formattedDate}</Text>
+        </VStack>
+      );
+    },
+  },
+  {
+    key: 'author',
+    label: 'Author',
+    width: '150px',
+    render: (v) => (
+      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '500' }} numberOfLines={1}>
+        {v || '—'}
+      </Text>
+    ),
+  },
+  {
+    key: 'platform',
+    label: 'Platform',
+    width: '150px',
+    render: (v) => {
+      const list = Array.isArray(v) ? v : v ? [v] : [];
+      if (list.length === 0) return <Text style={{ fontSize: 12, color: '#94a3b8' }}>—</Text>;
+      return renderPlatformIcons(list);
+    },
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    width: '140px',
+    render: (v) => <StatusBadge status={v} />,
+  },
+];
 
 // ── 1. AI Usage Analytics Section Component ──────────────────────────────────────
 function AIUsageSection({ data }: { data: AIUsageStats | null }) {
@@ -864,12 +926,43 @@ function SubscriptionAnalyticsSection({
 
 // ── 4. Website Visitors Section Component ──────────────────────────────────────
 function WebsiteVisitorsSection({
-  data,
-  onRefresh,
+  data: propData,
+  onRefresh: parentRefresh,
 }: {
-  data: WebsiteVisitorDay[];
+  data?: WebsiteVisitorDay[];
   onRefresh?: () => void;
 }) {
+  const [data, setData] = useState<WebsiteVisitorDay[]>(propData ?? []);
+
+  const fetchVisitorData = useCallback(async () => {
+    try {
+      const res = await getWebsiteVisitorsCount();
+      const raw = Array.isArray(res)
+        ? res
+        : Array.isArray((res as any)?.data)
+          ? (res as any).data
+          : [];
+      if (raw.length > 0) {
+        setData(raw);
+      }
+    } catch {
+      // fallback to propData
+    }
+  }, []);
+
+  useEffect(() => {
+    if (propData && propData.length > 0) {
+      setData(propData);
+    } else {
+      void fetchVisitorData();
+    }
+  }, [propData, fetchVisitorData]);
+
+  const onRefresh = () => {
+    void fetchVisitorData();
+    if (parentRefresh) parentRefresh();
+  };
+
   const sortedData = [...(data ?? [])].sort((a, b) => a._id.localeCompare(b._id));
   const dates = sortedData.map((d) => {
     const parts = d._id.split('-');
@@ -899,11 +992,11 @@ function WebsiteVisitorsSection({
   const peak = values.length ? Math.max(...values) : 0;
 
   const chartWidth = screenWidth - 64;
-  const chartHeight = 130;
+  const chartHeight = 140;
   const paddingLeft = 28;
   const paddingRight = 16;
   const paddingTop = 20;
-  const paddingBottom = 20;
+  const paddingBottom = 24;
 
   const maxVal = Math.max(peak, 1) * 1.15;
 
@@ -916,22 +1009,49 @@ function WebsiteVisitorsSection({
     return { x, y, val };
   });
 
-  let linePath = points.length > 0 ? `M ${points[0].x} ${points[0].y}` : '';
-  for (let i = 1; i < points.length; i++) {
-    linePath += ` L ${points[i].x} ${points[i].y}`;
-  }
+  const getSmoothPath = (pts: { x: number; y: number }[]) => {
+    if (pts.length === 0) return '';
+    if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
 
-  const fillPath =
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i === 0 ? i : i - 1];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
+
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+    }
+    return d;
+  };
+
+  const smoothLinePath = getSmoothPath(points);
+  const smoothFillPath =
     points.length > 0
-      ? `${linePath} L ${points[points.length - 1].x} ${chartHeight - paddingBottom} L ${points[0].x} ${chartHeight - paddingBottom} Z`
+      ? `${smoothLinePath} L ${points[points.length - 1].x} ${chartHeight - paddingBottom} L ${points[0].x} ${chartHeight - paddingBottom} Z`
       : '';
 
   return (
     <Box style={styles.cardWrapper}>
-      <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <HStack style={{ alignItems: 'center' }}>
-          <Box style={[styles.sectionIconBg, { backgroundColor: '#e0e7ff' }]}>
-            <Feather name="globe" size={18} color="#4f46e5" />
+          <Box
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              backgroundColor: 'rgba(59,130,246,0.08)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
+            }}
+          >
+            <Feather name="users" size={20} color="#193867" />
           </Box>
           <Heading size="md" style={styles.sectionTitleNoMargin}>
             Website Visitors
@@ -939,22 +1059,41 @@ function WebsiteVisitorsSection({
         </HStack>
 
         {onRefresh && (
-          <TouchableOpacity onPress={onRefresh} activeOpacity={0.7} style={styles.refreshIconBtn}>
+          <TouchableOpacity
+            onPress={onRefresh}
+            activeOpacity={0.7}
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 8,
+              backgroundColor: '#f1f5f9',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: '#e2e8f0',
+            }}
+          >
             <Feather name="rotate-cw" size={13} color="#64748b" />
           </TouchableOpacity>
         )}
       </HStack>
 
-      <HStack style={{ gap: 20, marginBottom: 12 }}>
+      <HStack style={{ gap: 24, marginBottom: 14 }}>
         <Box>
-          <Text style={styles.visitorMetricVal}>{total.toLocaleString()}</Text>
-          <Text style={styles.visitorMetricLabel}>Total (7d)</Text>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: '#1e293b', lineHeight: 26 }}>
+            {total.toLocaleString()}
+          </Text>
+          <Text style={{ fontSize: 12, color: '#64748b', fontWeight: '400', marginTop: 2 }}>
+            Total (7d)
+          </Text>
         </Box>
         <Box>
-          <Text style={[styles.visitorMetricVal, { color: '#378ADD' }]}>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: '#378ADD', lineHeight: 26 }}>
             {peak.toLocaleString()}
           </Text>
-          <Text style={styles.visitorMetricLabel}>Peak day</Text>
+          <Text style={{ fontSize: 12, color: '#64748b', fontWeight: '400', marginTop: 2 }}>
+            Peak day
+          </Text>
         </Box>
       </HStack>
 
@@ -968,18 +1107,32 @@ function WebsiteVisitorsSection({
               </SvgLinearGradient>
             </Defs>
 
-            <Path d={fillPath} fill="url(#visGrad)" />
-            <Path d={linePath} fill="none" stroke="#378ADD" strokeWidth={2.5} />
+            {/* Horizontal Dashed Grid Lines */}
+            {[0.2, 0.5, 0.8].map((factor, i) => {
+              const y = paddingTop + factor * (chartHeight - paddingTop - paddingBottom);
+              return (
+                <Path
+                  key={i}
+                  d={`M ${paddingLeft} ${y} L ${chartWidth - paddingRight} ${y}`}
+                  stroke="rgba(0,0,0,0.06)"
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                />
+              );
+            })}
+
+            <Path d={smoothFillPath} fill="url(#visGrad)" />
+            <Path d={smoothLinePath} fill="none" stroke="#378ADD" strokeWidth={2.2} />
 
             {points.map((p, i) => (
               <Circle
                 key={i}
                 cx={p.x}
                 cy={p.y}
-                r={3.5}
+                r={4}
                 fill="#ffffff"
                 stroke="#378ADD"
-                strokeWidth={1.8}
+                strokeWidth={2}
               />
             ))}
           </Svg>
@@ -997,7 +1150,7 @@ function WebsiteVisitorsSection({
             {dates.map((d, i) => (
               <Text
                 key={i}
-                style={{ fontSize: 9, color: '#94a3b8', fontWeight: '600', textAlign: 'center' }}
+                style={{ fontSize: 10, color: '#64748b', fontWeight: '500', textAlign: 'center' }}
               >
                 {d}
               </Text>
@@ -1248,48 +1401,69 @@ export default function DashboardScreen() {
           </Box>
         )}
 
-        {/* ── UPCOMING POSTS ────────────────────────────────────────────────── */}
+        {/* ── RECENT POSTS ────────────────────────────────────────────────── */}
         {recentPosts.length > 0 && (
           <Box style={styles.sectionMargin}>
             <HStack style={styles.sectionHeaderRow}>
-              <Heading size="md" style={styles.sectionTitle}>
-                Upcoming Posts
-              </Heading>
-              <TouchableOpacity onPress={() => router.push('/posts')}>
+              <HStack space="xs" style={{ alignItems: 'center' }}>
+                <Box
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    backgroundColor: 'rgba(59,130,246,0.08)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 8,
+                  }}
+                >
+                  <Feather name="bar-chart-2" size={18} color="#193867" />
+                </Box>
+                <Heading size="md" style={styles.sectionTitle}>
+                  Recent Posts
+                </Heading>
+              </HStack>
+              <TouchableOpacity onPress={() => router.push('/pages/posts/posts')}>
                 <Text style={styles.viewAllText}>View all</Text>
               </TouchableOpacity>
             </HStack>
 
-            <VStack space="sm">
-              {recentPosts.map((post, idx) => {
-                const postImage = STATIC_POST_IMAGES[idx % STATIC_POST_IMAGES.length];
-                return (
-                  <Box key={post.id} style={styles.postCard}>
-                    <HStack style={{ alignItems: 'center' }}>
-                      {/* Post thumbnail */}
-                      <Image source={{ uri: postImage }} style={styles.postThumbnail} />
-
-                      {/* Middle Text Details */}
-                      <VStack style={{ flex: 1, marginRight: 8 }}>
-                        <Text style={styles.postTitleText} numberOfLines={1}>
-                          {post.title || 'Untitled Post'}
-                        </Text>
-                        <Text style={styles.postDateText}>{formatDate(post.date)}</Text>
-                        {post.platform && renderPlatformIcons(post.platform)}
-                      </VStack>
-
-                      {/* Right Side Options & Badge */}
-                      <VStack style={styles.postCardRight}>
-                        <TouchableOpacity activeOpacity={0.7} style={styles.moreButton}>
-                          <Feather name="more-horizontal" size={16} color="#64748b" />
-                        </TouchableOpacity>
-                        <StatusBadge status={post.status} />
-                      </VStack>
-                    </HStack>
-                  </Box>
-                );
-              })}
-            </VStack>
+            <HtmlTable
+              columns={RECENT_POST_COLUMNS}
+              data={recentPosts}
+              tableContainerStyle={{
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                borderRadius: 16,
+                backgroundColor: '#ffffff',
+                shadowColor: '#0f172a',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 8,
+                elevation: 2,
+                marginHorizontal: 0,
+                marginVertical: 4,
+              }}
+              headerRowStyle={{
+                backgroundColor: '#f8fafc',
+                borderBottomWidth: 1.5,
+                borderBottomColor: '#e2e8f0',
+                paddingVertical: 4,
+              }}
+              headerCellTextStyle={{
+                color: '#1e3a8a',
+                fontWeight: '700',
+                fontSize: 11,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+              rowStyle={{
+                borderBottomWidth: 1,
+                borderBottomColor: '#f1f5f9',
+                backgroundColor: '#ffffff',
+                paddingVertical: 2,
+              }}
+            />
           </Box>
         )}
 
@@ -1382,11 +1556,9 @@ export default function DashboardScreen() {
         )}
 
         {/* ── WEBSITE VISITORS ────────────────────────────────────────────────── */}
-        {websiteVisitors.length > 0 && (
-          <Box style={styles.sectionMargin}>
-            <WebsiteVisitorsSection data={websiteVisitors} onRefresh={onRefresh} />
-          </Box>
-        )}
+        <Box style={styles.sectionMargin}>
+          <WebsiteVisitorsSection data={websiteVisitors} onRefresh={onRefresh} />
+        </Box>
       </ScrollView>
     </Box>
   );
@@ -1480,7 +1652,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingBottom: 85,
   },
   errorBox: {
     backgroundColor: '#fee2e2',
@@ -1502,6 +1674,7 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    marginTop: 10,
   },
   statsRow: {
     flexDirection: 'row',
@@ -1541,13 +1714,13 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   sectionMargin: {
-    marginTop: 24,
+    marginTop: 10,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 2,
   },
   sectionTitle: {
     fontSize: 16,

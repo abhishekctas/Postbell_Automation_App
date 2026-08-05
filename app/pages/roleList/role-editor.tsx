@@ -247,7 +247,7 @@ export default function RoleEditorScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-5 pt-14">
+        <Box className="px-5 pb-2 pt-12">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn}>
               <HStack className="items-center space-x-1">
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   headerSaveText: { color: '#1D4ED8', fontSize: 13, fontWeight: '700' },
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  scrollContent: { padding: 16, paddingBottom: 10 },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,

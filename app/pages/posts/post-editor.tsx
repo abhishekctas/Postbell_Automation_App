@@ -431,18 +431,29 @@ export default function PostEditorScreen() {
     const newErrors: Record<string, string> = {};
     if (!companyName.trim()) {
       newErrors.companyName = 'Company name is required.';
+    } else if (companyName.trim().length > 100) {
+      newErrors.companyName = 'Company name cannot exceed 100 characters.';
+    }
+    if (title.trim().length > 150) {
+      newErrors.title = 'Title cannot exceed 150 characters.';
     }
     if (!caption.trim()) {
       newErrors.caption = 'Caption is required.';
+    } else if (caption.trim().length > 2200) {
+      newErrors.caption = 'Caption cannot exceed 2200 characters.';
     }
     if (!imageUrl) {
       newErrors.imageUrl = 'Image is required.';
     }
-    if (
-      companyWebsite.trim() &&
-      !/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/.*)?$/i.test(companyWebsite.trim())
-    ) {
-      newErrors.companyWebsite = 'Please enter a valid URL (e.g. https://example.com).';
+    if (companyWebsite.trim()) {
+      if (!/^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/.*)?$/i.test(companyWebsite.trim())) {
+        newErrors.companyWebsite = 'Please enter a valid URL (e.g. https://example.com).';
+      } else if (companyWebsite.trim().length > 500) {
+        newErrors.companyWebsite = 'Website URL cannot exceed 500 characters.';
+      }
+    }
+    if (hashtagsInput.trim().length > 300) {
+      newErrors.hashtagsInput = 'Hashtags cannot exceed 300 characters.';
     }
     if (selectedPlatforms.length === 0) {
       newErrors.platforms = 'Select at least one social platform.';
@@ -697,6 +708,7 @@ export default function PostEditorScreen() {
                   placeholderTextColor="#94a3b8"
                   multiline
                   numberOfLines={4}
+                  maxLength={1000}
                 />
                 {errors.aiPrompt && <Text style={styles.errorText}>{errors.aiPrompt}</Text>}
               </VStack>
@@ -958,6 +970,7 @@ export default function PostEditorScreen() {
                       onChangeText={setReferenceImagePrompt}
                       placeholder="e.g. Sleek luxury product display with soft volumetric lighting and modern reflections..."
                       placeholderTextColor="#94a3b8"
+                      maxLength={500}
                     />
                   </VStack>
 
@@ -1077,6 +1090,7 @@ export default function PostEditorScreen() {
                   }}
                   placeholder="Enter company / brand name"
                   placeholderTextColor="#94a3b8"
+                  maxLength={100}
                 />
                 {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
               </VStack>
@@ -1094,6 +1108,7 @@ export default function PostEditorScreen() {
                   }}
                   placeholder="Post title (optional)"
                   placeholderTextColor="#94a3b8"
+                  maxLength={150}
                 />
                 {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
               </VStack>
@@ -1113,6 +1128,7 @@ export default function PostEditorScreen() {
                   placeholderTextColor="#94a3b8"
                   keyboardType="url"
                   autoCapitalize="none"
+                  maxLength={500}
                 />
                 {errors.companyWebsite && (
                   <Text style={styles.errorText}>{errors.companyWebsite}</Text>
@@ -1138,6 +1154,7 @@ export default function PostEditorScreen() {
                   placeholderTextColor="#94a3b8"
                   multiline
                   numberOfLines={4}
+                  maxLength={2200}
                 />
                 {errors.caption && <Text style={styles.errorText}>{errors.caption}</Text>}
               </VStack>
@@ -1154,6 +1171,7 @@ export default function PostEditorScreen() {
                   }}
                   placeholder="marketing, promotion, offer"
                   placeholderTextColor="#94a3b8"
+                  maxLength={300}
                 />
                 {errors.hashtagsInput && (
                   <Text style={styles.errorText}>{errors.hashtagsInput}</Text>
@@ -1229,6 +1247,7 @@ export default function PostEditorScreen() {
                       }}
                       placeholder="Paste Image URL (https://...)"
                       placeholderTextColor="#94a3b8"
+                      maxLength={1000}
                     />
                   </VStack>
                 )}
@@ -1475,6 +1494,7 @@ export default function PostEditorScreen() {
                           placeholderTextColor="#94a3b8"
                           multiline
                           numberOfLines={4}
+                          maxLength={2200}
                         />
                       </VStack>
 
@@ -1499,6 +1519,7 @@ export default function PostEditorScreen() {
                           placeholderTextColor="#94a3b8"
                           keyboardType="url"
                           autoCapitalize="none"
+                          maxLength={500}
                         />
                       </VStack>
 
@@ -2283,7 +2304,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 0,
   },
   card: {
     backgroundColor: '#fff',

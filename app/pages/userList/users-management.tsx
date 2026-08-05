@@ -348,14 +348,20 @@ export default function UsersManagementScreen() {
     const errs: Record<string, string> = {};
     if (!firstName.trim()) {
       errs.first_name = 'First name is required.';
+    } else if (firstName.trim().length > 50) {
+      errs.first_name = 'First name cannot exceed 50 characters.';
     }
     if (!lastName.trim()) {
       errs.last_name = 'Last name is required.';
+    } else if (lastName.trim().length > 50) {
+      errs.last_name = 'Last name cannot exceed 50 characters.';
     }
     if (!email.trim()) {
       errs.email = 'Email address is required.';
     } else if (!email.includes('@')) {
       errs.email = 'Please enter a valid email address.';
+    } else if (email.trim().length > 100) {
+      errs.email = 'Email address cannot exceed 100 characters.';
     }
     // if (contactNo && contactNo.trim() && isNaN(Number(contactNo.trim()))) {
     //   errs.contact_no = 'Contact number must be a valid number.';
@@ -548,6 +554,7 @@ export default function UsersManagementScreen() {
                       value={firstName}
                       onChangeText={handleFirstNameChange}
                       placeholder="John"
+                      maxLength={50}
                     />
                     {errors.first_name ? (
                       <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
@@ -565,6 +572,7 @@ export default function UsersManagementScreen() {
                       value={lastName}
                       onChangeText={handleLastNameChange}
                       placeholder="Doe"
+                      maxLength={50}
                     />
                     {errors.last_name ? (
                       <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
@@ -583,6 +591,7 @@ export default function UsersManagementScreen() {
                     placeholder="john@company.com"
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    maxLength={100}
                   />
                   {errors.email ? (
                     <Text style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>

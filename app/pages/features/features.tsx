@@ -233,8 +233,8 @@ export default function FeaturesScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-4 pt-14">
-          <HStack className="mb-2 items-center justify-between">
+        <Box className="px-5 pb-1 pt-12">
+          <HStack className="mb-1 items-center justify-between">
             <TouchableOpacity onPress={() => router.back()}>
               <HStack className="items-center space-x-1">
                 <Feather name="arrow-left" size={16} color="#fff" />
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   },
   addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   filterSection: {
-    padding: 16,
+    padding: 9,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     padding: 0,
   },
-  listContent: { padding: 16, paddingBottom: 40 },
+  listContent: { padding: 16, paddingBottom: 75 },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
