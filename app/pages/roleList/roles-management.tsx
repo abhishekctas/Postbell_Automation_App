@@ -12,10 +12,11 @@ import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
-import { getRoles, deleteRole, Role } from './roles-management.api';
+import { getRoles, updateRole, deleteRole, Role } from './roles-management.api';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
+import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
 
 const ROLE_ROW_ACTIONS = [
   { label: 'Edit', action: 'edit' },
@@ -29,6 +30,36 @@ export default function RolesManagementScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  // Status confirm dialog state
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
+  const [selectedRoleForStatus, setSelectedRoleForStatus] = useState<Role | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const handleOpenStatusConfirm = (role: Role) => {
+    setSelectedRoleForStatus(role);
+    setStatusConfirmOpen(true);
+  };
+
+  const handleConfirmStatusToggle = async () => {
+    if (!selectedRoleForStatus) return;
+    const role = selectedRoleForStatus;
+    const roleId = role._id || role.id || '';
+    const nextStatus = role.status === 0 ? 1 : 0;
+    setStatusLoading(true);
+    try {
+      await updateRole(roleId, { status: nextStatus });
+      setRoles((prev) =>
+        prev.map((r) => ((r._id || r.id) === roleId ? { ...r, status: nextStatus } : r))
+      );
+      setStatusConfirmOpen(false);
+      setSelectedRoleForStatus(null);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update role status.');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   const ROLE_TABLE_COLUMNS: HtmlTableColumn<Role>[] = [
     {
@@ -117,14 +148,16 @@ export default function RolesManagementScreen() {
       key: 'status',
       label: 'Status',
       width: '120px',
-      render: (v) => {
+      render: (v, row) => {
         const isActive = v !== 0;
         return (
-          <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
-            <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
-              {isActive ? 'Active' : 'Inactive'}
-            </Text>
-          </Box>
+          <TouchableOpacity onPress={() => handleOpenStatusConfirm(row)}>
+            <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
+              <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
+                {isActive ? 'Active' : 'Inactive'}
+              </Text>
+            </Box>
+          </TouchableOpacity>
         );
       },
     },
@@ -274,10 +307,13 @@ export default function RolesManagementScreen() {
             rowActions={ROLE_ROW_ACTIONS}
             onRowAction={(action, rowId) => {
               const role = filteredRoles.find(
-                (item) => String(item._id || item.id) === String(rowId)
+                (item: any) =>
+                  String(item._id || item.id) === String(rowId) ||
+                  String(rowId).startsWith(String(item._id || item.id))
               );
               if (!role) return;
               if (action === 'edit') handleOpenEdit(role);
+              if (action === 'toggle-status' || action === 'status') handleOpenStatusConfirm(role);
               if (action === 'delete') handleDelete(role);
             }}
             iconOnlyActions={true}
@@ -315,6 +351,23 @@ export default function RolesManagementScreen() {
           />
         </ScrollView>
       )}
+
+      <StatusConfirmDialog
+        open={statusConfirmOpen}
+        onClose={() => {
+          if (!statusLoading) {
+            setStatusConfirmOpen(false);
+            setSelectedRoleForStatus(null);
+          }
+        }}
+        onConfirm={handleConfirmStatusToggle}
+        loading={statusLoading}
+        itemName={selectedRoleForStatus?.name || selectedRoleForStatus?.role_name}
+        targetStatus={selectedRoleForStatus?.status === 0 ? 1 : 0}
+        title={selectedRoleForStatus?.status === 0 ? 'Activate Role' : 'Deactivate Role'}
+        message={`Are you sure you want to ${selectedRoleForStatus?.status === 0 ? 'activate' : 'deactivate'} role "${selectedRoleForStatus?.name || selectedRoleForStatus?.role_name}"?`}
+        confirmText={selectedRoleForStatus?.status === 0 ? 'Activate' : 'Deactivate'}
+      />
     </Box>
   );
 }
@@ -388,12 +441,18 @@ const styles = StyleSheet.create({
   },
   permsBadgeText: { fontSize: 10, fontWeight: '700', color: '#2563EB' },
   roleDescText: { fontSize: 13, color: '#64748b', marginTop: 4, lineHeight: 18 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  badgeActive: { backgroundColor: '#dcfce7' },
-  badgeInactive: { backgroundColor: '#fee2e2' },
-  statusText: { fontSize: 10, fontWeight: '700' },
-  textActive: { color: '#15803d' },
-  textInactive: { color: '#dc2626' },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  badgeActive: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+  badgeInactive: { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  textActive: { color: '#2563eb' },
+  textInactive: { color: '#64748b' },
   actionBtn: {
     backgroundColor: '#f0f7ff',
     borderRadius: 8,

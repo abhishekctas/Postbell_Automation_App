@@ -192,7 +192,7 @@ export default function CustomerDetailsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Card 1: Profile Information */}
         <Box style={styles.card}>
-          <VStack className="mb-4 items-center border-b border-slate-100 pb-4">
+          <VStack className="mb-2 flex flex-row items-center gap-4 border-b border-slate-100 pb-2">
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
             ) : (
@@ -200,15 +200,22 @@ export default function CustomerDetailsScreen() {
                 <Text style={styles.avatarFallbackText}>{fullName.charAt(0).toUpperCase()}</Text>
               </Box>
             )}
-            <Text style={styles.profileName}>{fullName}</Text>
-            <Text style={styles.profileEmail}>{customer.email || '-'}</Text>
+            <Box>
+              <Text style={styles.profileName}>{fullName}</Text>
+              <Text style={styles.profileEmail}>{customer.email || '-'}</Text>
 
-            <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
-              <Text
-                style={[styles.statusBadgeText, isActive ? styles.textActive : styles.textInactive]}
+              <Box
+                style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}
               >
-                {isActive ? 'Active Account' : 'Inactive Account'}
-              </Text>
+                <Text
+                  style={[
+                    styles.statusBadgeText,
+                    isActive ? styles.textActive : styles.textInactive,
+                  ]}
+                >
+                  {isActive ? 'Active Account' : 'Inactive Account'}
+                </Text>
+              </Box>
             </Box>
           </VStack>
 
@@ -437,11 +444,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b' },
-  avatarImage: { width: 80, height: 80, borderRadius: 40, marginBottom: 8 },
+  avatarImage: { width: 90, height: 90, borderRadius: 13, marginBottom: 8 },
   avatarFallback: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 13,
     backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center',

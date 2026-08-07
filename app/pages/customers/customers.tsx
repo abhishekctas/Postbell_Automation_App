@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ScrollView,
   View,
+  Image,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -21,146 +22,37 @@ import {
   createCustomer,
   updateCustomer,
   deleteCustomer,
+  uploadCustomerProfileImage,
+  getCustomerAvatarUrl,
   type Customer,
 } from './customers.api';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
-
-const CUSTOMER_TABLE_COLUMNS: HtmlTableColumn<Customer>[] = [
-  {
-    key: 'createdAt',
-    label: 'Created At',
-    width: '150px',
-    render: (v, row) => {
-      const val = v || row.updatedAt;
-      if (!val) return '—';
-      const d = new Date(val);
-      if (isNaN(d.getTime())) return String(val);
-      const dateStr = d.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
-      const timeStr = d.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-      return (
-        <VStack style={{ justifyContent: 'center' }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>{dateStr}</Text>
-          <Text style={{ fontSize: 11, color: '#64748b' }}>{timeStr}</Text>
-        </VStack>
-      );
-    },
-  },
-  {
-    key: 'first_name',
-    label: 'Customer',
-    width: '200px',
-    render: (_v, row) => {
-      const name = `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'Unknown';
-      const initials =
-        name
-          .split(' ')
-          .filter(Boolean)
-          .slice(0, 2)
-          .map((w) => w.charAt(0).toUpperCase())
-          .join('') || 'CU';
-      const bgColors = ['#dbeafe', '#e9d5ff', '#ffedd5', '#ccfbf1', '#fef3c7'];
-      const textColors = ['#1e40af', '#6b21a8', '#c2410c', '#0f766e', '#b45309'];
-      const charCode = name.charCodeAt(0) || 0;
-      const colorIdx = charCode % bgColors.length;
-      return (
-        <HStack space="sm" className="items-center">
-          <Box
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: bgColors[colorIdx],
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: textColors[colorIdx], fontWeight: '700', fontSize: 13 }}>
-              {initials}
-            </Text>
-          </Box>
-          <VStack style={{ justifyContent: 'center' }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b' }} numberOfLines={1}>
-              {name}
-            </Text>
-          </VStack>
-        </HStack>
-      );
-    },
-  },
-  {
-    key: 'email',
-    label: 'Email',
-    width: '180px',
-    render: (v) => (
-      <Text style={{ fontSize: 13, fontWeight: '500', color: '#2563eb' }} numberOfLines={1}>
-        {v || '—'}
-      </Text>
-    ),
-  },
-  {
-    key: 'contact_no',
-    label: 'Contact',
-    width: '130px',
-    render: (v) => (
-      <Text style={{ fontSize: 13, color: '#475569' }} numberOfLines={1}>
-        {v ? String(v) : '—'}
-      </Text>
-    ),
-  },
-  {
-    key: 'gender',
-    label: 'Gender',
-    width: '100px',
-    render: (v) => {
-      const g = Number(v);
-      const label = g === 1 ? 'Male' : g === 2 ? 'Female' : 'Other';
-      return <Text style={{ fontSize: 13, color: '#475569' }}>{label}</Text>;
-    },
-  },
-  {
-    key: 'status',
-    label: 'Status',
-    width: '130px',
-    render: (v) => {
-      const isActive = Number(v) === 1;
-      const label = isActive ? 'Active' : 'Inactive';
-      const bg = isActive ? '#dcfce7' : '#fee2e2';
-      const color = isActive ? '#15803d' : '#dc2626';
-      const border = isActive ? '#bbf7d0' : '#fca5a5';
-      return (
-        <Box
-          style={{
-            alignSelf: 'flex-start',
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 12,
-            backgroundColor: bg,
-            borderWidth: 1,
-            borderColor: border,
-          }}
-        >
-          <Text style={{ color: color, fontWeight: '700', fontSize: 11 }}>• {label}</Text>
-        </Box>
-      );
-    },
-  },
-];
+import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
 
 const CUSTOMER_ROW_ACTIONS = [
   { label: 'Details', action: 'details' },
   { label: 'Edit', action: 'edit' },
   { label: 'Delete', action: 'delete', style: 'danger' },
 ];
+
+function getPageNumbers(currentPage: number, lastPage: number) {
+  const pages: number[] = [];
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(lastPage, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+  return pages;
+}
 
 export default function CustomersScreen() {
   const router = useRouter();
@@ -169,8 +61,7 @@ export default function CustomersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Form State
   const [modalVisible, setModalVisible] = useState(false);
@@ -183,11 +74,206 @@ export default function CustomersScreen() {
   const [gender, setGender] = useState<number>(1); // 1 = Male, 2 = Female, 3 = Other
   const [dob, setDob] = useState('');
   const [status, setStatus] = useState<number>(1); // 1 = Active, 0 = Inactive
-  // const [showPassword, setShowPassword] = useState(false);
+  const [imageUri, setImageUri] = useState<string>('');
+  const [imageAsset, setImageAsset] = useState<any>(null);
+
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Permission to access media library is required.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setImageAsset(asset);
+        setImageUri(asset.uri);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to pick image');
+    }
+  };
 
   // Validation State & Modal Scroll Ref
   const [errors, setErrors] = useState<Record<string, string>>({});
   const modalScrollRef = useRef<ScrollView>(null);
+
+  // Status confirm dialog state
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
+  const [selectedCustomerForStatus, setSelectedCustomerForStatus] = useState<Customer | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const handleOpenStatusConfirm = (customer: Customer) => {
+    setSelectedCustomerForStatus(customer);
+    setStatusConfirmOpen(true);
+  };
+
+  const CUSTOMER_TABLE_COLUMNS: HtmlTableColumn<Customer>[] = [
+    {
+      key: 'createdAt',
+      label: 'Created At',
+      width: '150px',
+      render: (v, row) => {
+        const val = v || row.updatedAt;
+        if (!val) return '—';
+        const d = new Date(val);
+        if (isNaN(d.getTime())) return String(val);
+        const dateStr = d.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        });
+        const timeStr = d.toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        return (
+          <VStack style={{ justifyContent: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>{dateStr}</Text>
+            <Text style={{ fontSize: 11, color: '#64748b' }}>{timeStr}</Text>
+          </VStack>
+        );
+      },
+    },
+    {
+      key: 'first_name',
+      label: 'Customer',
+      width: '200px',
+      render: (_v, row) => {
+        const name = `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'Unknown';
+        const avatarUrl = getCustomerAvatarUrl(row.image);
+        const initials =
+          name
+            .split(' ')
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((w) => w.charAt(0).toUpperCase())
+            .join('') || 'CU';
+        const bgColors = ['#dbeafe', '#e9d5ff', '#ffedd5', '#ccfbf1', '#fef3c7'];
+        const textColors = ['#1e40af', '#6b21a8', '#c2410c', '#0f766e', '#b45309'];
+        const charCode = name.charCodeAt(0) || 0;
+        const colorIdx = charCode % bgColors.length;
+        return (
+          <HStack space="sm" className="items-center">
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={{ width: 36, height: 36, borderRadius: 18 }}
+              />
+            ) : (
+              <Box
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: bgColors[colorIdx],
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: textColors[colorIdx], fontWeight: '700', fontSize: 13 }}>
+                  {initials}
+                </Text>
+              </Box>
+            )}
+            <VStack style={{ justifyContent: 'center' }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b' }} numberOfLines={1}>
+                {name}
+              </Text>
+            </VStack>
+          </HStack>
+        );
+      },
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      width: '180px',
+      render: (v) => (
+        <Text style={{ fontSize: 13, fontWeight: '500', color: '#2563eb' }} numberOfLines={1}>
+          {v || '—'}
+        </Text>
+      ),
+    },
+    {
+      key: 'contact_no',
+      label: 'Contact',
+      width: '130px',
+      render: (v) => (
+        <Text style={{ fontSize: 13, color: '#475569' }} numberOfLines={1}>
+          {v ? String(v) : '—'}
+        </Text>
+      ),
+    },
+    {
+      key: 'gender',
+      label: 'Gender',
+      width: '100px',
+      render: (v) => {
+        const val = Number(v);
+        const label = val === 1 ? 'Male' : val === 2 ? 'Female' : val === 3 ? 'Other' : '—';
+        return <Text style={{ fontSize: 13, color: '#475569' }}>{label}</Text>;
+      },
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      width: '130px',
+      render: (v, row) => {
+        const isActive = Number(v) === 1;
+        const label = isActive ? 'Active' : 'Inactive';
+        const bg = isActive ? '#eff6ff' : '#f8fafc';
+        const color = isActive ? '#2563eb' : '#64748b';
+        const border = isActive ? '#bfdbfe' : '#e2e8f0';
+        return (
+          <TouchableOpacity onPress={() => handleOpenStatusConfirm(row)}>
+            <Box
+              style={{
+                alignSelf: 'flex-start',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 12,
+                backgroundColor: bg,
+                borderWidth: 1,
+                borderColor: border,
+              }}
+            >
+              <Text style={{ color, fontWeight: '700', fontSize: 11 }}>• {label}</Text>
+            </Box>
+          </TouchableOpacity>
+        );
+      },
+    },
+  ];
+
+  const handleConfirmStatusToggle = async () => {
+    if (!selectedCustomerForStatus) return;
+    const customer = selectedCustomerForStatus;
+    const id = customer._id || customer.id || '';
+    const nextStatus = Number(customer.status) === 1 ? 0 : 1;
+    setStatusLoading(true);
+    try {
+      await updateCustomer(id, { status: nextStatus });
+      setCustomers((prev: any) =>
+        prev.map((c: any) => ((c._id || c.id) === id ? { ...c, status: nextStatus } : c))
+      );
+      setStatusConfirmOpen(false);
+      setSelectedCustomerForStatus(null);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update customer status.');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   const scrollToTopModal = () => {
     modalScrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -249,8 +335,8 @@ export default function CustomersScreen() {
   };
 
   const fetchCustomersList = useCallback(
-    async (pg = 1, reset = true) => {
-      if (reset) setLoading(true);
+    async (pg = 1) => {
+      setLoading(true);
       try {
         const queryParams = new URLSearchParams({
           page: pg.toString(),
@@ -261,23 +347,31 @@ export default function CustomersScreen() {
           queryParams.append('search', search.trim());
         }
 
-        const res = await listCustomers(queryParams.toString());
-        const items = res?.results || res?.data || [];
+        const res = (await listCustomers(queryParams.toString())) as any;
+        const items = res?.results || res?.data || (Array.isArray(res) ? res : []);
+        let total =
+          res?.totalPages ||
+          res?.pagination?.totalPages ||
+          (res?.totalResults || res?.totalCount || res?.total
+            ? Math.ceil((res.totalResults || res.totalCount || res.total) / 10)
+            : 0);
 
-        if (reset) {
-          setCustomers(items);
-        } else {
-          setCustomers((prev: any) => [...prev, ...items]);
+        if (!total) {
+          if (items.length >= 10) {
+            total = Math.max(pg + 1, totalPages || 1);
+          } else {
+            total = pg;
+          }
         }
 
-        setHasMore(items.length >= 10);
+        setCustomers(items);
+        setTotalPages(total);
         setPage(pg);
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Failed to load customers.');
       } finally {
         setLoading(false);
         setRefreshing(false);
-        setLoadingMore(false);
       }
     },
     [search]
@@ -285,7 +379,7 @@ export default function CustomersScreen() {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      void fetchCustomersList(1, true);
+      void fetchCustomersList(1);
     }, 0);
 
     return () => clearTimeout(timeoutId);
@@ -293,13 +387,13 @@ export default function CustomersScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchCustomersList(1, true);
+      fetchCustomersList(1);
     }, [fetchCustomersList])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchCustomersList(1, true);
+    fetchCustomersList(1);
   };
 
   const handleOpenAdd = () => {
@@ -313,6 +407,8 @@ export default function CustomersScreen() {
     setGender(1);
     setDob('');
     setStatus(1);
+    setImageUri('');
+    setImageAsset(null);
     setErrors({});
     setModalVisible(true);
   };
@@ -328,6 +424,8 @@ export default function CustomersScreen() {
     setGender(customer.gender || 1);
     setDob(customer.dob || '');
     setStatus(customer.status ?? 1);
+    setImageUri(customer.image ? getCustomerAvatarUrl(customer.image) : '');
+    setImageAsset(null);
     setErrors({});
     setModalVisible(true);
   };
@@ -402,16 +500,25 @@ export default function CustomersScreen() {
       //   payload.password = password;
       // }
 
+      let savedCustomerId = editingCustomer?._id || editingCustomer?.id || '';
       if (editingCustomer) {
-        await updateCustomer(editingCustomer._id || editingCustomer.id || '', payload);
+        await updateCustomer(savedCustomerId, payload);
+        if (imageAsset) {
+          await uploadCustomerProfileImage(savedCustomerId, imageAsset);
+        }
         Alert.alert('Success', 'Customer updated successfully!');
       } else {
-        await createCustomer(payload);
+        const createRes = await createCustomer(payload);
+        savedCustomerId =
+          createRes?.data?._id || createRes?.data?.id || createRes?._id || createRes?.id || '';
+        if (savedCustomerId && imageAsset) {
+          await uploadCustomerProfileImage(savedCustomerId, imageAsset);
+        }
         Alert.alert('Success', 'Customer created successfully!');
       }
 
       setModalVisible(false);
-      fetchCustomersList(1, true);
+      fetchCustomersList(1);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to save customer details.');
     }
@@ -501,50 +608,106 @@ export default function CustomersScreen() {
               <Text className="mt-2 text-base text-typography-400">No customers found</Text>
             </Box>
           ) : (
-            <HtmlTable
-              columns={CUSTOMER_TABLE_COLUMNS}
-              data={customers}
-              rowActions={CUSTOMER_ROW_ACTIONS}
-              onRowAction={(action, rowId) => {
-                const c = customers.find((x: any) => String(x._id || x.id) === String(rowId));
-                if (!c) return;
-                if (action === 'details') handleOpenDetails(c);
-                else if (action === 'edit') handleOpenEdit(c);
-                else if (action === 'delete') handleDelete(c);
-              }}
-              iconOnlyActions={true}
-              tableContainerStyle={{
-                borderWidth: 0,
-                shadowColor: 'transparent',
-                backgroundColor: 'transparent',
-                elevation: 0,
-                marginHorizontal: 0,
-                marginVertical: 0,
-              }}
-              headerRowStyle={{
-                backgroundColor: '#f8fafc',
-                borderBottomWidth: 1.5,
-                borderBottomColor: '#e2e8f0',
-                paddingVertical: 4,
-              }}
-              headerCellTextStyle={{
-                color: '#1e3a8a',
-                fontWeight: '700',
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-              rowStyle={{
-                borderBottomWidth: 1,
-                borderBottomColor: '#f1f5f9',
-                backgroundColor: '#ffffff',
-                paddingVertical: 0,
-              }}
-            />
-          )}
+            <React.Fragment>
+              <HtmlTable
+                columns={CUSTOMER_TABLE_COLUMNS}
+                data={customers}
+                rowActions={CUSTOMER_ROW_ACTIONS}
+                onRowAction={(action, rowId) => {
+                  const c = customers.find(
+                    (x: any) =>
+                      String(x._id || x.id) === String(rowId) ||
+                      String(rowId).startsWith(String(x._id || x.id))
+                  );
+                  if (!c) return;
+                  if (action === 'details' || action === 'view') handleOpenDetails(c);
+                  else if (action === 'edit') handleOpenEdit(c);
+                  else if (action === 'toggle-status' || action === 'status')
+                    handleOpenStatusConfirm(c);
+                  else if (action === 'delete') handleDelete(c);
+                }}
+                iconOnlyActions={true}
+                tableContainerStyle={{
+                  borderWidth: 0,
+                  shadowColor: 'transparent',
+                  backgroundColor: 'transparent',
+                  elevation: 0,
+                  marginHorizontal: 0,
+                  marginVertical: 0,
+                }}
+                headerRowStyle={{
+                  backgroundColor: '#f8fafc',
+                  borderBottomWidth: 1.5,
+                  borderBottomColor: '#e2e8f0',
+                  paddingVertical: 4,
+                }}
+                headerCellTextStyle={{
+                  color: '#1e3a8a',
+                  fontWeight: '700',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                }}
+                rowStyle={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#f1f5f9',
+                  backgroundColor: '#ffffff',
+                  paddingVertical: 0,
+                }}
+              />
 
-          {loadingMore && (
-            <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
+              {totalPages > 0 && (
+                <Box style={styles.paginationWrapper}>
+                  <HStack space="xs" className="items-center justify-center">
+                    <TouchableOpacity
+                      style={[styles.pageNavBtn, page === 1 && styles.pageNavBtnDisabled]}
+                      disabled={page === 1}
+                      onPress={() => {
+                        if (page > 1) fetchCustomersList(page - 1);
+                      }}
+                    >
+                      <Text style={[styles.pageNavText, page === 1 && styles.pageNavTextDisabled]}>
+                        ‹
+                      </Text>
+                    </TouchableOpacity>
+
+                    {getPageNumbers(page, totalPages).map((p) => {
+                      const isActive = p === page;
+                      return (
+                        <TouchableOpacity
+                          key={p}
+                          style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
+                          onPress={() => fetchCustomersList(p)}
+                        >
+                          <Text
+                            style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}
+                          >
+                            {p}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    <TouchableOpacity
+                      style={[styles.pageNavBtn, page >= totalPages && styles.pageNavBtnDisabled]}
+                      disabled={page >= totalPages}
+                      onPress={() => {
+                        if (page < totalPages) fetchCustomersList(page + 1);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.pageNavText,
+                          page >= totalPages && styles.pageNavTextDisabled,
+                        ]}
+                      >
+                        ›
+                      </Text>
+                    </TouchableOpacity>
+                  </HStack>
+                </Box>
+              )}
+            </React.Fragment>
           )}
         </ScrollView>
       )}
@@ -567,6 +730,68 @@ export default function CustomersScreen() {
               style={{ maxHeight: 420 }}
             >
               <VStack space="md">
+                {/* Profile Image / Avatar Picker Header */}
+                <VStack className="mb-2 items-center justify-center">
+                  <Box style={{ position: 'relative' }}>
+                    {imageUri ? (
+                      <Image
+                        source={{ uri: imageUri }}
+                        style={{
+                          width: 100,
+                          height: 100,
+                          borderRadius: 22,
+                          borderWidth: 0.4,
+                        }}
+                      />
+                    ) : (
+                      <Box
+                        style={{
+                          width: 100,
+                          height: 100,
+                          borderRadius: 22,
+                          backgroundColor: '#eff6ff',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderWidth: 0.4,
+                          borderColor: '#bfdbfe',
+                        }}
+                      >
+                        <Text style={{ fontSize: 24, fontWeight: '800', color: '#2563eb' }}>
+                          {`${firstName.trim().charAt(0) || 'C'}${lastName.trim().charAt(0) || 'U'}`.toUpperCase()}
+                        </Text>
+                      </Box>
+                    )}
+                    <TouchableOpacity
+                      onPress={handlePickImage}
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: '#2563eb',
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.2,
+                        shadowRadius: 3,
+                        elevation: 3,
+                      }}
+                    >
+                      <Feather name="camera" size={14} color="#ffffff" />
+                    </TouchableOpacity>
+                  </Box>
+                  <TouchableOpacity onPress={handlePickImage} className="mt-2">
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563eb' }}>
+                      {imageUri ? 'Change Profile Image' : 'Upload Profile Image'}
+                    </Text>
+                  </TouchableOpacity>
+                </VStack>
+
                 <HStack space="md">
                   <VStack space="xs" style={{ flex: 1 }}>
                     <Text style={styles.label}>First Name *</Text>
@@ -740,6 +965,27 @@ export default function CustomersScreen() {
           </Box>
         </Box>
       </Modal>
+
+      <StatusConfirmDialog
+        open={statusConfirmOpen}
+        onClose={() => {
+          if (!statusLoading) {
+            setStatusConfirmOpen(false);
+            setSelectedCustomerForStatus(null);
+          }
+        }}
+        onConfirm={handleConfirmStatusToggle}
+        loading={statusLoading}
+        itemName={`${selectedCustomerForStatus?.first_name || ''} ${selectedCustomerForStatus?.last_name || ''}`.trim()}
+        targetStatus={Number(selectedCustomerForStatus?.status) === 1 ? 0 : 1}
+        title={
+          Number(selectedCustomerForStatus?.status) === 1
+            ? 'Deactivate Customer'
+            : 'Activate Customer'
+        }
+        message={`Are you sure you want to ${Number(selectedCustomerForStatus?.status) === 1 ? 'deactivate' : 'activate'} customer "${selectedCustomerForStatus?.first_name || ''} ${selectedCustomerForStatus?.last_name || ''}"?`}
+        confirmText={Number(selectedCustomerForStatus?.status) === 1 ? 'Deactivate' : 'Activate'}
+      />
     </Box>
   );
 }
@@ -924,4 +1170,52 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   cancelBtnText: { color: '#475569', fontWeight: '700', fontSize: 14 },
+  paginationWrapper: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  pageNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 3,
+  },
+  pageNavBtnDisabled: {
+    backgroundColor: '#f8fafc',
+    opacity: 0.5,
+  },
+  pageNavText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  pageNavTextDisabled: {
+    color: '#94a3b8',
+  },
+  pageNumberBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 2,
+  },
+  pageNumberBtnActive: {
+    backgroundColor: '#2563eb',
+  },
+  pageNumberText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  pageNumberTextActive: {
+    color: '#ffffff',
+  },
 });

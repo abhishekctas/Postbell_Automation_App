@@ -27,12 +27,14 @@ function InfoRow({
   onChangeText,
   keyboardType,
   multiline,
+  maxLength,
 }: {
   label: string;
   value: string;
   onChangeText?: (v: string) => void;
   keyboardType?: any;
   multiline?: boolean;
+  maxLength?: number;
 }) {
   return (
     <VStack space="xs" style={{ marginBottom: 12 }}>
@@ -44,6 +46,7 @@ function InfoRow({
           onChangeText={onChangeText}
           keyboardType={keyboardType}
           multiline={multiline}
+          maxLength={maxLength}
           placeholder={`Enter ${label.toLowerCase()}`}
           placeholderTextColor="#94a3b8"
         />
@@ -268,16 +271,33 @@ export default function ProfileScreen() {
               Edit Personal Details
             </Heading>
             <VStack space="md">
-              <InfoRow label="First Name" value={firstName} onChangeText={setFirstName} />
-              <InfoRow label="Last Name" value={lastName} onChangeText={setLastName} />
+              <InfoRow
+                label="First Name"
+                value={firstName}
+                onChangeText={setFirstName}
+                maxLength={50}
+              />
+              <InfoRow
+                label="Last Name"
+                value={lastName}
+                onChangeText={setLastName}
+                maxLength={50}
+              />
               <InfoRow label="Email" value={user?.email ?? ''} />
               <InfoRow
                 label="Phone"
                 value={contactNo}
                 onChangeText={setContactNo}
                 keyboardType="phone-pad"
+                maxLength={15}
               />
-              <InfoRow label="Address" value={address} onChangeText={setAddress} multiline />
+              <InfoRow
+                label="Address"
+                value={address}
+                onChangeText={setAddress}
+                multiline
+                maxLength={250}
+              />
             </VStack>
             <Button size="lg" onPress={handleSave} isDisabled={saving} style={styles.saveBtn}>
               {saving ? (

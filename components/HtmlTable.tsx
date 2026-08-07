@@ -8,7 +8,7 @@ import {
   TableHead,
   TableData,
 } from '@/components/ui/table';
-import { Pencil, Trash2, Info, Eye, XCircle } from 'lucide-react-native';
+import { Pencil, Trash2, Info, Eye, XCircle, RefreshCw } from 'lucide-react-native';
 
 export interface HtmlTableColumn<T = any> {
   key: string;
@@ -41,6 +41,13 @@ function renderCellContent(value: any) {
 
   if (React.isValidElement(value)) {
     return value;
+  }
+
+  if (typeof value === 'object') {
+    const text = value.title ?? value.name ?? value.label ?? value.text ?? '';
+    if (text) {
+      return <Text style={styles.cellText}>{String(text)}</Text>;
+    }
   }
 
   const str = String(value);
@@ -89,7 +96,11 @@ export default function HtmlTable({
   iconOnlyActions = false,
 }: HtmlTableProps) {
   const hasActions = rowActions && rowActions.length > 0;
-  const actionColWidth = iconOnlyActions ? 100 : 180;
+  const actionColWidth = hasActions
+    ? iconOnlyActions
+      ? Math.max(rowActions.length * 40 + 16, 90)
+      : Math.max(rowActions.length * 75 + 20, 160)
+    : 0;
 
   // Calculate suitable table width based on columns and their defined widths
   const totalTableWidth = columns.reduce(
@@ -143,7 +154,7 @@ export default function HtmlTable({
                 </TableRow>
               ) : (
                 data.map((row, idx) => {
-                  const rowId = row._id || row.id || idx;
+                  const rowId = row._id || row.id ? `${row._id || row.id}-${idx}` : `row-${idx}`;
                   const isEven = idx % 2 === 0;
 
                   return (
@@ -224,6 +235,15 @@ export default function HtmlTable({
                                     />
                                   ) : actionInfo.action === 'cancel' ? (
                                     <XCircle
+                                      size={14}
+                                      color={isDanger ? '#dc2626' : '#2563eb'}
+                                      style={!iconOnlyActions && { marginRight: 4 }}
+                                    />
+                                  ) : actionInfo.action === 'status' ||
+                                    actionInfo.action === 'toggle' ||
+                                    actionInfo.action === 'toggle_status' ||
+                                    actionInfo.action === 'refresh' ? (
+                                    <RefreshCw
                                       size={14}
                                       color={isDanger ? '#dc2626' : '#2563eb'}
                                       style={!iconOnlyActions && { marginRight: 4 }}

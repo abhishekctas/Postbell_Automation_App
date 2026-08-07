@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -9,6 +9,7 @@ import {
   Modal,
   StyleSheet,
   Switch,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Box } from '@/components/ui/box';
@@ -18,6 +19,7 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { Button, ButtonText } from '@/components/ui/button';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import {
   BlogPost,
   BlogFormData,
@@ -32,6 +34,8 @@ import {
   listBlogs,
   createBlog,
   updateBlog,
+  getBlogCoverImageUrl,
+  getTagImageUrl,
   getAllTags,
   createTag,
   updateTag,
@@ -54,11 +58,33 @@ const slugify = (text: string) =>
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
 
+const safeParseJson = (val: any) => {
+  if (!val) return val;
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return val;
+    }
+  }
+  return val;
+};
+
 export default function BlogEditorScreen() {
   const router = useRouter();
   const { id, blogId } = useLocalSearchParams<{ id?: string; blogId?: string }>();
   const currentBlogId = id || blogId;
   const isEditMode = !!currentBlogId;
+
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Validation Error States
+  const [configErrors, setConfigErrors] = useState<{ heroTitle?: string }>({});
+  const [tagErrors, setTagErrors] = useState<{ title?: string }>({});
+  const [faqErrors, setFaqErrors] = useState<{ question?: string; answer?: string }>({});
+  const [blogErrors, setBlogErrors] = useState<{ title?: string; slug?: string; body?: string }>(
+    {}
+  );
 
   // Active Tab: 0 = Blog Configuration, 1 = Global Resources, 2 = Blog Editor
   const [activeTab, setActiveTab] = useState<number>(isEditMode ? 2 : 0);
@@ -117,6 +143,31 @@ export default function BlogEditorScreen() {
   const [blogReadTime, setBlogReadTime] = useState('5');
   const [blogAuthor, setBlogAuthor] = useState('');
   const [blogCoverImage, setBlogCoverImage] = useState('');
+  const [coverImageFile, setCoverImageFile] = useState<any>(null);
+
+  const handlePickCoverImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Permission to access media library is required.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setCoverImageFile(asset);
+        setBlogCoverImage(asset.uri);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to pick image');
+    }
+  };
 
   // Attached FAQs
   const [selectedFaqIds, setSelectedFaqIds] = useState<string[]>([]);
@@ -172,8 +223,8 @@ export default function BlogEditorScreen() {
         }
         if (configRes.featured_blog_id) {
           const fId =
-            typeof configRes.featured_blog_id === 'object'
-              ? configRes.featured_blog_id._id
+            configRes.featured_blog_id && typeof configRes.featured_blog_id === 'object'
+              ? configRes.featured_blog_id._id || configRes.featured_blog_id.id
               : configRes.featured_blog_id;
           setFeaturedBlogId(fId || '');
         }
@@ -191,29 +242,38 @@ export default function BlogEditorScreen() {
           setBlogExcerpt(blogObj.excerpt || '');
           setBlogBody(blogObj.body || '');
           const catVal =
-            typeof blogObj.category === 'object' ? blogObj.category._id : blogObj.category;
+            blogObj.category && typeof blogObj.category === 'object'
+              ? blogObj.category._id || blogObj.category.id
+              : typeof blogObj.category === 'string'
+                ? blogObj.category
+                : '';
           setBlogCategory(catVal || '');
           setBlogReadTime(String(blogObj.read_time_minutes || 5));
           setBlogAuthor(blogObj.author_label || '');
-          setBlogCoverImage(blogObj.cover_image || '');
+          setBlogCoverImage(getBlogCoverImageUrl(blogObj.cover_image));
+          setCoverImageFile(null);
           setBlogStatus(blogObj.status ?? 1);
 
-          if (blogObj.faq_ids?.length) {
-            const ids = blogObj.faq_ids.map((item: any) =>
-              typeof item === 'object' ? item._id : item
-            );
+          const faqIdsObj = safeParseJson(blogObj.faq_ids);
+          if (Array.isArray(faqIdsObj) && faqIdsObj.length) {
+            const ids = faqIdsObj
+              .map((item: any) => (item && typeof item === 'object' ? item._id || item.id : item))
+              .filter(Boolean);
             setSelectedFaqIds(ids);
           }
 
-          if (blogObj.shop_banner) {
-            setShopTitle(blogObj.shop_banner.title || '');
-            setShopDesc(blogObj.shop_banner.description || '');
-            setShopCtaText(blogObj.shop_banner.cta_text || '');
-            setShopCtaUrl(blogObj.shop_banner.cta_url || '');
+          const shopBannerObj =
+            safeParseJson(blogObj.shop_banner) || safeParseJson(blogObj.sidebar_category);
+          if (shopBannerObj && typeof shopBannerObj === 'object') {
+            setShopTitle(shopBannerObj.title || shopBannerObj.label || '');
+            setShopDesc(shopBannerObj.description || '');
+            setShopCtaText(shopBannerObj.cta_text || '');
+            setShopCtaUrl(shopBannerObj.cta_url || '');
           }
 
-          if (blogObj.seo_links?.length) {
-            setSeoLinks(blogObj.seo_links);
+          const seoLinksObj = safeParseJson(blogObj.seo_links);
+          if (Array.isArray(seoLinksObj) && seoLinksObj.length) {
+            setSeoLinks(seoLinksObj);
           }
 
           setSeoTitle(blogObj.seo_title || '');
@@ -249,6 +309,12 @@ export default function BlogEditorScreen() {
   };
 
   const handleSaveGuidesConfig = async () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    if (!heroTitle.trim()) {
+      setConfigErrors({ heroTitle: 'Hero Title is required' });
+      return;
+    }
+    setConfigErrors({});
     setSaving(true);
     try {
       const payload: GuidesConfigFormData = {
@@ -289,14 +355,42 @@ export default function BlogEditorScreen() {
 
   // ─── TAB 1 HANDLERS (GLOBAL RESOURCES: TAGS & FAQS) ─────────────────────
   // Tag CRUD
+  const [tagImageFile, setTagImageFile] = useState<any>(null);
+
+  const handlePickTagImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Permission to access media library is required.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setTagImageFile(asset);
+        setTagImage(asset.uri);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to pick image');
+    }
+  };
+
   const handleOpenAddTag = () => {
     setEditingTag(null);
     setTagTitle('');
     setTagSubtitle('');
     setTagImage('');
+    setTagImageFile(null);
     setTagLinkUrl('');
     setTagLinkText('');
     setTagIsPopular(false);
+    setTagErrors({});
     setTagModalVisible(true);
   };
 
@@ -304,23 +398,27 @@ export default function BlogEditorScreen() {
     setEditingTag(tag);
     setTagTitle(tag.title || '');
     setTagSubtitle(tag.subtitle || '');
-    setTagImage(tag.image_url || '');
+    setTagImage(tag.image_url ? getTagImageUrl(tag.image_url) : '');
+    setTagImageFile(null);
     setTagLinkUrl(tag.link_url || '');
     setTagLinkText(tag.link_text || '');
     setTagIsPopular(!!tag.is_popular);
+    setTagErrors({});
     setTagModalVisible(true);
   };
 
   const handleSaveTag = async () => {
     if (!tagTitle.trim()) {
-      Alert.alert('Validation Error', 'Tag title is required');
+      setTagErrors({ title: 'Tag title is required' });
       return;
     }
+    setTagErrors({});
     try {
-      const payload: TagFormData = {
+      const payload: TagFormData | any = {
         title: tagTitle.trim(),
         subtitle: tagSubtitle,
         image_url: tagImage,
+        image_urlFile: tagImageFile,
         link_url: tagLinkUrl,
         link_text: tagLinkText,
         is_popular: tagIsPopular,
@@ -378,6 +476,7 @@ export default function BlogEditorScreen() {
     setFaqQuestion('');
     setFaqAnswer('');
     setFaqOrder(String(faqs.length + 1));
+    setFaqErrors({});
     setFaqModalVisible(true);
   };
 
@@ -386,14 +485,20 @@ export default function BlogEditorScreen() {
     setFaqQuestion(faq.question || '');
     setFaqAnswer(faq.answer || '');
     setFaqOrder(String(faq.order ?? 1));
+    setFaqErrors({});
     setFaqModalVisible(true);
   };
 
   const handleSaveFaq = async () => {
-    if (!faqQuestion.trim() || !faqAnswer.trim()) {
-      Alert.alert('Validation Error', 'Question and Answer are required.');
+    const errs: { question?: string; answer?: string } = {};
+    if (!faqQuestion.trim()) errs.question = 'Question is required';
+    if (!faqAnswer.trim()) errs.answer = 'Answer is required';
+    if (Object.keys(errs).length > 0) {
+      setFaqErrors(errs);
       return;
     }
+    setFaqErrors({});
+
     try {
       const payload: FaqFormData = {
         question: faqQuestion.trim(),
@@ -462,18 +567,27 @@ export default function BlogEditorScreen() {
   };
 
   const handleSaveBlog = async (targetStatus: number) => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    const errs: { title?: string; slug?: string; body?: string } = {};
     if (!blogTitle.trim()) {
-      Alert.alert('Validation Error', 'Blog Title is required.');
-      return;
+      errs.title = 'Blog Title is required';
     }
     if (!blogSlug.trim()) {
-      Alert.alert('Validation Error', 'Blog Slug is required.');
+      errs.slug = 'Blog Slug is required';
+    }
+    if (!blogBody.trim()) {
+      errs.body = 'Body Content is required';
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setBlogErrors(errs);
       return;
     }
+    setBlogErrors({});
 
     setSaving(true);
     try {
-      const payload: BlogFormData = {
+      const payload: any = {
         title: blogTitle.trim(),
         slug: blogSlug.trim(),
         excerpt: blogExcerpt.trim(),
@@ -482,6 +596,7 @@ export default function BlogEditorScreen() {
         read_time_minutes: parseInt(blogReadTime, 10) || 5,
         author_label: blogAuthor.trim(),
         cover_image: blogCoverImage.trim(),
+        cover_imageFile: coverImageFile,
         faq_ids: selectedFaqIds,
         shop_banner: {
           title: shopTitle,
@@ -549,7 +664,10 @@ export default function BlogEditorScreen() {
         <HStack style={styles.tabsContainer}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 0 && styles.tabButtonActive]}
-            onPress={() => setActiveTab(0)}
+            onPress={() => {
+              setActiveTab(0);
+              scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+            }}
           >
             <Text style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}>
               ⚙️ Blog Config
@@ -557,7 +675,10 @@ export default function BlogEditorScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 1 && styles.tabButtonActive]}
-            onPress={() => setActiveTab(1)}
+            onPress={() => {
+              setActiveTab(1);
+              scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+            }}
           >
             <Text style={[styles.tabText, activeTab === 1 && styles.tabTextActive]}>
               🏷️ Global Resources
@@ -565,7 +686,10 @@ export default function BlogEditorScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 2 && styles.tabButtonActive]}
-            onPress={() => setActiveTab(2)}
+            onPress={() => {
+              setActiveTab(2);
+              scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+            }}
           >
             <Text style={[styles.tabText, activeTab === 2 && styles.tabTextActive]}>
               📝 Blog Editor
@@ -576,6 +700,7 @@ export default function BlogEditorScreen() {
 
       {/* ── MAIN CONTENT AREA ──────────────────────────────────────────────── */}
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
@@ -595,15 +720,24 @@ export default function BlogEditorScreen() {
                 placeholder="e.g. Guides & Articles"
                 value={heroBadge}
                 onChangeText={setHeroBadge}
+                maxLength={100}
               />
 
-              <Text style={styles.label}>Title</Text>
+              <Text style={styles.label}>Title *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, configErrors.heroTitle ? styles.inputError : null]}
                 placeholder="e.g. Master Postbell Platform"
                 value={heroTitle}
-                onChangeText={setHeroTitle}
+                onChangeText={(text) => {
+                  setHeroTitle(text);
+                  if (configErrors.heroTitle)
+                    setConfigErrors((prev) => ({ ...prev, heroTitle: undefined }));
+                }}
+                maxLength={200}
               />
+              {configErrors.heroTitle ? (
+                <Text style={styles.errorText}>{configErrors.heroTitle}</Text>
+              ) : null}
 
               <Text style={styles.label}>Description</Text>
               <TextInput
@@ -612,6 +746,7 @@ export default function BlogEditorScreen() {
                 placeholder="Explore tutorials, best practices..."
                 value={heroDesc}
                 onChangeText={setHeroDesc}
+                maxLength={500}
               />
 
               <Text style={styles.label}>Hero Image URL</Text>
@@ -620,6 +755,7 @@ export default function BlogEditorScreen() {
                 placeholder="https://example.com/banner.png"
                 value={heroImage}
                 onChangeText={setHeroImage}
+                maxLength={500}
               />
 
               <Text style={styles.label}>Tag Pills (Comma Separated)</Text>
@@ -628,6 +764,7 @@ export default function BlogEditorScreen() {
                 placeholder="Automation, Marketing, AI"
                 value={heroTagPills}
                 onChangeText={setHeroTagPills}
+                maxLength={200}
               />
             </Box>
 
@@ -642,6 +779,7 @@ export default function BlogEditorScreen() {
                 placeholder="e.g. Why Read Our Blog"
                 value={infoBadge}
                 onChangeText={setInfoBadge}
+                maxLength={100}
               />
 
               <Text style={styles.label}>Info Section Title</Text>
@@ -650,6 +788,7 @@ export default function BlogEditorScreen() {
                 placeholder="e.g. Everything you need to know"
                 value={infoTitle}
                 onChangeText={setInfoTitle}
+                maxLength={200}
               />
 
               <Text style={styles.label}>Info Section Description</Text>
@@ -659,6 +798,7 @@ export default function BlogEditorScreen() {
                 placeholder="Detailed information section summary..."
                 value={infoDesc}
                 onChangeText={setInfoDesc}
+                maxLength={500}
               />
 
               {/* DYNAMIC INFO POINTS */}
@@ -688,6 +828,7 @@ export default function BlogEditorScreen() {
                     placeholder="Point Title"
                     value={pt.title}
                     onChangeText={(v) => handleUpdateInfoPoint(idx, 'title', v)}
+                    maxLength={150}
                   />
                   <TextInput
                     style={[styles.input, { height: 50 }]}
@@ -695,6 +836,7 @@ export default function BlogEditorScreen() {
                     placeholder="Point Description"
                     value={pt.description}
                     onChangeText={(v) => handleUpdateInfoPoint(idx, 'description', v)}
+                    maxLength={500}
                   />
                 </Box>
               ))}
@@ -711,6 +853,7 @@ export default function BlogEditorScreen() {
                 placeholder="e.g. Recommended Read"
                 value={featuredLabel}
                 onChangeText={setFeaturedLabel}
+                maxLength={100}
               />
 
               <Text style={styles.label}>Featured CTA Text</Text>
@@ -719,6 +862,7 @@ export default function BlogEditorScreen() {
                 placeholder="e.g. Read Featured Guide"
                 value={featuredCtaText}
                 onChangeText={setFeaturedCtaText}
+                maxLength={100}
               />
 
               <Text style={styles.label}>Select Featured Blog ID</Text>
@@ -727,6 +871,7 @@ export default function BlogEditorScreen() {
                 placeholder="Enter Featured Blog ID"
                 value={featuredBlogId}
                 onChangeText={setFeaturedBlogId}
+                maxLength={100}
               />
 
               <HStack className="mt-3 items-center justify-between">
@@ -886,11 +1031,16 @@ export default function BlogEditorScreen() {
 
               <Text style={styles.label}>Blog Title *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, blogErrors.title ? styles.inputError : null]}
                 placeholder="Enter Blog Title"
                 value={blogTitle}
-                onChangeText={setBlogTitle}
+                onChangeText={(text) => {
+                  setBlogTitle(text);
+                  if (blogErrors.title) setBlogErrors((prev) => ({ ...prev, title: undefined }));
+                }}
+                maxLength={200}
               />
+              {blogErrors.title ? <Text style={styles.errorText}>{blogErrors.title}</Text> : null}
 
               <HStack className="mt-1 items-center justify-between">
                 <Text style={styles.label}>Blog Slug *</Text>
@@ -901,11 +1051,16 @@ export default function BlogEditorScreen() {
                 </TouchableOpacity>
               </HStack>
               <TextInput
-                style={styles.input}
+                style={[styles.input, blogErrors.slug ? styles.inputError : null]}
                 placeholder="enter-blog-slug"
                 value={blogSlug}
-                onChangeText={setBlogSlug}
+                onChangeText={(text) => {
+                  setBlogSlug(text);
+                  if (blogErrors.slug) setBlogErrors((prev) => ({ ...prev, slug: undefined }));
+                }}
+                maxLength={200}
               />
+              {blogErrors.slug ? <Text style={styles.errorText}>{blogErrors.slug}</Text> : null}
 
               <Text style={styles.label}>Excerpt (Summary)</Text>
               <TextInput
@@ -914,6 +1069,7 @@ export default function BlogEditorScreen() {
                 placeholder="Brief summary of the article..."
                 value={blogExcerpt}
                 onChangeText={setBlogExcerpt}
+                maxLength={500}
               />
 
               <Text style={styles.label}>Category (Select Tag)</Text>
@@ -950,6 +1106,7 @@ export default function BlogEditorScreen() {
                     placeholder="5"
                     value={blogReadTime}
                     onChangeText={setBlogReadTime}
+                    maxLength={5}
                   />
                 </VStack>
                 <VStack style={{ flex: 1 }}>
@@ -959,17 +1116,48 @@ export default function BlogEditorScreen() {
                     placeholder="Postbell Team"
                     value={blogAuthor}
                     onChangeText={setBlogAuthor}
+                    maxLength={100}
                   />
                 </VStack>
               </HStack>
 
-              <Text style={styles.label}>Cover Image URL</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://example.com/cover.jpg"
-                value={blogCoverImage}
-                onChangeText={setBlogCoverImage}
-              />
+              <Text style={styles.label}>Cover Image</Text>
+              <HStack space="xs" style={{ marginBottom: 8, alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  placeholder="https://example.com/cover.jpg or choose file"
+                  value={blogCoverImage}
+                  onChangeText={(val) => {
+                    setBlogCoverImage(val);
+                    setCoverImageFile(null);
+                  }}
+                  maxLength={500}
+                />
+                <TouchableOpacity
+                  style={[styles.smallAddBtn, { height: 42, justifyContent: 'center' }]}
+                  onPress={handlePickCoverImage}
+                >
+                  <Text style={styles.smallAddBtnText}>Choose File</Text>
+                </TouchableOpacity>
+              </HStack>
+              {blogCoverImage ? (
+                <Box
+                  style={{
+                    marginTop: 4,
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: '#e2e8f0',
+                  }}
+                >
+                  <Image
+                    source={{ uri: blogCoverImage }}
+                    style={{ width: '100%', height: 140, borderRadius: 8 }}
+                    resizeMode="cover"
+                  />
+                </Box>
+              ) : null}
             </Box>
 
             {/* BODY CONTENT */}
@@ -977,14 +1165,23 @@ export default function BlogEditorScreen() {
               <Heading size="md" style={styles.cardHeader}>
                 Body Content
               </Heading>
-              <Text style={styles.label}>Main Article Body (HTML / Text)</Text>
+              <Text style={styles.label}>Main Article Body (HTML / Text) *</Text>
               <TextInput
-                style={[styles.input, { height: 160, textAlignVertical: 'top' }]}
+                style={[
+                  styles.input,
+                  { height: 160, textAlignVertical: 'top' },
+                  blogErrors.body ? styles.inputError : null,
+                ]}
                 multiline
                 placeholder="Write full article body content here..."
                 value={blogBody}
-                onChangeText={setBlogBody}
+                onChangeText={(text) => {
+                  setBlogBody(text);
+                  if (blogErrors.body) setBlogErrors((prev) => ({ ...prev, body: undefined }));
+                }}
+                maxLength={50000}
               />
+              {blogErrors.body ? <Text style={styles.errorText}>{blogErrors.body}</Text> : null}
             </Box>
 
             {/* ATTACHED FAQS */}
@@ -1036,6 +1233,7 @@ export default function BlogEditorScreen() {
                 placeholder="e.g. Try Postbell Pro Free"
                 value={shopTitle}
                 onChangeText={setShopTitle}
+                maxLength={150}
               />
 
               <Text style={styles.label}>Banner Description</Text>
@@ -1044,6 +1242,7 @@ export default function BlogEditorScreen() {
                 placeholder="Automate social media posts in minutes"
                 value={shopDesc}
                 onChangeText={setShopDesc}
+                maxLength={300}
               />
 
               <HStack space="md">
@@ -1054,6 +1253,7 @@ export default function BlogEditorScreen() {
                     placeholder="Get Started"
                     value={shopCtaText}
                     onChangeText={setShopCtaText}
+                    maxLength={100}
                   />
                 </VStack>
                 <VStack style={{ flex: 1 }}>
@@ -1063,6 +1263,7 @@ export default function BlogEditorScreen() {
                     placeholder="https://..."
                     value={shopCtaUrl}
                     onChangeText={setShopCtaUrl}
+                    maxLength={500}
                   />
                 </VStack>
               </HStack>
@@ -1098,12 +1299,14 @@ export default function BlogEditorScreen() {
                     placeholder="Anchor Text / Label"
                     value={link.label}
                     onChangeText={(v) => handleUpdateSeoLink(idx, 'label', v)}
+                    maxLength={100}
                   />
                   <TextInput
                     style={styles.input}
                     placeholder="Target URL (e.g. /pages/features)"
                     value={link.url}
                     onChangeText={(v) => handleUpdateSeoLink(idx, 'url', v)}
+                    maxLength={500}
                   />
                 </Box>
               ))}
@@ -1120,6 +1323,7 @@ export default function BlogEditorScreen() {
                 placeholder="Meta title for Google search..."
                 value={seoTitle}
                 onChangeText={setSeoTitle}
+                maxLength={150}
               />
 
               <Text style={styles.label}>SEO Description</Text>
@@ -1129,6 +1333,7 @@ export default function BlogEditorScreen() {
                 placeholder="Meta description snippet..."
                 value={seoDescription}
                 onChangeText={setSeoDescription}
+                maxLength={300}
               />
 
               <HStack className="mt-3 items-center justify-between">
@@ -1195,11 +1400,16 @@ export default function BlogEditorScreen() {
             <ScrollView style={{ maxHeight: 400 }}>
               <Text style={styles.label}>Tag Title *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, tagErrors.title ? styles.inputError : null]}
                 placeholder="e.g. Technology"
                 value={tagTitle}
-                onChangeText={setTagTitle}
+                onChangeText={(text) => {
+                  setTagTitle(text);
+                  if (tagErrors.title) setTagErrors((prev) => ({ ...prev, title: undefined }));
+                }}
+                maxLength={100}
               />
+              {tagErrors.title ? <Text style={styles.errorText}>{tagErrors.title}</Text> : null}
 
               <Text style={styles.label}>Tag Subtitle</Text>
               <TextInput
@@ -1207,15 +1417,46 @@ export default function BlogEditorScreen() {
                 placeholder="e.g. Latest Tech News"
                 value={tagSubtitle}
                 onChangeText={setTagSubtitle}
+                maxLength={200}
               />
 
-              <Text style={styles.label}>Tag Image URL</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://..."
-                value={tagImage}
-                onChangeText={setTagImage}
-              />
+              <Text style={styles.label}>Tag Image</Text>
+              <HStack space="xs" style={{ marginBottom: 8, alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  placeholder="https://... or choose file"
+                  value={tagImage}
+                  onChangeText={(val) => {
+                    setTagImage(val);
+                    setTagImageFile(null);
+                  }}
+                  maxLength={500}
+                />
+                <TouchableOpacity
+                  style={[styles.smallAddBtn, { height: 42, justifyContent: 'center' }]}
+                  onPress={handlePickTagImage}
+                >
+                  <Text style={styles.smallAddBtnText}>Choose File</Text>
+                </TouchableOpacity>
+              </HStack>
+              {tagImage ? (
+                <Box
+                  style={{
+                    marginTop: 4,
+                    marginBottom: 12,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: '#e2e8f0',
+                  }}
+                >
+                  <Image
+                    source={{ uri: getTagImageUrl(tagImage) }}
+                    style={{ width: '100%', height: 100, borderRadius: 8 }}
+                    resizeMode="cover"
+                  />
+                </Box>
+              ) : null}
 
               <Text style={styles.label}>Link URL</Text>
               <TextInput
@@ -1223,6 +1464,7 @@ export default function BlogEditorScreen() {
                 placeholder="https://..."
                 value={tagLinkUrl}
                 onChangeText={setTagLinkUrl}
+                maxLength={500}
               />
 
               <Text style={styles.label}>Link Text</Text>
@@ -1231,6 +1473,7 @@ export default function BlogEditorScreen() {
                 placeholder="View Articles"
                 value={tagLinkText}
                 onChangeText={setTagLinkText}
+                maxLength={100}
               />
 
               <HStack className="mb-2 mt-2 items-center justify-between">
@@ -1270,20 +1513,37 @@ export default function BlogEditorScreen() {
             <ScrollView style={{ maxHeight: 400 }}>
               <Text style={styles.label}>Question *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, faqErrors.question ? styles.inputError : null]}
                 placeholder="Enter FAQ Question..."
                 value={faqQuestion}
-                onChangeText={setFaqQuestion}
+                onChangeText={(text) => {
+                  setFaqQuestion(text);
+                  if (faqErrors.question)
+                    setFaqErrors((prev) => ({ ...prev, question: undefined }));
+                }}
+                maxLength={300}
               />
+              {faqErrors.question ? (
+                <Text style={styles.errorText}>{faqErrors.question}</Text>
+              ) : null}
 
               <Text style={styles.label}>Answer *</Text>
               <TextInput
-                style={[styles.input, { height: 90, textAlignVertical: 'top' }]}
+                style={[
+                  styles.input,
+                  { height: 90, textAlignVertical: 'top' },
+                  faqErrors.answer ? styles.inputError : null,
+                ]}
                 multiline
                 placeholder="Enter FAQ Answer..."
                 value={faqAnswer}
-                onChangeText={setFaqAnswer}
+                onChangeText={(text) => {
+                  setFaqAnswer(text);
+                  if (faqErrors.answer) setFaqErrors((prev) => ({ ...prev, answer: undefined }));
+                }}
+                maxLength={2000}
               />
+              {faqErrors.answer ? <Text style={styles.errorText}>{faqErrors.answer}</Text> : null}
 
               <Text style={styles.label}>Display Order</Text>
               <TextInput
@@ -1292,6 +1552,7 @@ export default function BlogEditorScreen() {
                 placeholder="1"
                 value={faqOrder}
                 onChangeText={setFaqOrder}
+                maxLength={5}
               />
             </ScrollView>
 
@@ -1527,5 +1788,16 @@ const styles = StyleSheet.create({
   submitBtnText: {
     color: '#ffffff',
     fontWeight: '700',
+  },
+  inputError: {
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+    marginBottom: 6,
   },
 });

@@ -402,6 +402,22 @@ const SUB_ROW_ACTIONS = [
   { label: 'Cancel', action: 'cancel', style: 'danger' },
 ];
 
+function getPageNumbers(currentPage: number, lastPage: number) {
+  const pages: number[] = [];
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(lastPage, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+  return pages;
+}
+
 export default function CustomerSubscriptionsScreen() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -409,8 +425,7 @@ export default function CustomerSubscriptionsScreen() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'cancelled' | 'expired'>('all');
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
 
   // View Subscription Details Modal States
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -419,8 +434,8 @@ export default function CustomerSubscriptionsScreen() {
   const [loadingCustomer, setLoadingCustomer] = useState(false);
 
   const fetchSubscriptionsList = useCallback(
-    async (pg = 1, reset = true) => {
-      if (reset) setLoading(true);
+    async (pg = 1) => {
+      setLoading(true);
       try {
         const queryParams = new URLSearchParams({
           page: pg.toString(),
@@ -441,23 +456,31 @@ export default function CustomerSubscriptionsScreen() {
           queryParams.append('columnFilters', JSON.stringify({ status: statusVal }));
         }
 
-        const res = await listSubscriptions(queryParams.toString());
-        const items = Array.isArray(res) ? res : res?.data || [];
+        const res = (await listSubscriptions(queryParams.toString())) as any;
+        const items = Array.isArray(res) ? res : res?.data || res?.results || [];
+        let total =
+          res?.totalPages ||
+          res?.pagination?.totalPages ||
+          (res?.totalResults || res?.totalCount || res?.total
+            ? Math.ceil((res.totalResults || res.totalCount || res.total) / 10)
+            : 0);
 
-        if (reset) {
-          setSubscriptions(items);
-        } else {
-          setSubscriptions((prev) => [...prev, ...items]);
+        if (!total) {
+          if (items.length >= 10) {
+            total = Math.max(pg + 1, totalPages || 1);
+          } else {
+            total = pg;
+          }
         }
 
-        setHasMore(items.length >= 10);
+        setSubscriptions(items);
+        setTotalPages(total);
         setPage(pg);
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Failed to load subscriptions.');
       } finally {
         setLoading(false);
         setRefreshing(false);
-        setLoadingMore(false);
       }
     },
     [search, filter]
@@ -465,7 +488,7 @@ export default function CustomerSubscriptionsScreen() {
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      void fetchSubscriptionsList(1, true);
+      void fetchSubscriptionsList(1);
     }, 0);
 
     return () => clearTimeout(timeoutId);
@@ -473,7 +496,7 @@ export default function CustomerSubscriptionsScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchSubscriptionsList(1, true);
+    fetchSubscriptionsList(1);
   };
 
   const handleViewSubscriptionDetails = async (sub: Subscription) => {
@@ -495,8 +518,19 @@ export default function CustomerSubscriptionsScreen() {
         '';
 
       if (uId) {
-        const data = await getCustomerDetails(uId);
-        setCustomerDetails(data);
+        try {
+          const data = await getCustomerDetails(uId);
+          if (data) {
+            setCustomerDetails(data);
+          }
+        } catch (err) {
+          if (typeof sub.customer_id === 'string' && sub.customer_id !== uId) {
+            try {
+              const data2 = await getCustomerDetails(sub.customer_id);
+              if (data2) setCustomerDetails(data2);
+            } catch (e2) {}
+          }
+        }
       }
     } catch (e: any) {
       console.log('Error fetching customer details for modal:', e);
@@ -509,8 +543,8 @@ export default function CustomerSubscriptionsScreen() {
     const id = item._id || item.id || '';
     const customerName =
       item.user_name ||
-      (item.customer_id
-        ? `${item.customer_id.first_name} ${item.customer_id.last_name}`
+      (typeof item.customer_id === 'object' && item.customer_id
+        ? `${item.customer_id.first_name || ''} ${item.customer_id.last_name || ''}`.trim()
         : item.customerEmail || 'Customer');
 
     Alert.alert(
@@ -523,6 +557,9 @@ export default function CustomerSubscriptionsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              if (!id) {
+                throw new Error('Subscription ID not found.');
+              }
               await cancelSubscription(id);
               Alert.alert('Success', 'Subscription cancelled successfully.');
               setSubscriptions((prev) =>
@@ -594,53 +631,117 @@ export default function CustomerSubscriptionsScreen() {
               <Text className="text-base text-typography-400">No subscriptions found</Text>
             </Box>
           ) : (
-            <HtmlTable
-              columns={SUB_TABLE_COLUMNS}
-              data={subscriptions}
-              rowActions={SUB_ROW_ACTIONS}
-              onRowAction={(action, rowId) => {
-                const s = subscriptions.find((x) => String(x._id || x.id) === String(rowId));
-                if (!s) return;
+            <React.Fragment>
+              <HtmlTable
+                columns={SUB_TABLE_COLUMNS}
+                data={subscriptions}
+                rowActions={SUB_ROW_ACTIONS}
+                onRowAction={(action, rowId) => {
+                  const parts = String(rowId).split('-');
+                  const lastPart = parts[parts.length - 1];
+                  const indexFromRowId = !isNaN(Number(lastPart)) ? Number(lastPart) : -1;
+                  const rawId = parts.slice(0, parts.length - 1).join('-');
 
-                if (action === 'view') {
-                  handleViewSubscriptionDetails(s);
-                } else if (action === 'cancel') {
-                  handleCancelSubscription(s);
-                }
-              }}
-              iconOnlyActions={true}
-              tableContainerStyle={{
-                borderWidth: 1,
-                shadowColor: 'transparent',
-                backgroundColor: 'transparent',
-                elevation: 0,
-                marginHorizontal: 0,
-                marginVertical: 0,
-              }}
-              headerRowStyle={{
-                backgroundColor: '#f8fafc',
-                borderBottomWidth: 1.5,
-                borderBottomColor: '#e2e8f0',
-              }}
-              headerCellStyle={{
-                paddingVertical: 0,
-              }}
-              headerCellTextStyle={{
-                color: '#1e3a8a',
-                fontWeight: '700',
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-              rowStyle={{
-                borderBottomWidth: 1,
-                borderBottomColor: '#f1f5f9',
-                backgroundColor: '#ffffff',
-              }}
-            />
-          )}
-          {loadingMore && (
-            <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
+                  const s =
+                    subscriptions.find(
+                      (x: any, idx: number) =>
+                        (rawId && String(x._id || x.id || '') === rawId) ||
+                        (x._id && String(rowId).includes(String(x._id))) ||
+                        (x.id && String(rowId).includes(String(x.id))) ||
+                        (indexFromRowId >= 0 && idx === indexFromRowId)
+                    ) || (indexFromRowId >= 0 ? subscriptions[indexFromRowId] : undefined);
+
+                  if (!s) return;
+
+                  if (action === 'view' || action === 'details') {
+                    handleViewSubscriptionDetails(s);
+                  } else if (action === 'cancel' || action === 'delete') {
+                    handleCancelSubscription(s);
+                  }
+                }}
+                iconOnlyActions={true}
+                tableContainerStyle={{
+                  borderWidth: 1,
+                  shadowColor: 'transparent',
+                  backgroundColor: 'transparent',
+                  elevation: 0,
+                  marginHorizontal: 0,
+                  marginVertical: 0,
+                }}
+                headerRowStyle={{
+                  backgroundColor: '#f8fafc',
+                  borderBottomWidth: 1.5,
+                  borderBottomColor: '#e2e8f0',
+                }}
+                headerCellStyle={{
+                  paddingVertical: 0,
+                }}
+                headerCellTextStyle={{
+                  color: '#1e3a8a',
+                  fontWeight: '700',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                }}
+                rowStyle={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#f1f5f9',
+                  backgroundColor: '#ffffff',
+                }}
+              />
+
+              {totalPages > 0 && (
+                <Box style={styles.paginationWrapper}>
+                  <HStack space="xs" className="items-center justify-center">
+                    <TouchableOpacity
+                      style={[styles.pageNavBtn, page === 1 && styles.pageNavBtnDisabled]}
+                      disabled={page === 1}
+                      onPress={() => {
+                        if (page > 1) fetchSubscriptionsList(page - 1);
+                      }}
+                    >
+                      <Text style={[styles.pageNavText, page === 1 && styles.pageNavTextDisabled]}>
+                        ‹
+                      </Text>
+                    </TouchableOpacity>
+
+                    {getPageNumbers(page, totalPages).map((p) => {
+                      const isActive = p === page;
+                      return (
+                        <TouchableOpacity
+                          key={p}
+                          style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
+                          onPress={() => fetchSubscriptionsList(p)}
+                        >
+                          <Text
+                            style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}
+                          >
+                            {p}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    <TouchableOpacity
+                      style={[styles.pageNavBtn, page >= totalPages && styles.pageNavBtnDisabled]}
+                      disabled={page >= totalPages}
+                      onPress={() => {
+                        if (page < totalPages) fetchSubscriptionsList(page + 1);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.pageNavText,
+                          page >= totalPages && styles.pageNavTextDisabled,
+                        ]}
+                      >
+                        ›
+                      </Text>
+                    </TouchableOpacity>
+                  </HStack>
+                </Box>
+              )}
+            </React.Fragment>
           )}
         </ScrollView>
       )}
@@ -1088,5 +1189,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+  },
+  paginationWrapper: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  pageNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 3,
+  },
+  pageNavBtnDisabled: {
+    backgroundColor: '#f8fafc',
+    opacity: 0.5,
+  },
+  pageNavText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  pageNavTextDisabled: {
+    color: '#94a3b8',
+  },
+  pageNumberBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 2,
+  },
+  pageNumberBtnActive: {
+    backgroundColor: '#2563eb',
+  },
+  pageNumberText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  pageNumberTextActive: {
+    color: '#ffffff',
   },
 });
