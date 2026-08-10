@@ -317,7 +317,7 @@ const SUB_TABLE_COLUMNS: HtmlTableColumn<Subscription>[] = [
   {
     key: 'auto_renew',
     label: 'Auto Renew',
-    width: '120px',
+    width: '130px',
     render: (_v, row) => {
       const isAutoRenew = row.auto_renew !== false;
       return (
@@ -399,7 +399,7 @@ const SUB_TABLE_COLUMNS: HtmlTableColumn<Subscription>[] = [
 
 const SUB_ROW_ACTIONS = [
   { label: 'View Details', action: 'view', style: 'normal' },
-  { label: 'Cancel', action: 'cancel', style: 'danger' },
+  // { label: 'Cancel', action: 'cancel', style: 'danger' },
 ];
 
 function getPageNumbers(currentPage: number, lastPage: number) {
@@ -539,40 +539,40 @@ export default function CustomerSubscriptionsScreen() {
     }
   };
 
-  const handleCancelSubscription = (item: Subscription) => {
-    const id = item._id || item.id || '';
-    const customerName =
-      item.user_name ||
-      (typeof item.customer_id === 'object' && item.customer_id
-        ? `${item.customer_id.first_name || ''} ${item.customer_id.last_name || ''}`.trim()
-        : item.customerEmail || 'Customer');
+  // const handleCancelSubscription = (item: Subscription) => {
+  //   const id = item._id || item.id || '';
+  //   const customerName =
+  //     item.user_name ||
+  //     (typeof item.customer_id === 'object' && item.customer_id
+  //       ? `${item.customer_id.first_name || ''} ${item.customer_id.last_name || ''}`.trim()
+  //       : item.customerEmail || 'Customer');
 
-    Alert.alert(
-      'Cancel Subscription',
-      `Are you sure you want to cancel the subscription for ${customerName}?`,
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (!id) {
-                throw new Error('Subscription ID not found.');
-              }
-              await cancelSubscription(id);
-              Alert.alert('Success', 'Subscription cancelled successfully.');
-              setSubscriptions((prev) =>
-                prev.map((s) => ((s._id || s.id) === id ? { ...s, status: 'cancelled' } : s))
-              );
-            } catch (e: any) {
-              Alert.alert('Error', e.message || 'Failed to cancel subscription.');
-            }
-          },
-        },
-      ]
-    );
-  };
+  //   Alert.alert(
+  //     'Cancel Subscription',
+  //     `Are you sure you want to cancel the subscription for ${customerName}?`,
+  //     [
+  //       { text: 'No', style: 'cancel' },
+  //       {
+  //         text: 'Yes, Cancel',
+  //         style: 'destructive',
+  //         onPress: async () => {
+  //           try {
+  //             if (!id) {
+  //               throw new Error('Subscription ID not found.');
+  //             }
+  //             await cancelSubscription(id);
+  //             Alert.alert('Success', 'Subscription cancelled successfully.');
+  //             setSubscriptions((prev) =>
+  //               prev.map((s) => ((s._id || s.id) === id ? { ...s, status: 'cancelled' } : s))
+  //             );
+  //           } catch (e: any) {
+  //             Alert.alert('Error', e.message || 'Failed to cancel subscription.');
+  //           }
+  //         },
+  //       },
+  //     ]
+  //   );
+  // };
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
@@ -655,9 +655,10 @@ export default function CustomerSubscriptionsScreen() {
 
                   if (action === 'view' || action === 'details') {
                     handleViewSubscriptionDetails(s);
-                  } else if (action === 'cancel' || action === 'delete') {
-                    handleCancelSubscription(s);
                   }
+                  // else if (action === 'cancel' || action === 'delete') {
+                  //   handleCancelSubscription(s);
+                  // }
                 }}
                 iconOnlyActions={true}
                 tableContainerStyle={{
@@ -1002,7 +1003,6 @@ export default function CustomerSubscriptionsScreen() {
                     </Box>
                   )}
 
-                  {console.log(customerDetails, 'customerDetails')}
                   {/* Usage Statistics Card */}
                   {customerDetails?.postUsage && (
                     <Box style={styles.detailsCard}>
