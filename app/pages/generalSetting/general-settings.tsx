@@ -447,7 +447,7 @@ export default function GeneralAccessScreen() {
                       </HStack>
 
                       {/* Direct Logo URL TextInput */}
-                      <VStack space="xs" style={{ marginTop: 10 }}>
+                      {/* <VStack space="xs" style={{ marginTop: 10 }}>
                         <Text style={[styles.label, { fontSize: 10, color: '#94a3b8' }]}>
                           Direct Logo URL (Optional)
                         </Text>
@@ -459,7 +459,7 @@ export default function GeneralAccessScreen() {
                           placeholder="https://example.com/logo.png"
                           placeholderTextColor="#94a3b8"
                         />
-                      </VStack>
+                      </VStack> */}
                     </Box>
                   </VStack>
                 </VStack>

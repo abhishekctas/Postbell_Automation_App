@@ -17,7 +17,7 @@ import { Heading } from '@/components/ui/heading';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { getFeatureDetails, Feature, BASE } from './features.api';
+import { getFeatureDetails, Feature, getFeatureMediaUrl } from './features.api';
 
 export default function FeatureDetailsScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -65,11 +65,7 @@ export default function FeatureDetailsScreen() {
   };
 
   const getMediaUrl = (path?: string) => {
-    if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('file://')) {
-      return path;
-    }
-    return `${BASE}/${path}`;
+    return getFeatureMediaUrl(path);
   };
 
   if (loading) {

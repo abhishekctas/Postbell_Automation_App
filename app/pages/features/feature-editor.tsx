@@ -23,10 +23,11 @@ import {
   createFeature,
   updateFeature,
   getFeatureDetails,
+  listFeatures,
   generateFeatureSlug,
+  getFeatureMediaUrl,
   FeaturePoint,
   FeatureFormData,
-  BASE,
 } from './features.api';
 
 const LIMITS = {
@@ -113,13 +114,22 @@ export default function FeatureEditorScreen() {
   }, [id, router]);
 
   useEffect(() => {
-    if (!isEditMode) return;
-
-    const timeoutId = setTimeout(() => {
-      void loadFeatureData();
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
+    if (isEditMode) {
+      const timeoutId = setTimeout(() => {
+        void loadFeatureData();
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    } else {
+      listFeatures('limit=100')
+        .then((res) => {
+          const items = res?.data || (Array.isArray(res) ? res : []);
+          if (items && items.length > 0) {
+            const maxOrder = Math.max(...items.map((f: any) => Number(f.order) || 0));
+            setOrder(String(maxOrder + 1));
+          }
+        })
+        .catch(() => {});
+    }
   }, [isEditMode, loadFeatureData]);
 
   const handleTitleChange = (val: string) => {
@@ -222,7 +232,10 @@ export default function FeatureEditorScreen() {
           return;
         }
         setImage(asset.uri);
-        const fileName = asset.fileName || asset.uri.split('/').pop() || 'feature_image.jpg';
+        let fileName = asset.fileName || asset.uri.split('/').pop() || 'feature_image.jpg';
+        if (!/\.(jpg|jpeg|png|webp|gif)$/i.test(fileName)) {
+          fileName += '.jpg';
+        }
         const mimeType = asset.mimeType || 'image/jpeg';
         setImageFile({
           uri: asset.uri,
@@ -262,7 +275,10 @@ export default function FeatureEditorScreen() {
           return;
         }
         setVideo(asset.uri);
-        const fileName = asset.fileName || asset.uri.split('/').pop() || 'feature_video.mp4';
+        let fileName = asset.fileName || asset.uri.split('/').pop() || 'feature_video.mp4';
+        if (!/\.(mp4|mov|m4v|webm)$/i.test(fileName)) {
+          fileName += '.mp4';
+        }
         const mimeType = asset.mimeType || 'video/mp4';
         setVideoFile({
           uri: asset.uri,
@@ -385,11 +401,7 @@ export default function FeatureEditorScreen() {
   };
 
   const getMediaUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('file://')) {
-      return path;
-    }
-    return `${BASE}/${path}`;
+    return getFeatureMediaUrl(path);
   };
 
   if (loading) {

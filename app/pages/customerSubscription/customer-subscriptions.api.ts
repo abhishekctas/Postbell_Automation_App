@@ -117,9 +117,25 @@ export const listSubscriptions = async (
 };
 
 export const cancelSubscription = async (subId: string): Promise<any> => {
-  const res = await fetchWithAuth(`${BASE}/cancel/${subId}`, {
-    method: 'DELETE',
-  });
+  let res;
+  try {
+    res = await fetchWithAuth(`${BASE}/cancel/${subId}`, {
+      method: 'DELETE',
+    });
+  } catch (e) {
+    try {
+      res = await fetchWithAuth(`${BASE}/admin/cancel/${subId}`, {
+        method: 'DELETE',
+      });
+    } catch (e2) {
+      res = await fetchWithAuth(`${BASE}/cancel/${subId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+    }
+  }
+
   if (res && res.success === false) {
     throw new Error(res.message || 'Failed to cancel subscription');
   }

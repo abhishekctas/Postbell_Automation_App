@@ -27,7 +27,8 @@ export interface Customer {
 export const getCustomerAvatarUrl = (image?: string): string => {
   if (!image) return '';
   if (/^https?:\/\//i.test(image) || image.startsWith('file://')) return image;
-  return `${API_BASE_URL}/customer-profile/${encodeURIComponent(image)}`;
+  const staticBase = API_BASE_URL.replace(/\/v1\/?$/, '');
+  return `${staticBase}/customer-profile/${encodeURIComponent(image)}`;
 };
 
 export const listCustomers = async (
@@ -87,20 +88,56 @@ export const deleteCustomer = async (customerId: string): Promise<any> => {
   return res;
 };
 
-export const uploadCustomerProfileImage = async (data: FormData | any): Promise<any> => {
-  let options: RequestInit = {
-    method: 'POST',
-  };
-  if (typeof FormData !== 'undefined' && data instanceof FormData) {
-    options.body = data;
+export const uploadCustomerProfileImage = async (
+  customerIdOrData: string | FormData | any,
+  fileObj?: any
+): Promise<any> => {
+  let customerId: string | undefined;
+  let file: any;
+
+  if (typeof customerIdOrData === 'string' && fileObj !== undefined) {
+    customerId = customerIdOrData;
+    file = fileObj;
   } else {
-    options.headers = { 'Content-Type': 'application/json' };
-    options.body = typeof data === 'string' ? data : JSON.stringify(data);
+    file = customerIdOrData;
   }
-  const res = await fetchWithAuth(
-    `${API_BASE_URL}/customers/profile/upload-profile-image`,
-    options
-  );
+
+  if (typeof FormData !== 'undefined' && file instanceof FormData) {
+    const endpoint = customerId
+      ? `${BASE}/profile/upload-profile-image/${customerId}`
+      : `${BASE}/profile/upload-profile-image`;
+    const res = await fetchWithAuth(endpoint, {
+      method: 'POST',
+      body: file,
+    });
+    if (res && res.success === false) {
+      throw new Error(res.message || 'Failed to upload profile image');
+    }
+    return res;
+  }
+
+  const formData = new FormData();
+  if (file && typeof file === 'object' && file.uri) {
+    const filename = file.fileName || file.uri.split('/').pop() || 'avatar.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = file.mimeType || file.type || (match ? `image/${match[1]}` : 'image/jpeg');
+    formData.append('image', {
+      uri: file.uri,
+      name: filename,
+      type,
+    } as any);
+  } else {
+    formData.append('image', file);
+  }
+
+  const endpoint = customerId
+    ? `${BASE}/profile/upload-profile-image/${customerId}`
+    : `${BASE}/profile/upload-profile-image`;
+
+  const res = await fetchWithAuth(endpoint, {
+    method: 'POST',
+    body: formData,
+  });
   if (res && res.success === false) {
     throw new Error(res.message || 'Failed to upload profile image');
   }

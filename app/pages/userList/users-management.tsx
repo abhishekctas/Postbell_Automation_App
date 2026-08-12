@@ -20,6 +20,7 @@ import { getRoles, Role } from '../roleList/roles-management.api';
 import { Feather } from '@expo/vector-icons';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import { API_BASE_URL } from '@/services/api';
+import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
 
 const AVATAR_COLORS = [
   { bg: '#dbeafe', text: '#1d4ed8' },
@@ -55,138 +56,26 @@ const getUserAvatarUrl = (avatar?: string) => {
   return `${baseUrl}${normalizedAvatar}`;
 };
 
-const USER_TABLE_COLUMNS: HtmlTableColumn<User>[] = [
-  {
-    key: 'createdAt',
-    label: 'Created At',
-    width: '120px',
-    render: (v) => {
-      if (!v) return '—';
-      const date = new Date(v);
-      if (Number.isNaN(date.getTime())) return String(v);
-      return (
-        <VStack style={{ justifyContent: 'center' }}>
-          <Text style={styles.tableCellText}>
-            {date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-          </Text>
-          <Text style={styles.tableMetaText}>
-            {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-          </Text>
-        </VStack>
-      );
-    },
-  },
-  {
-    key: 'name',
-    label: 'Profile',
-    width: '100px',
-    render: (_v, row) => {
-      const userId = row._id || row.id || '';
-      const fullName = `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'User';
-      const initials =
-        `${(row.first_name || '').charAt(0)}${(row.last_name || '').charAt(0)}`.toUpperCase() ||
-        'U';
-      const avatarColor = getAvatarColor(userId || row.email || fullName);
-      const avatarField = (row as any).avatar || (row as any).image || (row as any).profile_image;
-      const avatarUrl = getUserAvatarUrl(avatarField);
-
-      return (
-        <HStack space="sm" className="items-center">
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
-          ) : (
-            <Box style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
-              <Text style={[styles.avatarText, { color: avatarColor.text }]}>{initials}</Text>
-            </Box>
-          )}
-        </HStack>
-      );
-    },
-  },
-  {
-    key: 'email',
-    label: 'Email',
-    width: '200px',
-    render: (v) => <Text style={styles.userEmailText}>{v || '—'}</Text>,
-  },
-  {
-    key: 'first_name',
-    label: 'First Name',
-    width: '150px',
-    render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
-  },
-  {
-    key: 'last_name',
-    label: 'Last Name',
-    width: '150px',
-    render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
-  },
-  {
-    key: 'role_name',
-    label: 'Role',
-    width: '100px',
-    render: (v, row) => {
-      const roleName = v || row.role_name || 'No Role Assigned';
-      return (
-        <Box style={styles.roleChip}>
-          <Text style={styles.roleChipText}>{roleName}</Text>
-        </Box>
-      );
-    },
-  },
-  {
-    key: 'status',
-    label: 'Status',
-    width: '120px',
-    render: (v) => {
-      const isActive = Number(v) === 1;
-      return (
-        <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
-          <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
-            {isActive ? 'Active' : 'Inactive'}
-          </Text>
-        </Box>
-      );
-    },
-  },
-  {
-    key: 'created_by_name',
-    label: 'Created By',
-    width: '160px',
-    render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
-  },
-  {
-    key: 'updatedAt',
-    label: 'Updated At',
-    width: '120px',
-    render: (v) => {
-      if (!v) return '—';
-      const date = new Date(v);
-      if (Number.isNaN(date.getTime())) return String(v);
-      return (
-        <VStack style={{ justifyContent: 'center' }}>
-          <Text style={styles.tableCellText}>
-            {date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-          </Text>
-          <Text style={styles.tableMetaText}>
-            {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-          </Text>
-        </VStack>
-      );
-    },
-  },
-  {
-    key: 'updated_by_name',
-    label: 'Updated By',
-    width: '140px',
-    render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
-  },
-];
-
 const USER_ROW_ACTIONS = [
   { label: 'Edit', action: 'edit' },
   { label: 'Delete', action: 'delete', style: 'danger' },
 ];
+
+function getPageNumbers(currentPage: number, lastPage: number) {
+  const pages: number[] = [];
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(lastPage, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+  return pages;
+}
 
 export default function UsersManagementScreen() {
   const [users, setUsers] = useState<User[]>([]);
@@ -195,8 +84,7 @@ export default function UsersManagementScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Form State
   const [modalVisible, setModalVisible] = useState(false);
@@ -211,6 +99,182 @@ export default function UsersManagementScreen() {
   // Validation Errors State & Modal Scroll Ref
   const [errors, setErrors] = useState<Record<string, string>>({});
   const modalScrollRef = useRef<ScrollView>(null);
+
+  // Status confirm dialog state
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
+  const [selectedUserForStatus, setSelectedUserForStatus] = useState<User | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const handleOpenStatusConfirm = (user: User) => {
+    setSelectedUserForStatus(user);
+    setStatusConfirmOpen(true);
+  };
+
+  const USER_TABLE_COLUMNS: HtmlTableColumn<User>[] = [
+    {
+      key: 'createdAt',
+      label: 'Created At',
+      width: '120px',
+      render: (v) => {
+        if (!v) return '—';
+        const date = new Date(v);
+        if (Number.isNaN(date.getTime())) return String(v);
+        return (
+          <VStack style={{ justifyContent: 'center' }}>
+            <Text style={styles.tableCellText}>
+              {date.toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </Text>
+            <Text style={styles.tableMetaText}>
+              {date.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })}
+            </Text>
+          </VStack>
+        );
+      },
+    },
+    {
+      key: 'name',
+      label: 'Profile',
+      width: '100px',
+      render: (_v, row) => {
+        const userId = row._id || row.id || '';
+        const fullName = `${row.first_name || ''} ${row.last_name || ''}`.trim() || 'User';
+        const initials =
+          `${(row.first_name || '').charAt(0)}${(row.last_name || '').charAt(0)}`.toUpperCase() ||
+          'U';
+        const avatarColor = getAvatarColor(userId || row.email || fullName);
+        const avatarField = (row as any).avatar || (row as any).image || (row as any).profile_image;
+        const avatarUrl = getUserAvatarUrl(avatarField);
+
+        return (
+          <HStack space="sm" className="items-center">
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Box style={[styles.avatar, { backgroundColor: avatarColor.bg }]}>
+                <Text style={[styles.avatarText, { color: avatarColor.text }]}>{initials}</Text>
+              </Box>
+            )}
+          </HStack>
+        );
+      },
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      width: '200px',
+      render: (v) => <Text style={styles.userEmailText}>{v || '—'}</Text>,
+    },
+    {
+      key: 'first_name',
+      label: 'First Name',
+      width: '150px',
+      render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
+    },
+    {
+      key: 'last_name',
+      label: 'Last Name',
+      width: '150px',
+      render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
+    },
+    {
+      key: 'role_name',
+      label: 'Role',
+      width: '100px',
+      render: (v, row) => {
+        const roleName = v || row.role_name || 'No Role Assigned';
+        return (
+          <Box style={styles.roleChip}>
+            <Text style={styles.roleChipText}>{roleName}</Text>
+          </Box>
+        );
+      },
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      width: '120px',
+      render: (v, row) => {
+        const isActive = Number(v) === 1;
+        return (
+          <TouchableOpacity onPress={() => handleOpenStatusConfirm(row)}>
+            <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
+              <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
+                {isActive ? 'Active' : 'Inactive'}
+              </Text>
+            </Box>
+          </TouchableOpacity>
+        );
+      },
+    },
+    {
+      key: 'created_by_name',
+      label: 'Created By',
+      width: '180px',
+      render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
+    },
+    {
+      key: 'updatedAt',
+      label: 'Updated At',
+      width: '120px',
+      render: (v) => {
+        if (!v) return '—';
+        const date = new Date(v);
+        if (Number.isNaN(date.getTime())) return String(v);
+        return (
+          <VStack style={{ justifyContent: 'center' }}>
+            <Text style={styles.tableCellText}>
+              {date.toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </Text>
+            <Text style={styles.tableMetaText}>
+              {date.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })}
+            </Text>
+          </VStack>
+        );
+      },
+    },
+    {
+      key: 'updated_by_name',
+      label: 'Updated By',
+      width: '180px',
+      render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
+    },
+  ];
+
+  const handleConfirmStatusToggle = async () => {
+    if (!selectedUserForStatus) return;
+    const user = selectedUserForStatus;
+    const userId = user._id || user.id || '';
+    const nextStatus = Number(user.status) === 1 ? 0 : 1;
+    setStatusLoading(true);
+    try {
+      await updateUser(userId, { status: nextStatus });
+      setUsers((prev) =>
+        prev.map((u) => ((u._id || u.id) === userId ? { ...u, status: nextStatus } : u))
+      );
+      setStatusConfirmOpen(false);
+      setSelectedUserForStatus(null);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update user status.');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   const scrollToTopModal = () => {
     modalScrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -259,8 +323,8 @@ export default function UsersManagementScreen() {
   }, []);
 
   const fetchUsersList = useCallback(
-    async (pg = 1, reset = true) => {
-      if (reset) setLoading(true);
+    async (pg = 1) => {
+      setLoading(true);
       try {
         const queryParams = new URLSearchParams({
           page: pg.toString(),
@@ -272,28 +336,27 @@ export default function UsersManagementScreen() {
 
         const res = (await listUsers(queryParams.toString())) as any;
         const items = res?.results || res?.data || (Array.isArray(res) ? res : []);
+        const total =
+          res?.totalPages ||
+          res?.pagination?.totalPages ||
+          Math.ceil((res?.totalResults || res?.totalCount || items.length) / 10) ||
+          1;
 
-        if (reset) {
-          setUsers(items);
-        } else {
-          setUsers((prev) => [...prev, ...items]);
-        }
-
-        setHasMore(items.length >= 10);
+        setUsers(items);
+        setTotalPages(total);
         setPage(pg);
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Failed to load users.');
       } finally {
         setLoading(false);
         setRefreshing(false);
-        setLoadingMore(false);
       }
     },
     [search]
   );
 
   const loadInitialData = useCallback(async () => {
-    await Promise.all([fetchRolesList(), fetchUsersList(1, true)]);
+    await Promise.all([fetchRolesList(), fetchUsersList(1)]);
   }, [fetchRolesList, fetchUsersList]);
 
   useEffect(() => {
@@ -302,13 +365,7 @@ export default function UsersManagementScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchUsersList(1, true);
-  };
-
-  const loadMore = () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    fetchUsersList(page + 1, false);
+    fetchUsersList(1);
   };
 
   const handleOpenAdd = () => {
@@ -403,7 +460,7 @@ export default function UsersManagementScreen() {
       }
 
       setModalVisible(false);
-      fetchUsersList(1, true);
+      fetchUsersList(1);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to save user.');
     }
@@ -435,7 +492,7 @@ export default function UsersManagementScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Top Search & Filter Bar */}
       <Box style={styles.filterSection}>
-        <HStack className="mb-3 items-center justify-between">
+        <HStack className="mb-2 items-center justify-between">
           <Text style={styles.sectionHeaderTitle}>Users Management</Text>
           <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
             <Text style={styles.addBtnText}>+ Add User</Text>
@@ -476,9 +533,14 @@ export default function UsersManagementScreen() {
             data={users}
             rowActions={USER_ROW_ACTIONS}
             onRowAction={(action, rowId) => {
-              const user = users.find((item) => String(item._id || item.id) === String(rowId));
+              const user = users.find(
+                (item: any) =>
+                  String(item._id || item.id) === String(rowId) ||
+                  String(rowId).startsWith(String(item._id || item.id))
+              );
               if (!user) return;
               if (action === 'edit') handleOpenEdit(user);
+              if (action === 'toggle-status' || action === 'status') handleOpenStatusConfirm(user);
               if (action === 'delete') handleDelete(user);
             }}
             iconOnlyActions={true}
@@ -514,14 +576,54 @@ export default function UsersManagementScreen() {
             rowOddStyle={styles.tableRowOdd}
             cellStyle={styles.tableCell}
           />
-          {loadingMore ? (
-            <ActivityIndicator size="small" color="#2563EB" style={{ marginVertical: 20 }} />
-          ) : null}
-          {hasMore && !loadingMore ? (
-            <TouchableOpacity style={styles.loadMoreBtn} onPress={loadMore}>
-              <Text style={styles.loadMoreBtnText}>Load More</Text>
-            </TouchableOpacity>
-          ) : null}
+          {totalPages > 0 && (
+            <Box style={styles.paginationWrapper}>
+              <HStack space="xs" className="items-center justify-center">
+                <TouchableOpacity
+                  style={[styles.pageNavBtn, page === 1 && styles.pageNavBtnDisabled]}
+                  disabled={page === 1}
+                  onPress={() => {
+                    if (page > 1) fetchUsersList(page - 1);
+                  }}
+                >
+                  <Text style={[styles.pageNavText, page === 1 && styles.pageNavTextDisabled]}>
+                    ‹
+                  </Text>
+                </TouchableOpacity>
+
+                {getPageNumbers(page, totalPages).map((p) => {
+                  const isActive = p === page;
+                  return (
+                    <TouchableOpacity
+                      key={p}
+                      style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
+                      onPress={() => fetchUsersList(p)}
+                    >
+                      <Text
+                        style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}
+                      >
+                        {p}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <TouchableOpacity
+                  style={[styles.pageNavBtn, page >= totalPages && styles.pageNavBtnDisabled]}
+                  disabled={page >= totalPages}
+                  onPress={() => {
+                    if (page < totalPages) fetchUsersList(page + 1);
+                  }}
+                >
+                  <Text
+                    style={[styles.pageNavText, page >= totalPages && styles.pageNavTextDisabled]}
+                  >
+                    ›
+                  </Text>
+                </TouchableOpacity>
+              </HStack>
+            </Box>
+          )}
         </ScrollView>
       )}
 
@@ -728,13 +830,31 @@ export default function UsersManagementScreen() {
           </Box>
         </Box>
       </Modal>
+
+      <StatusConfirmDialog
+        open={statusConfirmOpen}
+        onClose={() => {
+          if (!statusLoading) {
+            setStatusConfirmOpen(false);
+            setSelectedUserForStatus(null);
+          }
+        }}
+        onConfirm={handleConfirmStatusToggle}
+        loading={statusLoading}
+        itemName={`${selectedUserForStatus?.first_name || ''} ${selectedUserForStatus?.last_name || ''}`.trim()}
+        targetStatus={Number(selectedUserForStatus?.status) === 1 ? 0 : 1}
+        title={Number(selectedUserForStatus?.status) === 1 ? 'Deactivate User' : 'Activate User'}
+        message={`Are you sure you want to ${Number(selectedUserForStatus?.status) === 1 ? 'deactivate' : 'activate'} staff user "${selectedUserForStatus?.first_name || ''} ${selectedUserForStatus?.last_name || ''}"?`}
+        confirmText={Number(selectedUserForStatus?.status) === 1 ? 'Deactivate' : 'Activate'}
+      />
     </Box>
   );
 }
 
 const styles = StyleSheet.create({
   filterSection: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
@@ -788,6 +908,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 62,
     height: 62,
+
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -817,12 +938,18 @@ const styles = StyleSheet.create({
   },
   roleChipText: { fontSize: 10, fontWeight: '700', color: '#2563EB' },
   noRoleText: { fontSize: 10, color: '#94a3b8', fontStyle: 'italic', marginTop: 2 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  badgeActive: { backgroundColor: '#dcfce7' },
-  badgeInactive: { backgroundColor: '#fee2e2' },
-  statusText: { fontSize: 10, fontWeight: '700' },
-  textActive: { color: '#15803d' },
-  textInactive: { color: '#dc2626' },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  badgeActive: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+  badgeInactive: { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  textActive: { color: '#2563eb' },
+  textInactive: { color: '#64748b' },
   actionBtn: {
     backgroundColor: '#f0f7ff',
     borderRadius: 8,
@@ -929,4 +1056,52 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   cancelBtnText: { color: '#475569', fontWeight: '700', fontSize: 14 },
+  paginationWrapper: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  pageNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 3,
+  },
+  pageNavBtnDisabled: {
+    backgroundColor: '#f8fafc',
+    opacity: 0.5,
+  },
+  pageNavText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  pageNavTextDisabled: {
+    color: '#94a3b8',
+  },
+  pageNumberBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 2,
+  },
+  pageNumberBtnActive: {
+    backgroundColor: '#2563eb',
+  },
+  pageNumberText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  pageNumberTextActive: {
+    color: '#ffffff',
+  },
 });

@@ -2,6 +2,24 @@ import { fetchWithAuth, API_BASE_URL } from '@/services/api';
 import { getCurrentUserId } from '@/utils/storage';
 
 export const BASE = `${API_BASE_URL}/features-cms`;
+export const STATIC_BASE = API_BASE_URL.replace(/\/v1\/?$/, '');
+export const MEDIA_BASE = `${STATIC_BASE}/features-cms`;
+
+export const getFeatureMediaUrl = (path?: string): string => {
+  if (!path) return '';
+  if (
+    path.startsWith('http://') ||
+    path.startsWith('https://') ||
+    path.startsWith('file://') ||
+    path.startsWith('content://') ||
+    path.startsWith('ph://') ||
+    path.startsWith('data:')
+  ) {
+    return path;
+  }
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${MEDIA_BASE}/${cleanPath}`;
+};
 
 export interface FeaturePoint {
   _id?: string;
@@ -52,8 +70,31 @@ export const generateFeatureSlug = (title: string): string => {
 /**
  * Helper to construct FormData or JSON body for features endpoint matching backend Joi schema
  */
-function prepareFeaturePayload(payload: FeatureFormData | any): FormData | string {
+function prepareFeaturePayload(payload: FeatureFormData | any): FormData {
   if (payload instanceof FormData) return payload;
+
+  const fd = new FormData();
+
+  fd.append('title', (payload.title || '').trim());
+  if (payload.slug) {
+    fd.append('slug', payload.slug.trim().toLowerCase());
+  }
+  if (payload.description !== undefined && payload.description !== null) {
+    fd.append('description', payload.description);
+  }
+
+  fd.append('order', String(Number(payload.order ?? 0)));
+
+  const statusVal =
+    payload.status === 1 ||
+    payload.status === true ||
+    payload.status === '1' ||
+    payload.status === 'true'
+      ? '1'
+      : '0';
+  fd.append('status', statusVal);
+  fd.append('removeImage', String(Boolean(payload.removeImage)));
+  fd.append('removeVideo', String(Boolean(payload.removeVideo)));
 
   const cleanedPoints =
     payload.feature_points?.map((pt: any) => ({
@@ -61,72 +102,19 @@ function prepareFeaturePayload(payload: FeatureFormData | any): FormData | strin
       point_description: (pt.point_description || '').trim(),
     })) || [];
 
-  const statusBool =
-    payload.status === 1 ||
-    payload.status === true ||
-    payload.status === '1' ||
-    payload.status === 'true';
-
-  const hasFiles = Boolean(
-    payload.imageFile ||
-    payload.videoFile ||
-    (payload.image && typeof payload.image !== 'string') ||
-    (payload.video && typeof payload.video !== 'string')
-  );
-
-  if (hasFiles) {
-    const fd = new FormData();
-    fd.append('title', (payload.title || '').trim());
-    if (payload.slug) {
-      fd.append('slug', payload.slug.trim().toLowerCase());
-    }
-    if (payload.description !== undefined && payload.description !== null) {
-      fd.append('description', payload.description);
-    }
-
-    fd.append('order', String(Number(payload.order ?? 0)));
-    fd.append('status', String(statusBool));
-    fd.append('removeImage', String(Boolean(payload.removeImage)));
-    fd.append('removeVideo', String(Boolean(payload.removeVideo)));
-
-    if (cleanedPoints.length > 0) {
-      fd.append('feature_points', JSON.stringify(cleanedPoints));
-    }
-
-    if (payload.imageFile) {
-      fd.append('image', payload.imageFile);
-    }
-    if (payload.videoFile) {
-      fd.append('video', payload.videoFile);
-    }
-
-    return fd;
+  if (cleanedPoints.length > 0) {
+    fd.append('feature_points', JSON.stringify(cleanedPoints));
   }
 
-  // Standard JSON payload (used when no file upload is attached)
-  const jsonPayload: any = {
-    title: (payload.title || '').trim(),
-    order: Number(payload.order ?? 0),
-    status: statusBool,
-    removeImage: Boolean(payload.removeImage),
-    removeVideo: Boolean(payload.removeVideo),
-    feature_points: cleanedPoints,
-  };
-
-  if (payload.slug) {
-    jsonPayload.slug = payload.slug.trim().toLowerCase();
-  }
-  if (payload.description !== undefined && payload.description !== null) {
-    jsonPayload.description = payload.description;
-  }
-  if (payload.image && typeof payload.image === 'string' && payload.image.trim() !== '') {
-    jsonPayload.image = payload.image;
-  }
-  if (payload.video && typeof payload.video === 'string' && payload.video.trim() !== '') {
-    jsonPayload.video = payload.video;
+  if (payload.imageFile) {
+    fd.append('image', payload.imageFile);
   }
 
-  return JSON.stringify(jsonPayload);
+  if (payload.videoFile) {
+    fd.append('video', payload.videoFile);
+  }
+
+  return fd;
 }
 
 export const listFeatures = async (params = ''): Promise<{ data: Feature[]; pagination?: any }> => {
@@ -154,11 +142,9 @@ export const getFeature = getFeatureDetails;
 export const createFeature = async (payload: FeatureFormData | any): Promise<any> => {
   const userId = await getCurrentUserId();
   const body = prepareFeaturePayload(payload);
-  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   const endpoint = userId ? `${BASE}/create/${userId}` : `${BASE}/create`;
   const res = await fetchWithAuth(endpoint, {
     method: 'POST',
-    headers: isForm ? undefined : { 'Content-Type': 'application/json' },
     body: body as any,
   });
   console.log(res, 'resres-create-features');
@@ -177,11 +163,9 @@ export const createFeature = async (payload: FeatureFormData | any): Promise<any
 export const updateFeature = async (id: string, payload: FeatureFormData | any): Promise<any> => {
   const userId = await getCurrentUserId();
   const body = prepareFeaturePayload(payload);
-  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   const endpoint = userId ? `${BASE}/update/${id}/${userId}` : `${BASE}/update/${id}`;
   const res = await fetchWithAuth(endpoint, {
     method: 'PATCH',
-    headers: isForm ? undefined : { 'Content-Type': 'application/json' },
     body: body as any,
   });
   if (

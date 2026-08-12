@@ -26,6 +26,7 @@ import {
   getSubscriptionAnalytics,
   getAIUsageStats,
   getWebsiteVisitorsCount,
+  getCustomerAvatarUrl,
   DashboardStats,
   RecentPost,
   TopUser,
@@ -49,19 +50,10 @@ import Svg, {
   LinearGradient as SvgLinearGradient,
   Stop,
   Circle,
-  Text as SvgText,
-  Rect,
-  G,
 } from 'react-native-svg';
 import CustomerDashboard from '../customerDashboard/CustomerDashboard';
 
 const { width: screenWidth } = Dimensions.get('window');
-
-const STATIC_POST_IMAGES = [
-  'https://images.unsplash.com/photo-1605276374104-edd2c0856643?w=300',
-  'https://images.unsplash.com/photo-1533928298208-27ff66555d8d?w=300',
-  'https://images.unsplash.com/photo-1519750157634-b6d493a0f77c?w=300',
-];
 
 function formatNumber(num: number | undefined | null): string {
   if (num === undefined || num === null) return '0';
@@ -121,370 +113,140 @@ function StatColumn({
 
 // ── Post Status Badge ─────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
-  const MAP: Record<string, { bg: string; color: string }> = {
-    published: { bg: '#eff6ff', color: '#2563eb' }, // soft blue
-    scheduled: { bg: '#f0fdf4', color: '#16a34a' }, // soft green matching screenshot
-    draft: { bg: '#fffbeb', color: '#d97706' }, // soft amber
-    partial_published: { bg: '#faf5ff', color: '#7c3aed' }, // soft purple
-    failed: { bg: '#fef2f2', color: '#dc2626' }, // soft red
+  const MAP: Record<string, { bg: string; color: string; border: string }> = {
+    published: { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
+    scheduled: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+    draft: { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+    partial_published: { bg: '#faf5ff', color: '#7c3aed', border: '#e9d5ff' },
+    partial: { bg: '#faf5ff', color: '#7c3aed', border: '#e9d5ff' },
+    failed: { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
   };
-  const meta = MAP[status] ?? { bg: '#f1f5f9', color: '#64748b' };
+  const key = (status || '').toLowerCase();
+  const meta = MAP[key] ?? { bg: '#f1f5f9', color: '#64748b', border: '#e2e8f0' };
   return (
-    <Box style={[styles.badge, { backgroundColor: meta.bg }]}>
+    <Box style={[styles.badge, { backgroundColor: meta.bg, borderColor: meta.border }]}>
       <Text style={[styles.badgeText, { color: meta.color }]}>{status.replace('_', ' ')}</Text>
     </Box>
   );
 }
 
-// ── Custom SVG Line Chart Component ──────────────────────────────────────────
-function EngagementChart({ totalReach }: { totalReach: number }) {
-  const chartWidth = screenWidth - 64;
-  const chartHeight = 130;
-
-  const paddingLeft = 32;
-  const paddingRight = 20;
-  const paddingTop = 25;
-  const paddingBottom = 20;
-
-  // Generate 7 days labels
-  const getPast7Days = () => {
-    const dates = [];
-    const months = [
-      'Oct',
-      'Nov',
-      'Dec',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-    ];
-    const d = new Date();
-    // Use fixed start month or dynamic
-    for (let i = 6; i >= 0; i--) {
-      const tempDate = new Date();
-      tempDate.setDate(d.getDate() - i);
-      dates.push(`${tempDate.getDate()} ${months[tempDate.getMonth()]}`);
-    }
-    return dates;
-  };
-  const dates = getPast7Days();
-
-  // Generate 7 values representing a nice growth curve ending at the totalReach
-  const multipliers = [0.35, 0.48, 0.4, 0.58, 0.5, 0.68, 1.0];
-  const dataValues = multipliers.map((m) => Math.round(m * totalReach));
-  const maxVal = Math.max(...dataValues) * 1.15 || 100;
-
-  // Compute points coordinates
-  const points = dataValues.map((val, idx) => {
-    const x = paddingLeft + (idx * (chartWidth - paddingLeft - paddingRight)) / 6;
-    const y =
-      chartHeight - paddingBottom - (val / maxVal) * (chartHeight - paddingTop - paddingBottom);
-    return { x, y, val };
-  });
-
-  // Build SVG path
-  let linePath = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length; i++) {
-    linePath += ` L ${points[i].x} ${points[i].y}`;
-  }
-
-  const fillPath = `${linePath} L ${points[points.length - 1].x} ${chartHeight - paddingBottom} L ${points[0].x} ${chartHeight - paddingBottom} Z`;
-
-  // Format Y-axis labels
-  const yLabels = [0, Math.round(maxVal * 0.45), Math.round(maxVal * 0.9)];
-
-  return (
-    <View style={{ height: chartHeight + 20, width: '100%', marginTop: 12 }}>
-      <Svg height={chartHeight} width={chartWidth}>
-        <Defs>
-          <SvgLinearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="#0b53f8" stopOpacity={0.2} />
-            <Stop offset="100%" stopColor="#0b53f8" stopOpacity={0.0} />
-          </SvgLinearGradient>
-        </Defs>
-
-        {/* Grid lines */}
-        {yLabels.map((val, i) => {
-          const y =
-            chartHeight -
-            paddingBottom -
-            (val / maxVal) * (chartHeight - paddingTop - paddingBottom);
-          return (
-            <Path
-              key={i}
-              d={`M ${paddingLeft} ${y} L ${chartWidth - paddingRight} ${y}`}
-              stroke="#f1f5f9"
-              strokeWidth={1}
-              strokeDasharray="4 4"
-            />
-          );
-        })}
-
-        {/* Y Axis text */}
-        {yLabels.map((val, i) => {
-          const y =
-            chartHeight -
-            paddingBottom -
-            (val / maxVal) * (chartHeight - paddingTop - paddingBottom);
-          return (
-            <SvgText
-              key={i}
-              x={paddingLeft - 8}
-              y={y + 3}
-              fill="#94a3b8"
-              fontSize={10}
-              fontWeight="600"
-              textAnchor="end"
-            >
-              {formatNumber(val)}
-            </SvgText>
-          );
-        })}
-
-        {/* Gradient Fill under Line */}
-        <Path d={fillPath} fill="url(#chartGrad)" />
-
-        {/* Stroke Line */}
-        <Path d={linePath} fill="none" stroke="#0b53f8" strokeWidth={2.5} />
-
-        {/* Vertex dots */}
-        {points.map((p, i) => (
-          <Circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={3.5}
-            fill="#0b53f8"
-            stroke="#ffffff"
-            strokeWidth={1.5}
-          />
-        ))}
-
-        {/* Tooltip for the peak (last point) */}
-        {(() => {
-          const last = points[points.length - 1];
-          const tooltipW = 44;
-          const tooltipH = 18;
-          const tooltipX = last.x - tooltipW / 2;
-          const tooltipY = last.y - tooltipH - 8;
-          return (
-            <G>
-              <Rect
-                x={tooltipX}
-                y={tooltipY}
-                width={tooltipW}
-                height={tooltipH}
-                rx={4}
-                fill="#0b53f8"
-              />
-              <Path
-                d={`M ${last.x - 4} ${tooltipY + tooltipH} L ${last.x} ${tooltipY + tooltipH + 4} L ${last.x + 4} ${tooltipY + tooltipH} Z`}
-                fill="#0b53f8"
-              />
-              <SvgText
-                x={last.x}
-                y={tooltipY + 12}
-                fill="#ffffff"
-                fontSize={9}
-                fontWeight="700"
-                textAnchor="middle"
-              >
-                {formatNumber(last.val)}
-              </SvgText>
-            </G>
-          );
-        })()}
-      </Svg>
-
-      {/* X Axis labels */}
-      <View
-        style={{
-          flexDirection: 'row',
-          width: chartWidth,
-          paddingLeft: paddingLeft,
-          paddingRight: paddingRight,
-          justifyContent: 'space-between',
-          marginTop: 4,
-        }}
-      >
-        {dates.map((d, i) => (
-          <Text
-            key={i}
-            style={{
-              fontSize: 10,
-              color: '#94a3b8',
-              fontWeight: '600',
-              width: (chartWidth - paddingLeft - paddingRight) / 7,
-              textAlign: 'center',
-            }}
-          >
-            {d}
-          </Text>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-// Helper to format date into 'DD MMM YYYY • HH:MM AM/PM'
+// Helper to format date into 'DD/MM/YYYY HH:MM'
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
 
-  const day = d.getDate();
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  const month = months[d.getMonth()];
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
 
-  let hours = d.getHours();
-  const minutes = d.getMinutes().toString().padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12;
-  const timeStr = `${hours}:${minutes} ${ampm}`;
-
-  return `${day} ${month} ${year} • ${timeStr}`;
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
 };
 
-// Render social media platform icons
-const renderPlatformIcons = (platform: string | string[]) => {
+// Render social media platform icons in rounded chip box matching panel
+const renderPlatformIconChips = (platform: string | string[]) => {
   const list = Array.isArray(platform) ? platform : platform ? [platform] : [];
+  if (list.length === 0) return <Text style={{ fontSize: 12, color: '#94a3b8' }}>—</Text>;
+
+  const getPlatformChip = (name: string, key: any) => {
+    const low = name.trim().toLowerCase();
+    let color = '#64748b';
+    let icon = <Feather name="share-2" size={13} color={color} />;
+
+    if (low.includes('facebook') || low === 'fb') {
+      color = '#1877F2';
+      icon = <FontAwesome name="facebook" size={13} color={color} />;
+    } else if (low.includes('instagram') || low === 'ig') {
+      color = '#E4405F';
+      icon = <AntDesign name="instagram" size={13} color={color} />;
+    } else if (low.includes('whatsapp') || low === 'wa') {
+      color = '#25D366';
+      icon = <FontAwesome name="whatsapp" size={13} color={color} />;
+    } else if (low.includes('twitter') || low === 'x' || low.includes('x.com')) {
+      color = '#000000';
+      icon = <FontAwesome6 name="x-twitter" size={12} color={color} />;
+    } else if (low.includes('linkedin') || low === 'in') {
+      color = '#0A66C2';
+      icon = <FontAwesome name="linkedin" size={13} color={color} />;
+    } else if (low.includes('youtube') || low === 'yt') {
+      color = '#FF0000';
+      icon = <FontAwesome name="youtube-play" size={13} color={color} />;
+    }
+
+    return (
+      <Box
+        key={key}
+        style={[styles.platformChip, { backgroundColor: `${color}15`, borderColor: `${color}30` }]}
+      >
+        {icon}
+      </Box>
+    );
+  };
+
   return (
-    <HStack space="xs" style={{ marginTop: 4, alignItems: 'center' }}>
-      {list.map((plat, idx) => {
-        const name = plat.trim().toLowerCase();
-        if (name.includes('facebook') || name === 'fb') {
-          return (
-            <FontAwesome
-              key={idx}
-              name="facebook-official"
-              size={16}
-              color="#1877F2"
-              style={{ marginRight: 6 }}
-            />
-          );
-        }
-        if (name.includes('instagram') || name === 'ig') {
-          return (
-            <AntDesign
-              key={idx}
-              name="instagram"
-              size={16}
-              color="#E4405F"
-              style={{ marginRight: 6 }}
-            />
-          );
-        }
-        if (name.includes('whatsapp') || name === 'wa') {
-          return (
-            <FontAwesome
-              key={idx}
-              name="whatsapp"
-              size={16}
-              color="#25D366"
-              style={{ marginRight: 6 }}
-            />
-          );
-        }
-        if (name.includes('twitter') || name === 'x' || name.includes('x.com')) {
-          return (
-            <FontAwesome6
-              key={idx}
-              name="x-twitter"
-              size={14}
-              color="#000000"
-              style={{ marginRight: 6 }}
-            />
-          );
-        }
-        if (name.includes('linkedin') || name === 'in') {
-          return (
-            <FontAwesome
-              key={idx}
-              name="linkedin"
-              size={16}
-              color="#0A66C2"
-              style={{ marginRight: 6 }}
-            />
-          );
-        }
-        if (name.includes('youtube') || name === 'yt') {
-          return (
-            <FontAwesome
-              key={idx}
-              name="youtube-play"
-              size={16}
-              color="#FF0000"
-              style={{ marginRight: 6 }}
-            />
-          );
-        }
-        return (
-          <Feather key={idx} name="share-2" size={14} color="#64748b" style={{ marginRight: 6 }} />
-        );
-      })}
+    <HStack space="xs" style={{ alignItems: 'center' }}>
+      {list.map((plat, idx) => getPlatformChip(plat, idx))}
     </HStack>
   );
 };
 
+// ── Contributor Avatar Component ──────────────────────────────────────────────
+function ContributorAvatar({ avatar, name }: { avatar?: string; name: string }) {
+  const [imageError, setImageError] = useState(false);
+  const avatarUrl = avatar ? getCustomerAvatarUrl(avatar) : '';
+  const initial = (name || 'U').charAt(0).toUpperCase();
+
+  if (avatarUrl && !imageError) {
+    return (
+      <Image
+        source={{ uri: avatarUrl }}
+        style={styles.contributorAvatarImage}
+        onError={() => setImageError(true)}
+      />
+    );
+  }
+
+  return (
+    <Box style={styles.avatarCircle}>
+      <Text style={styles.avatarInitial}>{initial}</Text>
+    </Box>
+  );
+}
+
 // ── Recent Posts Table Columns ─────────────────────────────────────────
-const RECENT_POST_COLUMNS: HtmlTableColumn<RecentPost>[] = [
+const getRecentPostColumns = (): HtmlTableColumn<RecentPost>[] => [
   {
     key: 'title',
     label: 'Title',
-    width: '310px',
+    width: '200px',
     render: (v, row) => {
       const titleText = v || row.title || 'Untitled Post';
-      const formattedDate = row.date
-        ? new Date(row.date)
-            .toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            })
-            .replace(',', '')
-        : '—';
+      const formattedDate = formatDate(row.date);
       return (
-        <VStack style={{ justifyContent: 'center' }}>
+        <TouchableOpacity
+          onPress={() => router.push('/pages/posts/posts')}
+          activeOpacity={0.7}
+          style={{ justifyContent: 'center' }}
+        >
           <Text
             style={{ fontSize: 13, fontWeight: '600', color: '#1e293b', lineHeight: 18 }}
-            numberOfLines={1}
+            numberOfLines={2}
           >
             {titleText}
           </Text>
-          <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{formattedDate}</Text>
-        </VStack>
+          <Text style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>{formattedDate}</Text>
+        </TouchableOpacity>
       );
     },
   },
   {
     key: 'author',
     label: 'Author',
-    width: '150px',
+    width: '110px',
     render: (v) => (
-      <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '500' }} numberOfLines={1}>
+      <Text style={{ fontSize: 12, color: '#64748b', fontWeight: '500' }} numberOfLines={1}>
         {v || '—'}
       </Text>
     ),
@@ -492,23 +254,27 @@ const RECENT_POST_COLUMNS: HtmlTableColumn<RecentPost>[] = [
   {
     key: 'platform',
     label: 'Platform',
-    width: '150px',
-    render: (v) => {
-      const list = Array.isArray(v) ? v : v ? [v] : [];
-      if (list.length === 0) return <Text style={{ fontSize: 12, color: '#94a3b8' }}>—</Text>;
-      return renderPlatformIcons(list);
-    },
+    width: '40px',
+    render: (v) => renderPlatformIconChips(v),
   },
   {
     key: 'status',
     label: 'Status',
-    width: '140px',
+    width: '40px',
     render: (v) => <StatusBadge status={v} />,
   },
 ];
 
 // ── 1. AI Usage Analytics Section Component ──────────────────────────────────────
-function AIUsageSection({ data }: { data: AIUsageStats | null }) {
+function AIUsageSection({
+  data,
+  onRefresh,
+  refreshing,
+}: {
+  data: AIUsageStats | null;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+}) {
   if (!data) return null;
 
   const typeEntries = data.usageByType ? Object.entries(data.usageByType) : [];
@@ -516,13 +282,29 @@ function AIUsageSection({ data }: { data: AIUsageStats | null }) {
 
   return (
     <Box style={styles.cardWrapper}>
-      <HStack style={{ alignItems: 'center', marginBottom: 14 }}>
-        <Box style={[styles.sectionIconBg, { backgroundColor: '#f3e8ff' }]}>
-          <MaterialCommunityIcons name="auto-fix" size={18} color="#8b5cf6" />
-        </Box>
-        <Heading size="md" style={styles.sectionTitleNoMargin}>
-          AI Usage Analytics
-        </Heading>
+      <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <HStack space="xs" style={{ alignItems: 'center' }}>
+          <Box style={[styles.sectionIconBg, { backgroundColor: '#f3e8ff' }]}>
+            <MaterialCommunityIcons name="auto-fix" size={18} color="#8b5cf6" />
+          </Box>
+          <Heading size="md" style={styles.sectionTitleNoMargin}>
+            AI Usage Analytics
+          </Heading>
+        </HStack>
+        {onRefresh && (
+          <TouchableOpacity
+            onPress={onRefresh}
+            activeOpacity={0.7}
+            disabled={refreshing}
+            style={styles.refreshIconBtn}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color="#0b53f8" />
+            ) : (
+              <Feather name="rotate-cw" size={13} color="#64748b" />
+            )}
+          </TouchableOpacity>
+        )}
       </HStack>
 
       {/* Top 3 Stats: Total, Monthly, Daily */}
@@ -572,184 +354,206 @@ function AIUsageSection({ data }: { data: AIUsageStats | null }) {
 }
 
 // ── 2. Top Contributors Section Component ──────────────────────────────────────
-function TopContributorsSection({ users }: { users: TopUser[] }) {
-  if (!users || users.length === 0) return null;
-
+function TopContributorsSection({
+  users,
+  onRefresh,
+  refreshing,
+}: {
+  users: TopUser[];
+  onRefresh?: () => void;
+  refreshing?: boolean;
+}) {
   return (
     <Box style={styles.sectionMargin}>
-      <HStack style={{ alignItems: 'center', marginBottom: 12 }}>
-        <Box style={[styles.sectionIconBg, { backgroundColor: '#e0f2fe', marginRight: 10 }]}>
-          <Feather name="award" size={18} color="#0284c7" />
-        </Box>
-        <Heading size="md" style={styles.sectionTitleNoMargin}>
-          Top Contributors
-        </Heading>
+      <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <HStack space="xs" style={{ alignItems: 'center' }}>
+          <Box style={[styles.sectionIconBg, { backgroundColor: '#e0f2fe' }]}>
+            <Feather name="award" size={18} color="#0284c7" />
+          </Box>
+          <Heading size="md" style={styles.sectionTitleNoMargin}>
+            Top Contributors
+          </Heading>
+        </HStack>
+        {onRefresh && (
+          <TouchableOpacity
+            onPress={onRefresh}
+            activeOpacity={0.7}
+            disabled={refreshing}
+            style={styles.refreshIconBtn}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color="#0b53f8" />
+            ) : (
+              <Feather name="rotate-cw" size={13} color="#64748b" />
+            )}
+          </TouchableOpacity>
+        )}
       </HStack>
 
-      <VStack space="sm">
-        {users
-          .filter((u) => u.id)
-          .map((u) => {
-            const fbCount = u.socialMedia?.facebook?.length || 0;
-            const igCount = u.socialMedia?.instagram?.length || 0;
-            const waCount = u.socialMedia?.whatsapp?.length || 0;
-            const totalSocial = fbCount + igCount + waCount;
+      {users.length === 0 ? (
+        <Box style={[styles.cardWrapper, styles.emptyContainer]}>
+          <Feather name="award" size={28} color="#cbd5e1" style={{ marginBottom: 8 }} />
+          <Text style={styles.emptyText}>No contributors found</Text>
+        </Box>
+      ) : (
+        <VStack space="sm">
+          {users
+            .filter((u) => u.id)
+            .map((u) => {
+              const fbCount = u.socialMedia?.facebook?.length || 0;
+              const igCount = u.socialMedia?.instagram?.length || 0;
+              const waCount = u.socialMedia?.whatsapp?.length || 0;
+              const totalSocial = fbCount + igCount + waCount;
 
-            const platformStats = [
-              { name: 'Facebook', count: fbCount, color: '#1877F2' },
-              { name: 'Instagram', count: igCount, color: '#E4405F' },
-              { name: 'WhatsApp', count: waCount, color: '#25D366' },
-            ];
+              const platformStats = [
+                { name: 'Facebook', count: fbCount, color: '#1877F2' },
+                { name: 'Instagram', count: igCount, color: '#E4405F' },
+                { name: 'WhatsApp', count: waCount, color: '#25D366' },
+              ];
 
-            const mostActive = platformStats.reduce((max, p) => (p.count > max.count ? p : max), {
-              name: 'None',
-              count: 0,
-              color: '#64748b',
-            });
+              const mostActive = platformStats.reduce((max, p) => (p.count > max.count ? p : max), {
+                name: 'None',
+                count: 0,
+                color: '#64748b',
+              });
 
-            const displayName = u.name?.trim() || u.email || 'User';
+              const displayName = u.name?.trim() || u.email || 'Unknown User';
 
-            return (
-              <Box key={u.id} style={styles.contributorCard}>
-                {/* Header row: Avatar, Name/Company, Engagement %, Most Active badge */}
-                <HStack style={{ alignItems: 'center', marginBottom: 8 }}>
-                  <Box style={styles.avatarCircle}>
-                    <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
-                  </Box>
+              return (
+                <Box key={u.id} style={styles.contributorCard}>
+                  {/* Header row: Avatar, Name/Company, Engagement %, Most Active badge */}
+                  <HStack style={{ alignItems: 'center', marginBottom: 10 }}>
+                    <ContributorAvatar avatar={u.avatar} name={displayName} />
 
-                  <VStack style={{ flex: 1, marginLeft: 10, marginRight: 6 }}>
-                    <Text style={styles.userNameText} numberOfLines={1}>
-                      {displayName}
-                    </Text>
-                    {u.companyName && (
-                      <Text style={styles.userSubText} numberOfLines={1}>
-                        {u.companyName}
+                    <VStack style={{ flex: 1, marginLeft: 10, marginRight: 6 }}>
+                      <Text style={styles.userNameText} numberOfLines={1}>
+                        {displayName}
                       </Text>
+                      {u.companyName ? (
+                        <Text style={styles.userSubText} numberOfLines={1}>
+                          {u.companyName}
+                        </Text>
+                      ) : null}
+                    </VStack>
+
+                    {u.engagement != null && (
+                      <Box style={styles.engagementBadge}>
+                        <Text style={styles.engagementBadgeText}>{u.engagement}%</Text>
+                      </Box>
                     )}
-                  </VStack>
 
-                  {u.engagement != null && (
-                    <Box style={styles.engagementBadge}>
-                      <Text style={styles.engagementBadgeText}>{u.engagement}%</Text>
-                    </Box>
-                  )}
-
-                  {mostActive.count > 0 && (
                     <Box
                       style={[
                         styles.mostActiveBadge,
                         {
-                          backgroundColor: `${mostActive.color}15`,
-                          borderColor: `${mostActive.color}30`,
+                          backgroundColor:
+                            mostActive.count > 0 ? `${mostActive.color}15` : '#f1f5f9',
+                          borderColor: mostActive.count > 0 ? `${mostActive.color}30` : '#e2e8f0',
                         },
                       ]}
                     >
-                      <Text style={[styles.mostActiveBadgeText, { color: mostActive.color }]}>
-                        {mostActive.name}
+                      <Text
+                        style={[
+                          styles.mostActiveBadgeText,
+                          { color: mostActive.count > 0 ? mostActive.color : '#64748b' },
+                        ]}
+                      >
+                        {mostActive.count > 0 ? `Most: ${mostActive.name}` : 'No activity'}
                       </Text>
                     </Box>
-                  )}
-                </HStack>
+                  </HStack>
 
-                {/* Row 2: Connected Accounts & Posts stats */}
-                <HStack space="xs" style={{ flexWrap: 'wrap', marginBottom: 8 }}>
-                  <Box style={styles.infoPill}>
-                    <Feather
-                      name="file-text"
-                      size={10}
-                      color="#64748b"
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={styles.infoPillText}>{u.totalPosts ?? 0} posts</Text>
-                  </Box>
-                  <Box style={styles.infoPill}>
-                    <Feather name="users" size={10} color="#64748b" style={{ marginRight: 4 }} />
-                    <Text style={styles.infoPillText}>{totalSocial} accounts</Text>
-                  </Box>
-                  {fbCount > 0 && (
+                  {/* Row 2: Connected Accounts & Posts stats */}
+                  <HStack space="xs" style={{ flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                    <Box style={styles.infoPill}>
+                      <Feather
+                        name="file-text"
+                        size={11}
+                        color="#64748b"
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={styles.infoPillText}>{u.totalPosts ?? 0} posts</Text>
+                    </Box>
+                    <Box style={styles.infoPill}>
+                      <Feather name="users" size={11} color="#64748b" style={{ marginRight: 4 }} />
+                      <Text style={styles.infoPillText}>{totalSocial} accounts</Text>
+                    </Box>
+                  </HStack>
+
+                  {/* Row 3: Platform accounts breakdown */}
+                  <HStack space="xs" style={{ flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                     <Box style={styles.infoPill}>
                       <FontAwesome
                         name="facebook"
-                        size={10}
+                        size={11}
                         color="#1877F2"
                         style={{ marginRight: 4 }}
                       />
-                      <Text style={styles.infoPillText}>{fbCount}</Text>
+                      <Text style={styles.infoPillText}>{fbCount} Facebook</Text>
                     </Box>
-                  )}
-                  {igCount > 0 && (
                     <Box style={styles.infoPill}>
                       <AntDesign
                         name="instagram"
-                        size={10}
+                        size={11}
                         color="#E4405F"
                         style={{ marginRight: 4 }}
                       />
-                      <Text style={styles.infoPillText}>{igCount}</Text>
+                      <Text style={styles.infoPillText}>{igCount} Instagram</Text>
                     </Box>
-                  )}
-                  {waCount > 0 && (
                     <Box style={styles.infoPill}>
                       <FontAwesome
                         name="whatsapp"
-                        size={10}
+                        size={11}
                         color="#25D366"
                         style={{ marginRight: 4 }}
                       />
-                      <Text style={styles.infoPillText}>{waCount}</Text>
+                      <Text style={styles.infoPillText}>{waCount} WhatsApp</Text>
                     </Box>
+                  </HStack>
+
+                  {/* Row 4: Status grid */}
+                  <HStack style={styles.contributorStatusGrid}>
+                    <View style={[styles.statusBox, { backgroundColor: 'rgba(22,163,74,0.09)' }]}>
+                      <Text style={[styles.statusBoxLabel, { color: '#15803d' }]}>Published</Text>
+                      <Text style={[styles.statusBoxVal, { color: '#15803d' }]}>
+                        {u.publishedPosts ?? 0}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBox, { backgroundColor: 'rgba(217,119,6,0.09)' }]}>
+                      <Text style={[styles.statusBoxLabel, { color: '#b45309' }]}>Scheduled</Text>
+                      <Text style={[styles.statusBoxVal, { color: '#b45309' }]}>
+                        {u.scheduledPosts ?? 0}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBox, { backgroundColor: 'rgba(99,102,241,0.09)' }]}>
+                      <Text style={[styles.statusBoxLabel, { color: '#4338ca' }]}>Draft</Text>
+                      <Text style={[styles.statusBoxVal, { color: '#4338ca' }]}>
+                        {u.draftPosts ?? 0}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBox, { backgroundColor: 'rgba(20,184,166,0.09)' }]}>
+                      <Text style={[styles.statusBoxLabel, { color: '#0f766e' }]}>Partial</Text>
+                      <Text style={[styles.statusBoxVal, { color: '#0f766e' }]}>
+                        {u.partialPosts ?? 0}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBox, { backgroundColor: 'rgba(239,68,68,0.09)' }]}>
+                      <Text style={[styles.statusBoxLabel, { color: '#b91c1c' }]}>Failed</Text>
+                      <Text style={[styles.statusBoxVal, { color: '#b91c1c' }]}>
+                        {u.failedPosts ?? 0}
+                      </Text>
+                    </View>
+                  </HStack>
+
+                  {/* Progress bar */}
+                  {u.engagement != null && (
+                    <MiniProgressBar value={u.engagement} max={100} color="#16a34a" />
                   )}
-                </HStack>
-
-                {/* Status grid */}
-                <HStack
-                  style={{
-                    justifyContent: 'space-between',
-                    backgroundColor: '#f8fafc',
-                    padding: 6,
-                    borderRadius: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <View style={styles.statusColItem}>
-                    <Text style={styles.statusColLabel}>Pub</Text>
-                    <Text style={[styles.statusColVal, { color: '#16a34a' }]}>
-                      {u.publishedPosts ?? 0}
-                    </Text>
-                  </View>
-                  <View style={styles.statusColItem}>
-                    <Text style={styles.statusColLabel}>Sched</Text>
-                    <Text style={[styles.statusColVal, { color: '#d97706' }]}>
-                      {u.scheduledPosts ?? 0}
-                    </Text>
-                  </View>
-                  <View style={styles.statusColItem}>
-                    <Text style={styles.statusColLabel}>Draft</Text>
-                    <Text style={[styles.statusColVal, { color: '#4338ca' }]}>
-                      {u.draftPosts ?? 0}
-                    </Text>
-                  </View>
-                  <View style={styles.statusColItem}>
-                    <Text style={styles.statusColLabel}>Partial</Text>
-                    <Text style={[styles.statusColVal, { color: '#0f766e' }]}>
-                      {u.partialPosts ?? 0}
-                    </Text>
-                  </View>
-                  <View style={styles.statusColItem}>
-                    <Text style={styles.statusColLabel}>Failed</Text>
-                    <Text style={[styles.statusColVal, { color: '#dc2626' }]}>
-                      {u.failedPosts ?? 0}
-                    </Text>
-                  </View>
-                </HStack>
-
-                {u.engagement != null && (
-                  <MiniProgressBar value={u.engagement} max={100} color="#16a34a" />
-                )}
-              </Box>
-            );
-          })}
-      </VStack>
+                </Box>
+              );
+            })}
+        </VStack>
+      )}
     </Box>
   );
 }
@@ -758,11 +562,14 @@ function TopContributorsSection({ users }: { users: TopUser[] }) {
 function SubscriptionAnalyticsSection({
   data,
   onRefresh,
+  refreshing,
 }: {
   data: SubscriptionAnalytics | null;
   onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
+  const [selectedTab, setSelectedTab] = useState<number>(0);
 
   if (!data) return null;
 
@@ -805,132 +612,376 @@ function SubscriptionAnalyticsSection({
 
   return (
     <Box style={styles.cardWrapper}>
-      {/* Header with Title, Refresh Icon, and Monthly/Annual Toggle */}
-      <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <HStack style={{ alignItems: 'center', flex: 1 }}>
-          <Box style={[styles.sectionIconBg, { backgroundColor: '#fef3c7' }]}>
-            <Feather name="credit-card" size={18} color="#d97706" />
-          </Box>
-          <Heading size="md" style={styles.sectionTitleNoMargin}>
-            Subscription Analytics
-          </Heading>
-          {onRefresh && (
-            <TouchableOpacity onPress={onRefresh} activeOpacity={0.7} style={styles.refreshIconBtn}>
-              <Feather name="rotate-cw" size={13} color="#64748b" />
-            </TouchableOpacity>
-          )}
-        </HStack>
+      {/* Header with Title, Refresh Icon, and Monthly/Annual Toggle in clean alignment */}
+      <Box style={{ marginBottom: 16 }}>
+        <HStack
+          style={{
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 10,
+          }}
+        >
+          <HStack
+            space="xs"
+            style={{ justifyContent: 'space-between', alignItems: 'center', width: '100%' }}
+          >
+            <HStack space="xs" style={{ alignItems: 'center' }}>
+              <Box style={[styles.sectionIconBg, { backgroundColor: '#fef3c7' }]}>
+                <Feather name="credit-card" size={18} color="#d97706" />
+              </Box>
+              <Heading size="md" style={styles.sectionTitleNoMargin}>
+                Subscription Analytics
+              </Heading>
+            </HStack>
+            {onRefresh && (
+              <TouchableOpacity
+                onPress={onRefresh}
+                activeOpacity={0.7}
+                disabled={refreshing}
+                style={styles.refreshIconBtn}
+              >
+                {refreshing ? (
+                  <ActivityIndicator size="small" color="#0b53f8" />
+                ) : (
+                  <Feather name="rotate-cw" size={13} color="#64748b" />
+                )}
+              </TouchableOpacity>
+            )}
+          </HStack>
 
-        {/* Toggle Group */}
-        <HStack style={styles.toggleGroupContainer}>
-          <TouchableOpacity
-            onPress={() => setBilling('monthly')}
-            style={[styles.toggleBtn, billing === 'monthly' && styles.toggleBtnActive]}
-          >
-            <Text
-              style={[styles.toggleBtnText, billing === 'monthly' && styles.toggleBtnTextActive]}
+          {/* Toggle Group */}
+          <HStack style={styles.toggleGroupContainer}>
+            <TouchableOpacity
+              onPress={() => setBilling('monthly')}
+              style={[styles.toggleBtn, billing === 'monthly' && styles.toggleBtnActive]}
             >
-              Monthly
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setBilling('annual')}
-            style={[styles.toggleBtn, billing === 'annual' && styles.toggleBtnActive]}
-          >
-            <Text
-              style={[styles.toggleBtnText, billing === 'annual' && styles.toggleBtnTextActive]}
+              <Text
+                style={[styles.toggleBtnText, billing === 'monthly' && styles.toggleBtnTextActive]}
+              >
+                Monthly
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setBilling('annual')}
+              style={[styles.toggleBtn, billing === 'annual' && styles.toggleBtnActive]}
             >
-              Annual
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[styles.toggleBtnText, billing === 'annual' && styles.toggleBtnTextActive]}
+              >
+                Annual
+              </Text>
+            </TouchableOpacity>
+          </HStack>
         </HStack>
-      </HStack>
+      </Box>
 
       {/* Summary Cards */}
-      <HStack style={{ justifyContent: 'space-between', marginBottom: 16 }}>
+      <HStack style={{ justifyContent: 'space-between', marginBottom: 16, gap: 8 }}>
         <Box style={styles.subSummaryCard}>
-          <Text style={styles.subSummaryLabel}>Subscribers</Text>
-          <Text style={styles.subSummaryVal}>{totalSubscribers}</Text>
+          <HStack
+            style={{
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              marginBottom: 6,
+            }}
+          >
+            <Text style={styles.subSummaryLabel} numberOfLines={1}>
+              Subscribers
+            </Text>
+            <Box style={[styles.subSummaryIconBg, { backgroundColor: 'rgba(59,130,246,0.1)' }]}>
+              <Feather name="users" size={12} color="#3b82f6" />
+            </Box>
+          </HStack>
+          <Text style={[styles.subSummaryVal, { color: '#1e293b' }]}>{totalSubscribers}</Text>
         </Box>
+
         <Box style={styles.subSummaryCard}>
-          <Text style={styles.subSummaryLabel}>
-            {billing === 'monthly' ? 'Monthly Rev' : 'Annual Rev'}
+          <HStack
+            style={{
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              marginBottom: 6,
+            }}
+          >
+            <Text style={styles.subSummaryLabel} numberOfLines={1}>
+              {billing === 'monthly' ? 'Monthly Rev' : 'Annual Rev'}
+            </Text>
+            <Box style={[styles.subSummaryIconBg, { backgroundColor: 'rgba(16,185,129,0.1)' }]}>
+              <Feather name="dollar-sign" size={12} color="#10b981" />
+            </Box>
+          </HStack>
+          <Text style={[styles.subSummaryVal, { color: '#10b981' }]}>
+            {formatRevenue(totalRev)}
           </Text>
-          <Text style={styles.subSummaryVal}>{formatRevenue(totalRev)}</Text>
         </Box>
+
         <Box style={styles.subSummaryCard}>
-          <Text style={styles.subSummaryLabel}>Active Plans</Text>
-          <Text style={styles.subSummaryVal}>{activePlansCount}</Text>
+          <HStack
+            style={{
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              marginBottom: 6,
+            }}
+          >
+            <Text style={styles.subSummaryLabel} numberOfLines={1}>
+              Active Plans
+            </Text>
+            <Box style={[styles.subSummaryIconBg, { backgroundColor: 'rgba(139,92,246,0.1)' }]}>
+              <Feather name="credit-card" size={12} color="#8b5cf6" />
+            </Box>
+          </HStack>
+          <Text style={[styles.subSummaryVal, { color: '#8b5cf6' }]}>{activePlansCount}</Text>
         </Box>
       </HStack>
 
-      {/* Subscription Plan Distribution */}
-      {plans.length > 0 && (
-        <VStack space="xs" style={{ marginBottom: 16 }}>
-          <Text style={styles.subHeaderCaption}>PLAN DISTRIBUTION</Text>
-          {plans.map((p, idx) => {
-            const color = PLAN_COLORS[idx % PLAN_COLORS.length];
-            return (
-              <VStack key={p.name + idx} space="xs" style={{ marginBottom: 10 }}>
-                <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.planNameText} numberOfLines={1}>
-                    {p.name}
-                  </Text>
-                  <HStack space="xs" style={{ alignItems: 'center' }}>
-                    <Text style={styles.planCountText}>{p.count} users</Text>
-                    <Box
-                      style={[
-                        styles.revBadge,
-                        { backgroundColor: `${color}15`, borderColor: `${color}30` },
-                      ]}
-                    >
-                      <Text style={[styles.revBadgeText, { color }]}>
-                        {formatRevenue(p.revenue)}
-                      </Text>
-                    </Box>
-                  </HStack>
-                </HStack>
-                <MiniProgressBar value={p.count} max={maxCount} color={color} />
-              </VStack>
-            );
-          })}
-        </VStack>
-      )}
+      {/* Sub Tabs Selector */}
+      <HStack style={styles.subTabContainer}>
+        {['Plans', 'Status', 'Details'].map((t, idx) => (
+          <TouchableOpacity
+            key={t}
+            onPress={() => setSelectedTab(idx)}
+            style={[styles.subTabBtn, selectedTab === idx && styles.subTabBtnActive]}
+          >
+            <Text style={[styles.subTabBtnText, selectedTab === idx && styles.subTabBtnTextActive]}>
+              {t}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </HStack>
 
-      {/* Customer Subscription Status */}
-      {statusEntries.length > 0 && (
+      {/* Tab 0: Subscription Plan Distribution */}
+      {selectedTab === 0 && (
         <VStack space="xs">
-          <Text style={styles.subHeaderCaption}>CUSTOMER SUBSCRIPTION STATUS</Text>
-          <HStack style={{ flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-            {statusEntries.map((item, idx) => (
-              <Box key={item.name + idx} style={styles.statusPill}>
-                <Text style={styles.statusPillTitle}>{item.name}</Text>
-                <HStack space="xs" style={{ alignItems: 'center', marginTop: 2 }}>
-                  <Text style={styles.statusPillCount}>{item.count} subs</Text>
-                  <Text style={styles.statusPillRev}>({formatRevenue(item.revenue)})</Text>
-                </HStack>
-              </Box>
-            ))}
-          </HStack>
+          {plans.length > 0 ? (
+            plans.map((p, idx) => {
+              const color = PLAN_COLORS[idx % PLAN_COLORS.length];
+              return (
+                <VStack key={p.name + idx} space="xs" style={{ marginBottom: 12 }}>
+                  <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.planNameText} numberOfLines={1}>
+                      {p.name}
+                    </Text>
+                    <HStack space="xs" style={{ alignItems: 'center' }}>
+                      <Text style={styles.planCountText}>{p.count} users</Text>
+                      <Box
+                        style={[
+                          styles.revBadge,
+                          { backgroundColor: `${color}15`, borderColor: `${color}30` },
+                        ]}
+                      >
+                        <Text style={[styles.revBadgeText, { color }]}>
+                          {formatRevenue(p.revenue)}
+                        </Text>
+                      </Box>
+                    </HStack>
+                  </HStack>
+                  <MiniProgressBar value={p.count} max={maxCount} color={color} />
+                </VStack>
+              );
+            })
+          ) : (
+            <Text style={styles.emptyText}>No plan data available</Text>
+          )}
         </VStack>
       )}
 
-      {plans.length === 0 && statusEntries.length === 0 && (
-        <Box style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No subscription data available</Text>
-        </Box>
+      {/* Tab 1: Customer Subscription Status */}
+      {selectedTab === 1 && (
+        <VStack space="xs">
+          {statusEntries.length > 0 ? (
+            <HStack style={{ flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+              {statusEntries.map((item, idx) => (
+                <Box key={item.name + idx} style={styles.statusPill}>
+                  <Text style={styles.statusPillTitle}>{item.name}</Text>
+                  <HStack space="xs" style={{ alignItems: 'center', marginTop: 2 }}>
+                    <Text style={styles.statusPillCount}>{item.count} subs</Text>
+                    <Text style={styles.statusPillRev}>({formatRevenue(item.revenue)})</Text>
+                  </HStack>
+                </Box>
+              ))}
+            </HStack>
+          ) : (
+            <Text style={styles.emptyText}>No subscription status data available</Text>
+          )}
+        </VStack>
+      )}
+
+      {/* Tab 2: Plans Detail Breakdown */}
+      {selectedTab === 2 && (
+        <VStack space="xs">
+          {plans.length > 0 ? (
+            plans.map((p, idx) => {
+              const color = PLAN_COLORS[idx % PLAN_COLORS.length];
+              const pct = totalSubscribers ? (p.count / totalSubscribers) * 100 : 0;
+              return (
+                <VStack key={p.name + idx} space="xs" style={{ marginBottom: 12 }}>
+                  <HStack style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <Text style={styles.planNameText} numberOfLines={1}>
+                      {p.name}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#64748b', fontWeight: '600' }}>
+                      {p.count} ({pct.toFixed(1)}%)
+                    </Text>
+                  </HStack>
+                  <MiniProgressBar value={pct} max={100} color={color} />
+                  <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                    Revenue: {formatRevenue(p.revenue)}
+                  </Text>
+                </VStack>
+              );
+            })
+          ) : (
+            <Text style={styles.emptyText}>No plan details available</Text>
+          )}
+        </VStack>
       )}
     </Box>
   );
 }
 
-// ── 4. Website Visitors Section Component ──────────────────────────────────────
+// ── 4. Platform Performance Section Component ──────────────────────────────────
+function PlatformPerformanceSection({
+  platforms,
+  onRefresh,
+  refreshing,
+}: {
+  platforms: PlatformAnalytics[];
+  onRefresh?: () => void;
+  refreshing?: boolean;
+}) {
+  return (
+    <Box style={styles.sectionMargin}>
+      <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <HStack space="xs" style={{ alignItems: 'center' }}>
+          <Box style={[styles.sectionIconBg, { backgroundColor: '#eff6ff' }]}>
+            <Feather name="monitor" size={18} color="#0b53f8" />
+          </Box>
+          <Heading size="md" style={styles.sectionTitleNoMargin}>
+            Platform Performance
+          </Heading>
+        </HStack>
+        {onRefresh && (
+          <TouchableOpacity
+            onPress={onRefresh}
+            activeOpacity={0.7}
+            disabled={refreshing}
+            style={styles.refreshIconBtn}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color="#0b53f8" />
+            ) : (
+              <Feather name="rotate-cw" size={13} color="#64748b" />
+            )}
+          </TouchableOpacity>
+        )}
+      </HStack>
+
+      {platforms.length === 0 ? (
+        <Box style={[styles.cardWrapper, styles.emptyContainer]}>
+          <Feather name="monitor" size={28} color="#cbd5e1" style={{ marginBottom: 8 }} />
+          <Text style={styles.emptyText}>No platform performance data available</Text>
+        </Box>
+      ) : (
+        <VStack space="sm">
+          {platforms.map((p) => {
+            const name = p.platform.toLowerCase();
+            let color = '#0b53f8';
+            if (name.includes('facebook') || name === 'fb') color = '#1877F2';
+            else if (name.includes('instagram') || name === 'ig') color = '#E4405F';
+            else if (name.includes('whatsapp') || name === 'wa') color = '#25D366';
+            else if (name.includes('youtube') || name === 'yt') color = '#FF0000';
+            else if (name.includes('twitter') || name === 'x') color = '#000000';
+            else if (name.includes('linkedin') || name === 'in') color = '#0A66C2';
+
+            const success = Math.round(p.successRate ?? 0);
+            const rateBadgeBg = success >= 80 ? '#f0fdf4' : success >= 60 ? '#fffbeb' : '#fef2f2';
+            const rateBadgeColor =
+              success >= 80 ? '#16a34a' : success >= 60 ? '#d97706' : '#dc2626';
+            const rateBadgeBorder =
+              success >= 80 ? '#bbf7d0' : success >= 60 ? '#fde68a' : '#fecaca';
+
+            return (
+              <Box key={p.platform} style={styles.platformCard}>
+                <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <HStack space="xs" style={{ alignItems: 'center' }}>
+                    <Box
+                      style={[
+                        styles.platformIconBox,
+                        { backgroundColor: `${color}15`, borderColor: `${color}30` },
+                      ]}
+                    >
+                      <Text style={[styles.platformIconText, { color }]} numberOfLines={1}>
+                        {p.platform.slice(0, 2).toUpperCase()}
+                      </Text>
+                    </Box>
+                    <VStack style={{ marginLeft: 8 }}>
+                      <Text style={styles.platformNameText}>{p.platform}</Text>
+                      <Text style={styles.platformSubText}>
+                        {p.uniqueUsers} users · {p.totalPosts} posts
+                      </Text>
+                    </VStack>
+                  </HStack>
+
+                  <Box
+                    style={[
+                      styles.successRatePill,
+                      { backgroundColor: rateBadgeBg, borderColor: rateBadgeBorder },
+                    ]}
+                  >
+                    <Text style={[styles.successRatePillText, { color: rateBadgeColor }]}>
+                      {success}%
+                    </Text>
+                  </Box>
+                </HStack>
+
+                <Box style={styles.progressBg}>
+                  <Box
+                    style={[
+                      styles.progressFill,
+                      {
+                        backgroundColor: color,
+                        width: `${Math.min(100, success)}%` as any,
+                      },
+                    ]}
+                  />
+                </Box>
+
+                <HStack style={styles.platformDetailsRow}>
+                  <Text style={styles.platformDetailsText}>
+                    <Text style={{ color: '#16a34a', fontWeight: '700' }}>
+                      {p.postedPosts ?? 0}
+                    </Text>{' '}
+                    published
+                  </Text>
+                  <Text style={styles.platformDetailsText}>
+                    <Text style={{ color: '#0b53f8', fontWeight: '700' }}>
+                      {p.scheduledPosts ?? 0}
+                    </Text>{' '}
+                    scheduled
+                  </Text>
+                </HStack>
+              </Box>
+            );
+          })}
+        </VStack>
+      )}
+    </Box>
+  );
+}
+
+// ── 5. Website Visitors Section Component ──────────────────────────────────────
 function WebsiteVisitorsSection({
   data: propData,
   onRefresh: parentRefresh,
+  refreshing,
 }: {
   data?: WebsiteVisitorDay[];
   onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   const [data, setData] = useState<WebsiteVisitorDay[]>(propData ?? []);
 
@@ -1062,18 +1113,14 @@ function WebsiteVisitorsSection({
           <TouchableOpacity
             onPress={onRefresh}
             activeOpacity={0.7}
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 8,
-              backgroundColor: '#f1f5f9',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: '#e2e8f0',
-            }}
+            disabled={refreshing}
+            style={styles.refreshIconBtn}
           >
-            <Feather name="rotate-cw" size={13} color="#64748b" />
+            {refreshing ? (
+              <ActivityIndicator size="small" color="#0b53f8" />
+            ) : (
+              <Feather name="rotate-cw" size={13} color="#64748b" />
+            )}
           </TouchableOpacity>
         )}
       </HStack>
@@ -1174,6 +1221,15 @@ export default function DashboardScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Per-section refreshing indicators
+  const [refreshingAI, setRefreshingAI] = useState(false);
+  const [refreshingPosts, setRefreshingPosts] = useState(false);
+  const [refreshingUsers, setRefreshingUsers] = useState(false);
+  const [refreshingPlatforms, setRefreshingPlatforms] = useState(false);
+  const [refreshingSubs, setRefreshingSubs] = useState(false);
+  const [refreshingVisitors, setRefreshingVisitors] = useState(false);
+
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentPosts, setRecentPosts] = useState<RecentPost[]>([]);
   const [topUsers, setTopUsers] = useState<TopUser[]>([]);
@@ -1192,8 +1248,8 @@ export default function DashboardScreen() {
       const params = `loginType=${loginType}`;
       const [s, posts, users, plat, ai, sub, visitors] = await Promise.all([
         getDashboardStats(params).catch(() => null),
-        getRecentPosts(8, params).catch(() => []),
-        getTopUsers(5, params).catch(() => []),
+        getRecentPosts(10, params).catch(() => []),
+        getTopUsers(10, params).catch(() => []),
         getPlatformAnalytics(params).catch(() => []),
         getAIUsageStats(params).catch(() => null),
         getSubscriptionAnalytics(params).catch(() => null),
@@ -1228,6 +1284,85 @@ export default function DashboardScreen() {
     fetchAll();
   };
 
+  // ── Individual Section Refresh Handlers ─────────────────────────────────────
+  const refreshAI = async () => {
+    setRefreshingAI(true);
+    try {
+      const loginType = user?.loginType || 'user';
+      const res = await getAIUsageStats(`loginType=${loginType}`);
+      if (res) setAiUsageStats(res);
+    } catch {
+      // ignore
+    } finally {
+      setRefreshingAI(false);
+    }
+  };
+
+  const refreshPosts = async () => {
+    setRefreshingPosts(true);
+    try {
+      const loginType = user?.loginType || 'user';
+      const res = await getRecentPosts(10, `loginType=${loginType}`);
+      setRecentPosts(Array.isArray(res) ? res : []);
+    } catch {
+      // ignore
+    } finally {
+      setRefreshingPosts(false);
+    }
+  };
+
+  const refreshUsers = async () => {
+    setRefreshingUsers(true);
+    try {
+      const loginType = user?.loginType || 'user';
+      const res = await getTopUsers(10, `loginType=${loginType}`);
+      setTopUsers(Array.isArray(res) ? res : []);
+    } catch {
+      // ignore
+    } finally {
+      setRefreshingUsers(false);
+    }
+  };
+
+  const refreshPlatforms = async () => {
+    setRefreshingPlatforms(true);
+    try {
+      const loginType = user?.loginType || 'user';
+      const res = await getPlatformAnalytics(`loginType=${loginType}`);
+      setPlatforms(Array.isArray(res) ? res : []);
+    } catch {
+      // ignore
+    } finally {
+      setRefreshingPlatforms(false);
+    }
+  };
+
+  const refreshSubscriptions = async () => {
+    setRefreshingSubs(true);
+    try {
+      const loginType = user?.loginType || 'user';
+      const res = await getSubscriptionAnalytics(`loginType=${loginType}`);
+      if (res) setSubscriptionAnalytics(res);
+    } catch {
+      // ignore
+    } finally {
+      setRefreshingSubs(false);
+    }
+  };
+
+  const refreshVisitors = async () => {
+    setRefreshingVisitors(true);
+    try {
+      const loginType = user?.loginType || 'user';
+      const res = await getWebsiteVisitorsCount(`loginType=${loginType}`);
+      setWebsiteVisitors(Array.isArray(res) ? res : []);
+    } catch {
+      // ignore
+    } finally {
+      setRefreshingVisitors(false);
+    }
+  };
+
   if (isCustomer) {
     return <CustomerDashboard />;
   }
@@ -1241,7 +1376,6 @@ export default function DashboardScreen() {
     );
   }
 
-  // Get first name with fallback
   const firstName = user?.first_name || '';
 
   const handleSignOut = () => {
@@ -1265,7 +1399,6 @@ export default function DashboardScreen() {
           {/* Logo with bell icon */}
           <HStack space="lg" style={styles.logoRow}>
             <View style={styles.logoIconBg}>
-              {/* <Ionicons name="notifications" size={16} color="#0b53f8" /> */}
               <Image
                 source={require('@/assets/images/logo.png')}
                 style={styles.logoImage}
@@ -1277,13 +1410,6 @@ export default function DashboardScreen() {
 
           {/* Notification bell and logout buttons */}
           <HStack space="md" style={styles.headerRightIcons}>
-            {/* <TouchableOpacity style={styles.headerIconButton}>
-              <Ionicons name="notifications-outline" size={20} color="white" />
-              <Box style={styles.badgeCount}>
-                <Text style={styles.badgeCountText}>3</Text>
-              </Box>
-            </TouchableOpacity> */}
-
             <TouchableOpacity onPress={handleSignOut} style={styles.headerIconButton}>
               <Feather name="log-out" size={18} color="white" />
             </TouchableOpacity>
@@ -1394,42 +1520,54 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* ── AI USAGE ANALYTICS ───────────────────────────────────────────── */}
+        {/* ── 1. AI USAGE ANALYTICS ────────────────────────────────────────── */}
         {aiUsageStats && (
           <Box style={styles.sectionMargin}>
-            <AIUsageSection data={aiUsageStats} />
+            <AIUsageSection data={aiUsageStats} onRefresh={refreshAI} refreshing={refreshingAI} />
           </Box>
         )}
 
-        {/* ── RECENT POSTS ────────────────────────────────────────────────── */}
-        {recentPosts.length > 0 && (
-          <Box style={styles.sectionMargin}>
-            <HStack style={styles.sectionHeaderRow}>
-              <HStack space="xs" style={{ alignItems: 'center' }}>
-                <Box
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: 'rgba(59,130,246,0.08)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 8,
-                  }}
-                >
-                  <Feather name="bar-chart-2" size={18} color="#193867" />
-                </Box>
-                <Heading size="md" style={styles.sectionTitle}>
-                  Recent Posts
-                </Heading>
-              </HStack>
-              <TouchableOpacity onPress={() => router.push('/pages/posts/posts')}>
-                <Text style={styles.viewAllText}>View all</Text>
-              </TouchableOpacity>
+        {/* ── 2. RECENT POSTS ──────────────────────────────────────────────── */}
+        <Box style={styles.sectionMargin}>
+          <HStack style={styles.sectionHeaderRow}>
+            <HStack space="xs" style={{ alignItems: 'center' }}>
+              <Box
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  backgroundColor: 'rgba(59,130,246,0.08)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 8,
+                }}
+              >
+                <Feather name="bar-chart-2" size={18} color="#193867" />
+              </Box>
+              <Heading size="md" style={styles.sectionTitleNoMargin}>
+                Recent Posts
+              </Heading>
             </HStack>
 
+            <HStack space="sm" style={{ alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={refreshPosts}
+                activeOpacity={0.7}
+                disabled={refreshingPosts}
+                style={styles.refreshIconBtn}
+              >
+                {refreshingPosts ? (
+                  <ActivityIndicator size="small" color="#0b53f8" />
+                ) : (
+                  <Feather name="rotate-cw" size={13} color="#64748b" />
+                )}
+              </TouchableOpacity>
+            </HStack>
+          </HStack>
+
+          {recentPosts.length > 0 ? (
             <HtmlTable
-              columns={RECENT_POST_COLUMNS}
+              columns={getRecentPostColumns()}
               data={recentPosts}
               tableContainerStyle={{
                 borderWidth: 1,
@@ -1448,7 +1586,7 @@ export default function DashboardScreen() {
                 backgroundColor: '#f8fafc',
                 borderBottomWidth: 1.5,
                 borderBottomColor: '#e2e8f0',
-                paddingVertical: 4,
+                paddingVertical: 6,
               }}
               headerCellTextStyle={{
                 color: '#1e3a8a',
@@ -1461,103 +1599,49 @@ export default function DashboardScreen() {
                 borderBottomWidth: 1,
                 borderBottomColor: '#f1f5f9',
                 backgroundColor: '#ffffff',
-                paddingVertical: 2,
+                paddingVertical: 4,
               }}
+            />
+          ) : (
+            <Box style={[styles.cardWrapper, styles.emptyContainer]}>
+              <Feather name="file-text" size={28} color="#cbd5e1" style={{ marginBottom: 8 }} />
+              <Text style={styles.emptyText}>No recent posts available</Text>
+            </Box>
+          )}
+        </Box>
+
+        {/* ── 3. PLATFORM PERFORMANCE ────────────────────────────────────────── */}
+        <PlatformPerformanceSection
+          platforms={platforms}
+          onRefresh={refreshPlatforms}
+          refreshing={refreshingPlatforms}
+        />
+
+        {/* ── 4. TOP CONTRIBUTORS ──────────────────────────────────────────── */}
+        <TopContributorsSection
+          users={topUsers}
+          onRefresh={refreshUsers}
+          refreshing={refreshingUsers}
+        />
+
+        {/* ── 5. SUBSCRIPTION ANALYTICS ─────────────────────────────────────── */}
+        {subscriptionAnalytics && (
+          <Box style={styles.sectionMargin}>
+            <SubscriptionAnalyticsSection
+              data={subscriptionAnalytics}
+              onRefresh={refreshSubscriptions}
+              refreshing={refreshingSubs}
             />
           </Box>
         )}
 
-        {/* ── ENGAGEMENT OVERVIEW (WITH CHART) ───────────────────────────────── */}
-        {stats && (
-          <Box style={styles.sectionMargin}>
-            <Box style={styles.overviewCard}>
-              <HStack style={styles.overviewHeaderRow}>
-                <Text style={styles.overviewTitle}>Engagement Overview</Text>
-                <TouchableOpacity style={styles.timeDropdown}>
-                  <Text style={styles.timeDropdownText}>Last 7 days</Text>
-                  <Feather
-                    name="chevron-down"
-                    size={12}
-                    color="#64748b"
-                    style={{ marginLeft: 4 }}
-                  />
-                </TouchableOpacity>
-              </HStack>
-
-              <VStack style={styles.metricsWrapper}>
-                <Text style={styles.largeMetricText}>{formatNumber(stats.totalUsers * 100)}</Text>
-                <HStack style={styles.trendRow}>
-                  <Feather name="arrow-up" size={12} color="#16a34a" />
-                  <Text style={styles.trendText}>+18.6% vs last 7 days</Text>
-                </HStack>
-              </VStack>
-
-              {/* Dynamic SVG Line Graph */}
-              <EngagementChart totalReach={stats.totalUsers * 100} />
-            </Box>
-          </Box>
-        )}
-
-        {/* ── TOP CONTRIBUTORS ──────────────────────────────────────────────── */}
-        {topUsers.length > 0 && <TopContributorsSection users={topUsers} />}
-
-        {/* ── PLATFORM ANALYTICS ────────────────────────────────────────────── */}
-        {platforms.length > 0 && (
-          <Box style={styles.sectionMargin}>
-            <Heading size="md" style={styles.sectionTitle}>
-              Platform Analytics
-            </Heading>
-            <VStack space="sm">
-              {platforms.map((p) => {
-                // Determine platform accent color
-                const name = p.platform.toLowerCase();
-                let color = '#0b53f8';
-                if (name.includes('facebook') || name === 'fb') color = '#1877F2';
-                else if (name.includes('instagram') || name === 'ig') color = '#E4405F';
-                else if (name.includes('whatsapp') || name === 'wa') color = '#25D366';
-                else if (name.includes('youtube') || name === 'yt') color = '#FF0000';
-
-                return (
-                  <Box key={p.platform} style={styles.platformCard}>
-                    <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={styles.platformNameText}>{p.platform}</Text>
-                      <Text style={[styles.platformSuccessText, { color }]}>
-                        {p.successRate != null ? `${Math.round(p.successRate)}% success` : '—'}
-                      </Text>
-                    </HStack>
-                    <HStack style={styles.platformDetailsRow}>
-                      <Text style={styles.platformDetailsText}>Total: {p.totalPosts}</Text>
-                      <Text style={styles.platformDetailsText}>Posted: {p.postedPosts}</Text>
-                      <Text style={styles.platformDetailsText}>Users: {p.uniqueUsers}</Text>
-                    </HStack>
-                    <Box style={styles.progressBg}>
-                      <Box
-                        style={[
-                          styles.progressFill,
-                          {
-                            backgroundColor: color,
-                            width: `${Math.min(100, p.successRate ?? 0)}%` as any,
-                          },
-                        ]}
-                      />
-                    </Box>
-                  </Box>
-                );
-              })}
-            </VStack>
-          </Box>
-        )}
-
-        {/* ── SUBSCRIPTION ANALYTICS ─────────────────────────────────────────── */}
-        {subscriptionAnalytics && (
-          <Box style={styles.sectionMargin}>
-            <SubscriptionAnalyticsSection data={subscriptionAnalytics} onRefresh={onRefresh} />
-          </Box>
-        )}
-
-        {/* ── WEBSITE VISITORS ────────────────────────────────────────────────── */}
+        {/* ── 6. WEBSITE VISITORS ────────────────────────────────────────────── */}
         <Box style={styles.sectionMargin}>
-          <WebsiteVisitorsSection data={websiteVisitors} onRefresh={onRefresh} />
+          <WebsiteVisitorsSection
+            data={websiteVisitors}
+            onRefresh={refreshVisitors}
+            refreshing={refreshingVisitors}
+          />
         </Box>
       </ScrollView>
     </Box>
@@ -1618,24 +1702,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-  },
-  badgeCount: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: '#ef4444',
-    borderRadius: 8,
-    width: 15,
-    height: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#084ad3',
-  },
-  badgeCountText: {
-    color: '#ffffff',
-    fontSize: 4,
-    fontWeight: 'bold',
   },
   headerWelcomeSection: {
     paddingHorizontal: 20,
@@ -1714,13 +1780,13 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   sectionMargin: {
-    marginTop: 10,
+    marginTop: 14,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 2,
+    marginBottom: 10,
   },
   sectionTitle: {
     fontSize: 16,
@@ -1739,68 +1805,24 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 8,
   },
   viewAllText: {
-    fontSize: 14,
-    color: '#0b53f8',
-    fontWeight: '600',
-  },
-  postCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 12,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1.5,
-  },
-  postThumbnail: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    marginRight: 12,
-  },
-  postTitleText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#0f172a',
-  },
-  postDateText: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  postCardRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    height: 52,
-  },
-  moreButton: {
-    padding: 4,
-    marginTop: -4,
-    marginRight: -4,
+    color: '#0b53f8',
+    fontWeight: '700',
   },
   badge: {
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
   },
   badgeText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
     textTransform: 'capitalize',
-  },
-  overviewCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 16,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1.5,
   },
   cardWrapper: {
     backgroundColor: '#ffffff',
@@ -1814,60 +1836,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
-  overviewHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  overviewTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  timeDropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  timeDropdownText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  metricsWrapper: {
-    marginTop: 12,
-  },
-  largeMetricText: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#0f172a',
-  },
-  trendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  trendText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#16a34a',
-    marginLeft: 3,
-  },
-  userCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 12,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1.5,
-  },
   contributorCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
@@ -1875,19 +1843,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     elevation: 1.5,
+    marginBottom: 10,
+  },
+  contributorAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
   },
   avatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#eff6ff',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#bfdbfe',
   },
   avatarInitial: {
@@ -1923,7 +1900,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 12,
     borderWidth: 1,
-    marginLeft: 4,
+    marginLeft: 6,
   },
   mostActiveBadgeText: {
     fontSize: 10,
@@ -1936,43 +1913,88 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   infoPillText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#475569',
     fontWeight: '600',
   },
-  statusColItem: {
-    alignItems: 'center',
-    flex: 1,
+  contributorStatusGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 4,
+    marginBottom: 10,
   },
-  statusColLabel: {
+  statusBox: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statusBoxLabel: {
     fontSize: 9,
-    color: '#64748b',
     fontWeight: '600',
   },
-  statusColVal: {
+  statusBoxVal: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     marginTop: 1,
+  },
+  platformChip: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
   },
   platformCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.03,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 1.5,
+    marginBottom: 10,
+  },
+  platformIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  platformIconText: {
+    fontWeight: '800',
+    fontSize: 11,
   },
   platformNameText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#0f172a',
+    textTransform: 'capitalize',
   },
-  platformSuccessText: {
-    fontSize: 12,
+  platformSubText: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  successRatePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  successRatePillText: {
+    fontSize: 11,
     fontWeight: '700',
   },
   platformDetailsRow: {
@@ -2031,7 +2053,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#94a3b8',
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   aiTypeName: {
     fontSize: 12,
@@ -2065,8 +2087,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    alignItems: 'flex-start',
+  },
+  subSummaryIconBg: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     alignItems: 'center',
-    marginHorizontal: 3,
+    justifyContent: 'center',
   },
   subSummaryLabel: {
     fontSize: 9,
@@ -2078,7 +2106,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#0f172a',
-    marginTop: 4,
+  },
+  subTabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    padding: 3,
+    marginBottom: 14,
+  },
+  subTabBtn: {
+    flex: 1,
+    paddingVertical: 6,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  subTabBtnActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  subTabBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  subTabBtnTextActive: {
+    color: '#0b53f8',
+    fontWeight: '700',
   },
   planNameText: {
     fontSize: 12,
@@ -2126,24 +2183,13 @@ const styles = StyleSheet.create({
     color: '#16a34a',
     fontWeight: '600',
   },
-  visitorMetricVal: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  visitorMetricLabel: {
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '600',
-  },
   refreshIconBtn: {
-    width: 26,
-    height: 26,
+    width: 30,
+    height: 30,
     borderRadius: 8,
     backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },

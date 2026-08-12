@@ -21,10 +21,12 @@ import {
   createSubscriptionPlan,
   updateSubscriptionPlan,
   deleteSubscriptionPlan,
+  updateStatusPlan,
   SubscriptionPlan,
 } from './subscription-plans.api';
 import { router } from 'expo-router';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
+import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
 import {
   Star,
   Rocket,
@@ -47,147 +49,32 @@ import {
   FileClock,
   ChevronDown,
   Check,
+  Eye,
 } from 'lucide-react-native';
 
 const PLAN_NAMES = ['Basic', 'Starter', 'Professional', 'Premium', 'Enterprise'] as const;
 
-const PLAN_TABLE_COLUMNS: HtmlTableColumn[] = [
-  {
-    key: 'name',
-    label: 'Plan Name',
-    width: '200px',
-    render: (v, row: SubscriptionPlan) => {
-      const nameLower = String(v).toLowerCase();
-      let IconComponent = Sparkles;
-      let iconColor = '#2563eb';
-      let bgColor = '#eff6ff';
-      const isPopular = row.is_popular_monthly || row.is_popular_annual;
-
-      if (nameLower.includes('starter') || nameLower.includes('start')) {
-        IconComponent = Rocket;
-        iconColor = '#8b5cf6';
-        bgColor = '#f5f3ff';
-      } else if (nameLower.includes('basic') || nameLower.includes('base')) {
-        IconComponent = Gem;
-        iconColor = '#06b6d4';
-        bgColor = '#ecfeff';
-      } else if (nameLower.includes('premium')) {
-        IconComponent = Crown;
-        iconColor = '#f97316';
-        bgColor = '#fff7ed';
-      } else if (nameLower.includes('popular') || isPopular) {
-        IconComponent = Star;
-        iconColor = '#eab308';
-        bgColor = '#fef9c3';
-      }
-
-      return (
-        <HStack space="sm" className="items-center">
-          <VStack className="items-center justify-center">
-            <Box
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: bgColor,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <IconComponent size={16} color={iconColor} />
-            </Box>
-            {isPopular && (
-              <Box
-                style={{
-                  backgroundColor: '#fef3c7',
-                  paddingHorizontal: 4,
-                  borderRadius: 4,
-                  marginTop: 2,
-                }}
-              >
-                <Text style={{ fontSize: 7, fontWeight: '800', color: '#d97706' }}>POPULAR</Text>
-              </Box>
-            )}
-          </VStack>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>{v}</Text>
-        </HStack>
-      );
-    },
-  },
-  {
-    key: 'price_per_month',
-    label: 'Price/Month',
-    width: '110px',
-    render: (v) => <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>₹{v}</Text>,
-  },
-  {
-    key: 'price_per_year',
-    label: 'Price/Year',
-    width: '110px',
-    render: (v) => (
-      <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748b' }}>{v ? `₹${v}` : '—'}</Text>
-    ),
-  },
-  {
-    key: 'posts_per_month',
-    label: 'Posts/Mo',
-    width: '90px',
-    render: (v) => <Text style={{ fontSize: 13, color: '#475569' }}>{v ?? 0}</Text>,
-  },
-  {
-    key: 'posts_per_day',
-    label: 'Posts/Day',
-    width: '90px',
-    render: (v) => <Text style={{ fontSize: 13, color: '#475569' }}>{v ?? 0}</Text>,
-  },
-  {
-    key: 'ai_content_generation_limit',
-    label: 'AI Limit',
-    width: '90px',
-    render: (v) => <Text style={{ fontSize: 13, color: '#475569' }}>{v ?? 0}</Text>,
-  },
-  {
-    key: 'status',
-    label: 'Status',
-    width: '100px',
-    render: (v) => {
-      const isAct = v === 1;
-      const bg = isAct ? '#ecfdf5' : '#fef2f2';
-      const color = isAct ? '#10b981' : '#ef4444';
-      return (
-        <Box
-          style={{
-            backgroundColor: bg,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-            borderRadius: 12,
-            flexDirection: 'row',
-            alignItems: 'center',
-            alignSelf: 'flex-start',
-          }}
-        >
-          <Box
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: 3,
-              backgroundColor: color,
-              marginRight: 6,
-            }}
-          />
-          <Text style={{ fontSize: 11, fontWeight: '700', color }}>
-            {isAct ? 'Active' : 'Inactive'}
-          </Text>
-        </Box>
-      );
-    },
-  },
-];
-
 const PLAN_ROW_ACTIONS = [
+  { label: 'Details', action: 'details' },
   { label: 'Edit', action: 'edit' },
   { label: 'Delete', action: 'delete', style: 'danger' },
 ];
+
+function getPageNumbers(currentPage: number, lastPage: number) {
+  const pages: number[] = [];
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(lastPage, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+  return pages;
+}
 
 const CrownIllustration = () => {
   return (
@@ -377,7 +264,7 @@ export default function SubscriptionPlansScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 5;
 
   // Form State
   const [modalVisible, setModalVisible] = useState(false);
@@ -400,6 +287,229 @@ export default function SubscriptionPlansScreen() {
   // Validation Errors State & Modal Scroll Ref
   const [errors, setErrors] = useState<Record<string, string>>({});
   const modalScrollRef = useRef<ScrollView>(null);
+
+  // Details Modal State
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [selectedPlanForDetails, setSelectedPlanForDetails] = useState<SubscriptionPlan | null>(
+    null
+  );
+
+  const handleOpenDetails = (plan: SubscriptionPlan) => {
+    setSelectedPlanForDetails(plan);
+    setDetailsModalVisible(true);
+  };
+
+  // Status confirm dialog state
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false);
+  const [selectedPlanForStatus, setSelectedPlanForStatus] = useState<SubscriptionPlan | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const handleOpenStatusConfirm = (plan: SubscriptionPlan) => {
+    setSelectedPlanForStatus(plan);
+    setStatusConfirmOpen(true);
+  };
+
+  const PLAN_TABLE_COLUMNS: HtmlTableColumn[] = [
+    {
+      key: 'name',
+      label: 'Plan Name',
+      width: '200px',
+      render: (v, row: SubscriptionPlan) => {
+        const nameLower = String(v).toLowerCase();
+        let IconComponent = Sparkles;
+        let iconColor = '#2563eb';
+        let bgColor = '#eff6ff';
+        const isPopular = row.is_popular_monthly || row.is_popular_annual;
+
+        if (nameLower.includes('starter') || nameLower.includes('start')) {
+          IconComponent = Rocket;
+          iconColor = '#8b5cf6';
+          bgColor = '#f5f3ff';
+        } else if (nameLower.includes('basic') || nameLower.includes('base')) {
+          IconComponent = Gem;
+          iconColor = '#06b6d4';
+          bgColor = '#ecfeff';
+        } else if (nameLower.includes('premium')) {
+          IconComponent = Crown;
+          iconColor = '#f97316';
+          bgColor = '#fff7ed';
+        } else if (nameLower.includes('popular') || isPopular) {
+          IconComponent = Star;
+          iconColor = '#eab308';
+          bgColor = '#fef9c3';
+        }
+
+        return (
+          <TouchableOpacity onPress={() => handleOpenDetails(row)}>
+            <HStack space="sm" className="items-center">
+              <VStack className="items-center justify-center">
+                <Box
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: bgColor,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <IconComponent size={16} color={iconColor} />
+                </Box>
+                {isPopular && (
+                  <Box
+                    style={{
+                      backgroundColor: '#fef3c7',
+                      paddingHorizontal: 4,
+                      borderRadius: 4,
+                      marginTop: 2,
+                    }}
+                  >
+                    <Text style={{ fontSize: 7, fontWeight: '800', color: '#d97706' }}>
+                      POPULAR
+                    </Text>
+                  </Box>
+                )}
+              </VStack>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2563eb' }}>{v}</Text>
+            </HStack>
+          </TouchableOpacity>
+        );
+      },
+    },
+    {
+      key: 'price_per_month',
+      label: 'Price/Month',
+      width: '120px',
+      render: (v) => (
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>₹{v}</Text>
+      ),
+    },
+    {
+      key: 'price_per_year',
+      label: 'Price/Year',
+      width: '110px',
+      render: (v) => (
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748b' }}>
+          {v ? `₹${v}` : '—'}
+        </Text>
+      ),
+    },
+    {
+      key: 'posts_per_month',
+      label: 'Posts/Mo',
+      width: '100px',
+      render: (v) => <Text style={{ fontSize: 13, color: '#475569' }}>{v ?? 0}</Text>,
+    },
+    {
+      key: 'posts_per_day',
+      label: 'Posts/Day',
+      width: '110px',
+      render: (v) => <Text style={{ fontSize: 13, color: '#475569' }}>{v ?? 0}</Text>,
+    },
+    {
+      key: 'ai_content_generation_limit',
+      label: 'AI Limit',
+      width: '100px',
+      render: (v) => <Text style={{ fontSize: 13, color: '#475569' }}>{v ?? 0}</Text>,
+    },
+    {
+      key: 'features',
+      label: 'Features',
+      width: '110px',
+      render: (v, row: SubscriptionPlan) => {
+        const featList = Array.isArray(v) ? v : row.features || [];
+        if (!featList.length) {
+          return <Text style={{ fontSize: 12, color: '#94a3b8' }}>—</Text>;
+        }
+        return (
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#eff6ff',
+              borderWidth: 1,
+              borderColor: '#bfdbfe',
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              alignSelf: 'flex-start',
+            }}
+            onPress={() => handleOpenDetails(row)}
+          >
+            <Eye size={12} color="#1d4ed8" style={{ marginRight: 4 }} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#1d4ed8' }}>
+              View ({featList.length})
+            </Text>
+          </TouchableOpacity>
+        );
+      },
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      width: '110px',
+      render: (v, row: SubscriptionPlan) => {
+        const isAct = v === 1;
+        const bg = isAct ? '#eff6ff' : '#f8fafc';
+        const color = isAct ? '#2563eb' : '#64748b';
+        const border = isAct ? '#bfdbfe' : '#e2e8f0';
+        return (
+          <TouchableOpacity onPress={() => handleOpenStatusConfirm(row)}>
+            <Box
+              style={{
+                backgroundColor: bg,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: border,
+                flexDirection: 'row',
+                alignItems: 'center',
+                alignSelf: 'flex-start',
+              }}
+            >
+              <Box
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: color,
+                  marginRight: 6,
+                }}
+              />
+              <Text style={{ fontSize: 11, fontWeight: '700', color }}>
+                {isAct ? 'Active' : 'Inactive'}
+              </Text>
+            </Box>
+          </TouchableOpacity>
+        );
+      },
+    },
+  ];
+
+  const handleConfirmStatusToggle = async () => {
+    if (!selectedPlanForStatus) return;
+    const plan = selectedPlanForStatus;
+    const id = plan._id || plan.id || '';
+    const nextStatus = plan.status === 1 ? 0 : 1;
+    setStatusLoading(true);
+    try {
+      if (updateStatusPlan) {
+        await updateStatusPlan(id, nextStatus);
+      } else {
+        await updateSubscriptionPlan(id, { status: nextStatus });
+      }
+      setPlans((prev) =>
+        prev.map((p) => ((p._id || p.id) === id ? { ...p, status: nextStatus } : p))
+      );
+      setStatusConfirmOpen(false);
+      setSelectedPlanForStatus(null);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update plan status.');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   const scrollToTopModal = () => {
     modalScrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -446,8 +556,8 @@ export default function SubscriptionPlansScreen() {
   const fetchPlansList = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listSubscriptionPlans();
-      const items = Array.isArray(res) ? res : res?.data || [];
+      const res = (await listSubscriptionPlans()) as any;
+      const items = Array.isArray(res) ? res : res?.data || res?.results || res?.plans || [];
       setPlans(items);
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to load subscription plans.');
@@ -618,7 +728,9 @@ export default function SubscriptionPlansScreen() {
 
   // Filter plans based on search and status
   const filteredPlans = plans.filter((plan) => {
-    const matchesSearch = plan.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!plan) return false;
+    const planName = String(plan.name || '').toLowerCase();
+    const matchesSearch = planName.includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === 'all'
         ? true
@@ -629,23 +741,21 @@ export default function SubscriptionPlansScreen() {
   });
 
   const totalPages = Math.ceil(filteredPlans.length / itemsPerPage) || 1;
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
   const paginatedPlans = filteredPlans.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    (safePage - 1) * itemsPerPage,
+    safePage * itemsPerPage
   );
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
-    const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
+    const pageNumbers = getPageNumbers(safePage, totalPages);
 
     return (
       <HStack className="mb-2 mt-4 items-center justify-center" space="sm">
         <TouchableOpacity
-          disabled={currentPage === 1}
+          disabled={safePage === 1}
           onPress={() => setCurrentPage((p) => Math.max(p - 1, 1))}
           style={{
             width: 32,
@@ -655,14 +765,14 @@ export default function SubscriptionPlansScreen() {
             borderColor: '#e2e8f0',
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: currentPage === 1 ? 0.4 : 1,
+            opacity: safePage === 1 ? 0.4 : 1,
           }}
         >
           <ChevronLeft size={16} color="#475569" />
         </TouchableOpacity>
 
-        {pages.map((p) => {
-          const isActive = currentPage === p;
+        {pageNumbers.map((p) => {
+          const isActive = safePage === p;
           return (
             <TouchableOpacity
               key={p}
@@ -692,7 +802,7 @@ export default function SubscriptionPlansScreen() {
         })}
 
         <TouchableOpacity
-          disabled={currentPage === totalPages}
+          disabled={safePage === totalPages}
           onPress={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
           style={{
             width: 32,
@@ -702,7 +812,7 @@ export default function SubscriptionPlansScreen() {
             borderColor: '#e2e8f0',
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: currentPage === totalPages ? 0.4 : 1,
+            opacity: safePage === totalPages ? 0.4 : 1,
           }}
         >
           <ChevronRight size={16} color="#475569" />
@@ -860,12 +970,20 @@ export default function SubscriptionPlansScreen() {
                 data={paginatedPlans}
                 rowActions={PLAN_ROW_ACTIONS}
                 onRowAction={(action, rowId) => {
-                  if (action === 'edit') {
-                    const p = plans.find((x) => (x._id || x.id) === rowId);
-                    if (p) handleOpenEdit(p);
+                  const p = plans.find(
+                    (x: any) =>
+                      String(x._id || x.id) === String(rowId) ||
+                      String(rowId).startsWith(String(x._id || x.id))
+                  );
+                  if (!p) return;
+                  if (action === 'details' || action === 'view') {
+                    handleOpenDetails(p);
+                  } else if (action === 'edit') {
+                    handleOpenEdit(p);
+                  } else if (action === 'toggle-status' || action === 'status') {
+                    handleOpenStatusConfirm(p);
                   } else if (action === 'delete') {
-                    const p = plans.find((x) => (x._id || x.id) === rowId);
-                    if (p) handleDelete(p);
+                    handleDelete(p);
                   }
                 }}
                 iconOnlyActions={true}
@@ -1380,13 +1498,219 @@ export default function SubscriptionPlansScreen() {
           </Box>
         </Box>
       </Modal>
+
+      <StatusConfirmDialog
+        open={statusConfirmOpen}
+        onClose={() => {
+          if (!statusLoading) {
+            setStatusConfirmOpen(false);
+            setSelectedPlanForStatus(null);
+          }
+        }}
+        onConfirm={handleConfirmStatusToggle}
+        loading={statusLoading}
+        itemName={selectedPlanForStatus?.name}
+        targetStatus={selectedPlanForStatus?.status === 1 ? 0 : 1}
+        title={
+          selectedPlanForStatus?.status === 1
+            ? 'Deactivate Subscription Plan'
+            : 'Activate Subscription Plan'
+        }
+        message={`Are you sure you want to ${selectedPlanForStatus?.status === 1 ? 'deactivate' : 'activate'} the plan "${selectedPlanForStatus?.name}"?`}
+        confirmText={selectedPlanForStatus?.status === 1 ? 'Deactivate' : 'Activate'}
+      />
+
+      {/* Plan Details Modal Popup */}
+      <Modal
+        visible={detailsModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDetailsModalVisible(false)}
+      >
+        <Box style={styles.modalOverlay}>
+          <Box style={styles.detailsModalContainer}>
+            {selectedPlanForDetails && (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Modal Header */}
+                <HStack className="mb-4 items-center justify-between">
+                  <HStack space="md" className="items-center" style={{ flex: 1, marginRight: 12 }}>
+                    <Box style={[styles.detailsBadge, { backgroundColor: '#eff6ff' }]}>
+                      <Crown size={22} color="#2563eb" />
+                    </Box>
+                    <VStack style={{ flex: 1 }}>
+                      <HStack className="items-center space-x-2">
+                        <Text style={styles.detailsTitle}>{selectedPlanForDetails.name}</Text>
+                        <Box
+                          style={[
+                            styles.statusBadgeMini,
+                            selectedPlanForDetails.status === 1
+                              ? styles.statusActiveBg
+                              : styles.statusInactiveBg,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.statusBadgeText,
+                              selectedPlanForDetails.status === 1
+                                ? styles.statusActiveText
+                                : styles.statusInactiveText,
+                            ]}
+                          >
+                            {selectedPlanForDetails.status === 1 ? 'Active' : 'Inactive'}
+                          </Text>
+                        </Box>
+                      </HStack>
+                      <Text style={styles.detailsSubtitle}>
+                        {selectedPlanForDetails.billing_cycle === 'annual'
+                          ? 'Annual billing'
+                          : 'Monthly billing'}
+                      </Text>
+                    </VStack>
+                  </HStack>
+
+                  <TouchableOpacity
+                    onPress={() => setDetailsModalVisible(false)}
+                    style={styles.closeBtnCircle}
+                  >
+                    <X size={18} color="#64748b" />
+                  </TouchableOpacity>
+                </HStack>
+
+                {/* Description */}
+                {selectedPlanForDetails.description ? (
+                  <Box style={styles.detailsDescBox}>
+                    <Text style={styles.detailsDescText}>{selectedPlanForDetails.description}</Text>
+                  </Box>
+                ) : null}
+
+                {/* Pricing Cards */}
+                <HStack space="sm" className="mb-4">
+                  <Box style={styles.pricingCard}>
+                    <Text style={styles.pricingCardLabel}>PRICE PER MONTH</Text>
+                    <Text style={styles.pricingCardValue}>
+                      ₹{selectedPlanForDetails.price_per_month ?? 0}
+                    </Text>
+                    <Text style={styles.pricingCardSub}>/ month</Text>
+                  </Box>
+
+                  {selectedPlanForDetails.price_per_year ? (
+                    <Box style={styles.pricingCard}>
+                      <Text style={styles.pricingCardLabel}>PRICE PER YEAR</Text>
+                      <Text style={styles.pricingCardValue}>
+                        ₹{selectedPlanForDetails.price_per_year}
+                      </Text>
+                      <Text style={styles.pricingCardSub}>
+                        ≈ ₹{Math.round(selectedPlanForDetails.price_per_year / 12)}/mo
+                      </Text>
+                    </Box>
+                  ) : null}
+                </HStack>
+
+                {/* Quotas & Limits Section */}
+                <VStack space="sm" className="mb-4">
+                  <Text style={styles.sectionHeaderLabel}>QUOTAS & LIMITS</Text>
+
+                  <Box style={styles.quotaGrid}>
+                    <HStack className="items-center justify-between border-b border-slate-100 py-2">
+                      <HStack space="xs" className="items-center">
+                        <FileText size={14} color="#2563eb" />
+                        <Text style={styles.quotaLabel}>Posts Per Month</Text>
+                      </HStack>
+                      <Text style={styles.quotaValue}>
+                        {selectedPlanForDetails.posts_per_month ?? 0}
+                      </Text>
+                    </HStack>
+
+                    <HStack className="items-center justify-between border-b border-slate-100 py-2">
+                      <HStack space="xs" className="items-center">
+                        <FileClock size={14} color="#2563eb" />
+                        <Text style={styles.quotaLabel}>Posts Per Day</Text>
+                      </HStack>
+                      <Text style={styles.quotaValue}>
+                        {selectedPlanForDetails.posts_per_day ?? 0}
+                      </Text>
+                    </HStack>
+
+                    <HStack className="items-center justify-between border-b border-slate-100 py-2">
+                      <HStack space="xs" className="items-center">
+                        <Sparkles size={14} color="#2563eb" />
+                        <Text style={styles.quotaLabel}>AI Generation Limit</Text>
+                      </HStack>
+                      <Text style={styles.quotaValue}>
+                        {selectedPlanForDetails.ai_content_generation_limit ?? 0} /day
+                      </Text>
+                    </HStack>
+
+                    <HStack className="items-center justify-between py-2">
+                      <HStack space="xs" className="items-center">
+                        <Layers size={14} color="#2563eb" />
+                        <Text style={styles.quotaLabel}>Sort Order</Text>
+                      </HStack>
+                      <Text style={styles.quotaValue}>
+                        {selectedPlanForDetails.sort_order ?? 0}
+                      </Text>
+                    </HStack>
+                  </Box>
+                </VStack>
+
+                {/* Features Included */}
+                <VStack space="sm" className="mb-4">
+                  <Text style={styles.sectionHeaderLabel}>FEATURES INCLUDED</Text>
+
+                  {selectedPlanForDetails.features && selectedPlanForDetails.features.length > 0 ? (
+                    <VStack space="xs">
+                      {selectedPlanForDetails.features.map((feat, idx) => (
+                        <HStack key={idx} space="xs" className="items-start py-1">
+                          <Box style={styles.checkIconBox}>
+                            <Check size={12} color="#16a34a" />
+                          </Box>
+                          <Text style={styles.featureItemText}>{feat}</Text>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  ) : (
+                    <Text style={styles.noFeaturesText}>No features listed.</Text>
+                  )}
+                </VStack>
+
+                {/* Popularity badges if any */}
+                {(selectedPlanForDetails.is_popular_monthly ||
+                  selectedPlanForDetails.is_popular_annual) && (
+                  <HStack space="xs" className="mb-4">
+                    {selectedPlanForDetails.is_popular_monthly && (
+                      <Box style={styles.popularTag}>
+                        <Star size={12} color="#d97706" />
+                        <Text style={styles.popularTagText}>Popular Monthly</Text>
+                      </Box>
+                    )}
+                    {selectedPlanForDetails.is_popular_annual && (
+                      <Box style={styles.popularTag}>
+                        <Crown size={12} color="#d97706" />
+                        <Text style={styles.popularTagText}>Popular Annual</Text>
+                      </Box>
+                    )}
+                  </HStack>
+                )}
+
+                {/* Modal Footer / Close Button */}
+                <TouchableOpacity
+                  style={styles.detailsModalCloseBtn}
+                  onPress={() => setDetailsModalVisible(false)}
+                >
+                  <Text style={styles.detailsModalCloseText}>Close</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </Box>
+        </Box>
+      </Modal>
     </Box>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 45,
+    paddingTop: 40,
     paddingBottom: 25,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
@@ -1438,5 +1762,183 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     backgroundColor: '#f8fafc',
     width: '100%',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  detailsModalContainer: {
+    width: '100%',
+    maxWidth: 450,
+    maxHeight: '85%',
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  detailsBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  detailsSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  statusBadgeMini: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  statusActiveBg: {
+    backgroundColor: '#dcfce7',
+  },
+  statusInactiveBg: {
+    backgroundColor: '#fee2e2',
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  statusActiveText: {
+    color: '#15803d',
+  },
+  statusInactiveText: {
+    color: '#b91c1c',
+  },
+  closeBtnCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsDescBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  detailsDescText: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
+  },
+  pricingCard: {
+    flex: 1,
+    backgroundColor: '#eff6ff',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    alignItems: 'center',
+  },
+  pricingCardLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#2563eb',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  pricingCardValue: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#1e3a8a',
+  },
+  pricingCardSub: {
+    fontSize: 11,
+    color: '#3b82f6',
+    marginTop: 2,
+  },
+  sectionHeaderLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#2563eb',
+    letterSpacing: 0.8,
+  },
+  quotaGrid: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  quotaLabel: {
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  quotaValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  checkIconBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#dcfce7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+    marginTop: 1,
+  },
+  featureItemText: {
+    fontSize: 13,
+    color: '#334155',
+    flex: 1,
+  },
+  noFeaturesText: {
+    fontSize: 12,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+  },
+  popularTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  popularTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#d97706',
+    marginLeft: 4,
+  },
+  detailsModalCloseBtn: {
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  detailsModalCloseText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

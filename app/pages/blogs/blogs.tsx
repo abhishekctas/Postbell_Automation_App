@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FlatList,
   RefreshControl,
@@ -9,6 +9,7 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
+  Image,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -23,6 +24,7 @@ import {
   updateBlog,
   deleteBlog,
   updateBlogStatus,
+  getBlogCoverImageUrl,
   getAllTags,
   BlogPost,
   Tag,
@@ -30,149 +32,26 @@ import {
 import { router } from 'expo-router';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 
-const BLOG_TABLE_COLUMNS: HtmlTableColumn<BlogPost>[] = [
-  {
-    key: 'createdAt',
-    label: 'Created At',
-    width: '150px',
-    render: (v) => {
-      if (!v) return '—';
-      const d = new Date(v);
-      if (isNaN(d.getTime())) return String(v);
-      const dateStr = d.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
-      const timeStr = d.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-      return (
-        <VStack style={{ justifyContent: 'center' }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#0f172a' }}>{dateStr}</Text>
-          <Text style={{ fontSize: 11, color: '#64748b' }}>{timeStr}</Text>
-        </VStack>
-      );
-    },
-  },
-  {
-    key: 'title',
-    label: 'Title',
-    width: '220px',
-    render: (_v, row) => {
-      const title = row.title || 'Untitled Blog';
-      const initials =
-        title
-          .split(' ')
-          .filter(Boolean)
-          .slice(0, 2)
-          .map((w: string) => w.charAt(0).toUpperCase())
-          .join('') || 'BL';
-      const bgColors = ['#dbeafe', '#e9d5ff', '#ffedd5', '#ccfbf1', '#fef3c7'];
-      const textColors = ['#1e40af', '#6b21a8', '#c2410c', '#0f766e', '#b45309'];
-      const charCode = title.charCodeAt(0) || 0;
-      const colorIdx = charCode % bgColors.length;
-      return (
-        <HStack space="sm" className="items-center">
-          <Box
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: bgColors[colorIdx],
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: textColors[colorIdx], fontWeight: '700', fontSize: 13 }}>
-              {initials}
-            </Text>
-          </Box>
-          <VStack style={{ justifyContent: 'center', flex: 1 }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }} numberOfLines={1}>
-              {title}
-            </Text>
-            {row.slug ? (
-              <Text style={{ fontSize: 11, color: '#2563eb', fontWeight: '500' }} numberOfLines={1}>
-                /{row.slug}
-              </Text>
-            ) : null}
-          </VStack>
-        </HStack>
-      );
-    },
-  },
-  {
-    key: 'category',
-    label: 'Category',
-    width: '140px',
-    render: (v) => {
-      const catTitle =
-        typeof v === 'object' && v ? (v as any).title : typeof v === 'string' ? v : 'General';
-      return (
-        <Box
-          style={{
-            alignSelf: 'flex-start',
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 8,
-            backgroundColor: '#eff6ff',
-            borderWidth: 1,
-            borderColor: '#bfdbfe',
-          }}
-        >
-          <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 12 }} numberOfLines={1}>
-            {catTitle}
-          </Text>
-        </Box>
-      );
-    },
-  },
-  {
-    key: 'excerpt',
-    label: 'Excerpt',
-    width: '220px',
-    render: (v) => (
-      <Text style={{ fontSize: 13, color: '#475569' }} numberOfLines={2}>
-        {v || '—'}
-      </Text>
-    ),
-  },
-  {
-    key: 'status',
-    label: 'Status',
-    width: '130px',
-    render: (v) => {
-      const isPublished = Number(v) === 1;
-      const label = isPublished ? 'Published' : 'Draft';
-      const bg = isPublished ? '#dcfce7' : '#fef3c7';
-      const color = isPublished ? '#15803d' : '#b45309';
-      const border = isPublished ? '#bbf7d0' : '#fde68a';
-      return (
-        <Box
-          style={{
-            alignSelf: 'flex-start',
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            borderRadius: 12,
-            backgroundColor: bg,
-            borderWidth: 1,
-            borderColor: border,
-          }}
-        >
-          <Text style={{ color: color, fontWeight: '700', fontSize: 11 }}>• {label}</Text>
-        </Box>
-      );
-    },
-  },
-];
-
 const BLOG_ROW_ACTIONS = [
   { label: 'Edit', action: 'edit' },
   { label: 'Delete', action: 'delete', style: 'danger' },
 ];
+
+function getPageNumbers(currentPage: number, lastPage: number) {
+  const pages: number[] = [];
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(lastPage, start + maxVisible - 1);
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+  return pages;
+}
 
 export default function BlogsScreen() {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -181,8 +60,8 @@ export default function BlogsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
+  const [viewingImage, setViewingImage] = useState<{ url: string; title: string } | null>(null);
 
   // Form State
   const [modalVisible, setModalVisible] = useState(false);
@@ -205,8 +84,8 @@ export default function BlogsScreen() {
   };
 
   const fetchBlogsList = useCallback(
-    async (pg = 1, reset = true) => {
-      if (reset) setLoading(true);
+    async (pg = 1) => {
+      setLoading(true);
       try {
         const queryParams = new URLSearchParams({
           page: pg.toString(),
@@ -218,41 +97,53 @@ export default function BlogsScreen() {
         }
 
         const res = (await listBlogs(queryParams.toString())) as any;
-        const items = res?.data || (Array.isArray(res) ? res : res?.results || []);
+        const items = res?.data || res?.results || (Array.isArray(res) ? res : []);
+        let total =
+          res?.totalPages ||
+          res?.pagination?.totalPages ||
+          (res?.totalResults || res?.totalCount || res?.total
+            ? Math.ceil((res.totalResults || res.totalCount || res.total) / 10)
+            : 0);
 
-        if (reset) {
-          setBlogs(items);
-        } else {
-          setBlogs((prev) => [...prev, ...items]);
+        if (!total) {
+          if (items.length >= 10) {
+            total = Math.max(pg + 1, totalPages || 1);
+          } else {
+            total = pg;
+          }
         }
 
-        setHasMore(items.length >= 10);
+        setBlogs(items);
+        setTotalPages(total);
         setPage(pg);
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Failed to load blogs.');
       } finally {
         setLoading(false);
         setRefreshing(false);
-        setLoadingMore(false);
       }
     },
     [search]
   );
 
   useEffect(() => {
-    fetchTagsList();
-    fetchBlogsList(1, true);
-  }, [search]);
+    const timeoutId = setTimeout(() => {
+      void fetchBlogsList(1);
+      void fetchTagsList();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [fetchBlogsList]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchBlogsList(1, true);
+    fetchBlogsList(1);
+    fetchTagsList();
   };
 
   const loadMore = () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    fetchBlogsList(page + 1, false);
+    if (page >= totalPages) return;
+    fetchBlogsList(page + 1);
   };
 
   const handleOpenAdd = () => {
@@ -296,24 +187,286 @@ export default function BlogsScreen() {
       }
 
       setModalVisible(false);
-      fetchBlogsList(1, true);
+      fetchBlogsList(1);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to save blog post.');
     }
   };
 
-  const handleToggleStatus = async (blog: BlogPost) => {
+  const handleToggleStatus = useCallback((blog: BlogPost) => {
     const id = blog._id || blog.id || '';
-    try {
-      await updateBlogStatus(id);
-      setBlogs((prev) =>
-        prev.map((b) => ((b._id || b.id) === id ? { ...b, status: b.status === 1 ? 0 : 1 } : b))
-      );
-      Alert.alert('Success', 'Blog status changed successfully.');
-    } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to toggle status.');
-    }
-  };
+    if (!id) return;
+    const isPublished = Number(blog.status) === 1;
+    const newStatus = isPublished ? 0 : 1;
+
+    const dialogTitle = newStatus === 1 ? 'Publish Blog' : 'Move to Draft';
+    const dialogMessage =
+      newStatus === 1
+        ? `Are you sure you want to publish "${blog.title || 'this blog'}"?`
+        : `Are you sure you want to move "${blog.title || 'this blog'}" to draft?`;
+    const dialogConfirmText = newStatus === 1 ? 'Publish Blog' : 'Move to Draft';
+
+    Alert.alert(dialogTitle, dialogMessage, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: dialogConfirmText,
+        style: newStatus === 1 ? 'default' : 'destructive',
+        onPress: async () => {
+          try {
+            await updateBlogStatus(id);
+            setBlogs((prev) =>
+              prev.map((b) => ((b._id || b.id) === id ? { ...b, status: newStatus } : b))
+            );
+            Alert.alert('Success', 'Blog status updated successfully.');
+          } catch (e: any) {
+            Alert.alert('Error', e.message || 'Failed to update blog status.');
+          }
+        },
+      },
+    ]);
+  }, []);
+
+  const blogTableColumns = useMemo<HtmlTableColumn<BlogPost>[]>(
+    () => [
+      {
+        key: 'createdAt',
+        label: 'Created At',
+        width: '130px',
+        render: (v) => {
+          if (!v) return '—';
+          const d = new Date(v);
+          if (isNaN(d.getTime())) return String(v);
+          const dateStr = d.toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          });
+          const timeStr = d.toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          });
+          return (
+            <VStack style={{ justifyContent: 'center' }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#0f172a' }}>{dateStr}</Text>
+              <Text style={{ fontSize: 11, color: '#64748b' }}>{timeStr}</Text>
+            </VStack>
+          );
+        },
+      },
+      {
+        key: 'cover_image',
+        label: 'Cover',
+        width: '100px',
+        render: (_v, row) => {
+          const coverUrl = getBlogCoverImageUrl(row.cover_image);
+          if (coverUrl) {
+            return (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setViewingImage({ url: coverUrl, title: row.title || 'Blog Cover' })}
+              >
+                <Image
+                  source={{ uri: coverUrl }}
+                  style={{
+                    width: 65,
+                    height: 65,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: '#e2e8f0',
+                  }}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            );
+          }
+          const title = row.title || 'Untitled Blog';
+          const initials =
+            title
+              .split(' ')
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((w: string) => w.charAt(0).toUpperCase())
+              .join('') || 'BL';
+          return (
+            <Box
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 8,
+                backgroundColor: '#eff6ff',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: '#bfdbfe',
+              }}
+            >
+              <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 13 }}>{initials}</Text>
+            </Box>
+          );
+        },
+      },
+      {
+        key: 'title',
+        label: 'Blog',
+        width: '220px',
+        render: (_v, row) => {
+          const title = row.title || 'Untitled Blog';
+          return (
+            <VStack style={{ justifyContent: 'center', flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }} numberOfLines={1}>
+                {title}
+              </Text>
+              {row.excerpt ? (
+                <Text style={{ fontSize: 11, color: '#64748b' }} numberOfLines={1}>
+                  {row.excerpt}
+                </Text>
+              ) : null}
+            </VStack>
+          );
+        },
+      },
+      {
+        key: 'slug',
+        label: 'Slug',
+        width: '160px',
+        render: (_v, row) => (
+          <Text style={{ fontSize: 12, color: '#2563eb', fontWeight: '600' }} numberOfLines={1}>
+            {row.slug ? `/${row.slug}` : '—'}
+          </Text>
+        ),
+      },
+      {
+        key: 'category',
+        label: 'Category',
+        width: '130px',
+        render: (v) => {
+          const catTitle =
+            typeof v === 'object' && v
+              ? (v as any).label || (v as any).title
+              : typeof v === 'string'
+                ? v
+                : 'General';
+          return (
+            <Box
+              style={{
+                alignSelf: 'flex-start',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 8,
+                backgroundColor: '#eff6ff',
+                borderWidth: 1,
+                borderColor: '#bfdbfe',
+              }}
+            >
+              <Text style={{ color: '#1d4ed8', fontWeight: '700', fontSize: 12 }} numberOfLines={1}>
+                {catTitle || 'General'}
+              </Text>
+            </Box>
+          );
+        },
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        width: '130px',
+        render: (v, row) => {
+          const isPublished = Number(row?.status ?? v) === 1;
+          return (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => handleToggleStatus(row)}
+              style={{
+                minWidth: 95,
+                paddingVertical: 2,
+                borderRadius: 16,
+                backgroundColor: isPublished ? '#193867' : 'transparent',
+                borderWidth: 1,
+                borderColor: isPublished ? '#193867' : '#2f4f4f',
+                alignItems: 'center',
+                justifyContent: 'center',
+                alignSelf: 'flex-start',
+              }}
+            >
+              <Text
+                style={{
+                  color: isPublished ? '#ffffff' : '#2f4f4f',
+                  fontWeight: '700',
+                  fontSize: 12,
+                }}
+              >
+                {isPublished ? 'Published' : 'Draft'}
+              </Text>
+            </TouchableOpacity>
+          );
+        },
+      },
+      {
+        key: 'read_time_minutes',
+        label: 'Read Time',
+        width: '110px',
+        render: (v) => (
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#475569' }}>
+            {v ? `${v} min` : '5 min'}
+          </Text>
+        ),
+      },
+      {
+        key: 'published_at',
+        label: 'Published At',
+        width: '140px',
+        render: (v) => {
+          if (!v) return <Text style={{ fontSize: 12, color: '#94a3b8' }}>Not published</Text>;
+          const d = new Date(v);
+          if (isNaN(d.getTime()))
+            return <Text style={{ fontSize: 12, color: '#475569' }}>{String(v)}</Text>;
+          return (
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#475569' }}>
+              {d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </Text>
+          );
+        },
+      },
+      {
+        key: 'created_by',
+        label: 'Created By',
+        width: '160px',
+        render: (_v, row) => {
+          const u: any = (row as any).created_by;
+          const name =
+            typeof u === 'object' && u
+              ? u.first_name || u.last_name
+                ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim()
+                : (u.name ?? u.full_name ?? u.username ?? u.email ?? '')
+              : typeof u === 'string'
+                ? u
+                : '—';
+          return (
+            <HStack space="xs" style={{ alignItems: 'center' }}>
+              <Box
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  backgroundColor: '#cbd5e1',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>
+                  {name ? name.charAt(0).toUpperCase() : '?'}
+                </Text>
+              </Box>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#334155' }} numberOfLines={1}>
+                {name || '—'}
+              </Text>
+            </HStack>
+          );
+        },
+      },
+    ],
+    [handleToggleStatus]
+  );
 
   const handleDelete = (blog: BlogPost) => {
     const id = blog._id || blog.id || '';
@@ -338,7 +491,7 @@ export default function BlogsScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-4 pt-14">
+        <Box className="px-5 pb-4 pt-12">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity onPress={() => router.back()}>
               <Text className="text-sm font-medium text-white">← Back</Text>
@@ -396,49 +549,104 @@ export default function BlogsScreen() {
               <Text className="text-base text-typography-400">No blog articles found</Text>
             </Box>
           ) : (
-            <HtmlTable
-              columns={BLOG_TABLE_COLUMNS}
-              data={blogs}
-              rowActions={BLOG_ROW_ACTIONS}
-              onRowAction={(action, rowId) => {
-                if (action === 'edit') {
-                  const b = blogs.find((x) => String(x._id || x.id) === String(rowId));
-                  if (b) handleOpenEdit(b);
-                } else if (action === 'delete') {
-                  const b = blogs.find((x) => String(x._id || x.id) === String(rowId));
-                  if (b) handleDelete(b);
-                }
-              }}
-              iconOnlyActions={true}
-              tableContainerStyle={{
-                borderWidth: 0,
-                shadowColor: 'transparent',
-                backgroundColor: 'transparent',
-                elevation: 0,
-                marginHorizontal: 0,
-                marginVertical: 0,
-              }}
-              headerRowStyle={{
-                backgroundColor: '#f8fafc',
-                borderBottomWidth: 1.5,
-                borderBottomColor: '#e2e8f0',
-              }}
-              headerCellTextStyle={{
-                color: '#1e3a8a',
-                fontWeight: '700',
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-              rowStyle={{
-                borderBottomWidth: 1,
-                borderBottomColor: '#f1f5f9',
-                backgroundColor: '#ffffff',
-              }}
-            />
-          )}
-          {loadingMore && (
-            <ActivityIndicator size="small" color="#193867" style={{ marginVertical: 20 }} />
+            <React.Fragment>
+              <HtmlTable
+                columns={blogTableColumns}
+                data={blogs}
+                rowActions={BLOG_ROW_ACTIONS}
+                onRowAction={(action, rowId) => {
+                  const b = blogs.find(
+                    (x: any) =>
+                      String(x._id || x.id) === String(rowId) ||
+                      String(rowId).startsWith(String(x._id || x.id))
+                  );
+                  if (!b) return;
+                  if (action === 'edit') {
+                    handleOpenEdit(b);
+                  } else if (action === 'delete') {
+                    handleDelete(b);
+                  }
+                }}
+                iconOnlyActions={true}
+                tableContainerStyle={{
+                  borderWidth: 0,
+                  shadowColor: 'transparent',
+                  backgroundColor: 'transparent',
+                  elevation: 0,
+                  marginHorizontal: 0,
+                  marginVertical: 0,
+                }}
+                headerRowStyle={{
+                  backgroundColor: '#f8fafc',
+                  borderBottomWidth: 1.5,
+                  borderBottomColor: '#e2e8f0',
+                }}
+                headerCellTextStyle={{
+                  color: '#1e3a8a',
+                  fontWeight: '700',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                }}
+                rowStyle={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#f1f5f9',
+                  backgroundColor: '#ffffff',
+                }}
+              />
+
+              {totalPages > 0 && (
+                <Box style={styles.paginationWrapper}>
+                  <HStack space="xs" className="items-center justify-center">
+                    <TouchableOpacity
+                      style={[styles.pageNavBtn, page === 1 && styles.pageNavBtnDisabled]}
+                      disabled={page === 1}
+                      onPress={() => {
+                        if (page > 1) fetchBlogsList(page - 1);
+                      }}
+                    >
+                      <Text style={[styles.pageNavText, page === 1 && styles.pageNavTextDisabled]}>
+                        ‹
+                      </Text>
+                    </TouchableOpacity>
+
+                    {getPageNumbers(page, totalPages).map((p) => {
+                      const isActive = p === page;
+                      return (
+                        <TouchableOpacity
+                          key={p}
+                          style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
+                          onPress={() => fetchBlogsList(p)}
+                        >
+                          <Text
+                            style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}
+                          >
+                            {p}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    <TouchableOpacity
+                      style={[styles.pageNavBtn, page >= totalPages && styles.pageNavBtnDisabled]}
+                      disabled={page >= totalPages}
+                      onPress={() => {
+                        if (page < totalPages) fetchBlogsList(page + 1);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.pageNavText,
+                          page >= totalPages && styles.pageNavTextDisabled,
+                        ]}
+                      >
+                        ›
+                      </Text>
+                    </TouchableOpacity>
+                  </HStack>
+                </Box>
+              )}
+            </React.Fragment>
           )}
         </ScrollView>
       )}
@@ -605,12 +813,49 @@ export default function BlogsScreen() {
           </Box>
         </Box>
       </Modal>
+
+      {/* ── IMAGE VIEWER MODAL ────────────────────────────────────────────────── */}
+      <Modal
+        visible={!!viewingImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewingImage(null)}
+      >
+        <TouchableOpacity
+          style={styles.imageViewerOverlay}
+          activeOpacity={1}
+          onPress={() => setViewingImage(null)}
+        >
+          <Box style={styles.imageViewerContainer} onStartShouldSetResponder={() => true}>
+            <HStack style={styles.imageViewerHeader}>
+              <Text style={styles.imageViewerTitle} numberOfLines={1}>
+                {viewingImage?.title || 'Blog Cover'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setViewingImage(null)}
+                style={styles.imageViewerCloseBtn}
+              >
+                <Text style={styles.imageViewerCloseText}>✕</Text>
+              </TouchableOpacity>
+            </HStack>
+            {viewingImage?.url ? (
+              <Box style={{ padding: 12, alignItems: 'center', justifyContent: 'center' }}>
+                <Image
+                  source={{ uri: viewingImage.url }}
+                  style={styles.imageViewerImg}
+                  resizeMode="contain"
+                />
+              </Box>
+            ) : null}
+          </Box>
+        </TouchableOpacity>
+      </Modal>
     </Box>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingBottom: 16 },
+  header: { paddingBottom: 0 },
   addBtn: {
     backgroundColor: 'rgba(255,255,255,0.22)',
     borderWidth: 1,
@@ -801,5 +1046,101 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 12,
     backgroundColor: '#f1f5f9',
+  },
+  imageViewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  imageViewerContainer: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  imageViewerHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#f8fafc',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  imageViewerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+    flex: 1,
+    marginRight: 8,
+  },
+  imageViewerCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageViewerCloseText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  imageViewerImg: {
+    width: '100%',
+    height: 320,
+    borderRadius: 12,
+  },
+  paginationWrapper: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  pageNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 3,
+  },
+  pageNavBtnDisabled: {
+    backgroundColor: '#f8fafc',
+    opacity: 0.5,
+  },
+  pageNavText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  pageNavTextDisabled: {
+    color: '#94a3b8',
+  },
+  pageNumberBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 2,
+  },
+  pageNumberBtnActive: {
+    backgroundColor: '#2563eb',
+  },
+  pageNumberText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  pageNumberTextActive: {
+    color: '#ffffff',
   },
 });
