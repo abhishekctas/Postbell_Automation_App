@@ -132,6 +132,8 @@ export default function PostEditorScreen() {
       }
     >
   >({});
+  const [platformHashtagsInput, setPlatformHashtagsInput] = useState<Record<string, string>>({});
+  const [uploadingPlatformImage, setUploadingPlatformImage] = useState<Record<string, boolean>>({});
 
   // Connected Social Accounts
   const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
@@ -209,6 +211,7 @@ export default function PostEditorScreen() {
             typeof postData.platformSpecificContent === 'object'
           ) {
             const overridesMap: Record<string, any> = {};
+            const initialPlatformTags: Record<string, string> = {};
             Object.entries(postData.platformSpecificContent).forEach(
               ([plat, entries]: [string, any]) => {
                 const entryList = Array.isArray(entries) ? entries : [];
@@ -220,10 +223,14 @@ export default function PostEditorScreen() {
                     hashtags: first.hashtags || [],
                     image_url: first.mediaUrl || first.media_url || '',
                   };
+                  if (first.hashtags && Array.isArray(first.hashtags) && first.hashtags.length > 0) {
+                    initialPlatformTags[plat] = first.hashtags.join(', ');
+                  }
                 }
               }
             );
             setPlatformOverrides(overridesMap);
+            setPlatformHashtagsInput(initialPlatformTags);
           }
 
           if (postData.post_status) {
@@ -243,7 +250,7 @@ export default function PostEditorScreen() {
     init();
   }, [id]);
 
-  // Image Picker
+  // Image Picker for General Content
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -267,31 +274,12 @@ export default function PostEditorScreen() {
             const serverUrl = uploadRes?.imageUrl || uploadRes?.url || uploadRes?.picture || uri;
             const serverPath = uploadRes?.imagePath || uploadRes?.url || uploadRes?.picture || uri;
 
-            if (activePlatformTab === 'general') {
-              setImageUrl(serverUrl);
-              setImagePath(serverPath);
-              setErrors((prev) => ({ ...prev, imageUrl: '' }));
-            } else {
-              setPlatformOverrides((prev) => ({
-                ...prev,
-                [activePlatformTab]: {
-                  ...prev[activePlatformTab],
-                  image_url: serverUrl,
-                },
-              }));
-            }
+            setImageUrl(serverUrl);
+            setImagePath(serverPath);
+            setErrors((prev) => ({ ...prev, imageUrl: '' }));
           } catch {
-            if (activePlatformTab === 'general') {
-              setImageUrl(uri);
-            } else {
-              setPlatformOverrides((prev) => ({
-                ...prev,
-                [activePlatformTab]: {
-                  ...prev[activePlatformTab],
-                  image_url: uri,
-                },
-              }));
-            }
+            setImageUrl(uri);
+            setErrors((prev) => ({ ...prev, imageUrl: '' }));
           } finally {
             setUploadingImage(false);
           }
@@ -299,6 +287,49 @@ export default function PostEditorScreen() {
       }
     } catch {
       Alert.alert('Error', 'Failed to pick image from gallery.');
+    }
+  };
+
+  // Platform-Specific Image Picker
+  const pickPlatformImage = async (platformKey: string) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: true }));
+        try {
+          const uploadRes = await uploadPostImage(
+            uri,
+            result.assets[0].fileName || undefined,
+            result.assets[0].mimeType || undefined
+          );
+          const serverUrl = uploadRes?.imageUrl || uploadRes?.url || uploadRes?.picture || uri;
+          setPlatformOverrides((prev) => ({
+            ...prev,
+            [platformKey]: {
+              ...prev[platformKey],
+              image_url: serverUrl,
+            },
+          }));
+        } catch {
+          setPlatformOverrides((prev) => ({
+            ...prev,
+            [platformKey]: {
+              ...prev[platformKey],
+              image_url: uri,
+            },
+          }));
+        } finally {
+          setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: false }));
+        }
+      }
+    } catch {
+      Alert.alert('Error', `Failed to pick image for ${platformKey}.`);
     }
   };
 
@@ -521,15 +552,37 @@ export default function PostEditorScreen() {
 
         const platformLink = formatWebsiteUrl(override.link) || formattedWebsite;
 
-        platformSpecificContentObj[platform] = platformAccs.map((acc) => ({
-          account_id: acc.account_id,
-          caption: override.caption || caption || '',
-          link: platformLink || '',
-          hashtags: override.hashtags || hashtagsArray,
-          mediaUrl: override.image_url || imageUrl || '',
-          contentType: platformContentType,
-          post_status: finalStatus,
-        }));
+        const platformHashtags =
+          override.hashtags && override.hashtags.length > 0
+            ? override.hashtags
+            : hashtagsArray;
+
+        const platformMediaUrl =
+          override.image_url !== undefined ? override.image_url : (imageUrl || '');
+
+        if (platformAccs.length > 0) {
+          platformSpecificContentObj[platform] = platformAccs.map((acc) => ({
+            account_id: acc.account_id,
+            caption: override.caption || caption || '',
+            link: platformLink || '',
+            hashtags: platformHashtags,
+            mediaUrl: platformMediaUrl,
+            contentType: platformContentType,
+            post_status: finalStatus,
+          }));
+        } else {
+          platformSpecificContentObj[platform] = [
+            {
+              account_id: '',
+              caption: override.caption || caption || '',
+              link: platformLink || '',
+              hashtags: platformHashtags,
+              mediaUrl: platformMediaUrl,
+              contentType: platformContentType,
+              post_status: finalStatus,
+            },
+          ];
+        }
       });
 
       const payload: any = {
@@ -550,12 +603,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-                {
-                  type: 'image',
-                  url: imageUrl,
-                  imagePath: imagePath || imageUrl,
-                },
-              ]
+              {
+                type: 'image',
+                url: imageUrl,
+                imagePath: imagePath || imageUrl,
+              },
+            ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -1356,13 +1409,13 @@ export default function PostEditorScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* 4. Platform-Specific Content Overrides Card (Displayed when platforms are selected) */}
+            {/* 4. Platform-Specific Content Card (Displayed when platforms are selected) */}
             {selectedPlatforms.length > 0 && (
               <Box style={styles.card}>
                 <HStack space="xs" className="items-center gap-2">
                   <Feather name="sliders" size={17} color="#2563eb" />
                   <Heading size="sm" style={styles.cardTitle}>
-                    Platform-Specific Content Overrides
+                    Platform-Specific Content
                   </Heading>
                 </HStack>
                 <Text style={styles.cardSub}>
@@ -1383,7 +1436,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabBtnActive,
+                        styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -1392,7 +1445,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                            styles.subTabTextActive,
+                          styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -1458,10 +1511,10 @@ export default function PostEditorScreen() {
                         </HStack>
                       </VStack>
 
-                      {/* Platform Specific Caption Override */}
+                      {/* Platform Specific Caption */}
                       <VStack space="xs" style={{ marginTop: 8 }}>
                         <Text style={styles.inputLabel}>
-                          {targetPlatform.toUpperCase()} Caption Override
+                          {targetPlatform.toUpperCase()} Caption
                         </Text>
                         <TextInput
                           style={[styles.input, styles.multilineInput]}
@@ -1483,10 +1536,10 @@ export default function PostEditorScreen() {
                         />
                       </VStack>
 
-                      {/* Platform Specific Link Override */}
+                      {/* Platform Specific Custom Link  */}
                       <VStack space="xs" style={{ marginTop: 8 }}>
                         <Text style={styles.inputLabel}>
-                          {targetPlatform.toUpperCase()} Link Override
+                          {targetPlatform.toUpperCase()} Custom Link
                         </Text>
                         <TextInput
                           style={styles.input}
@@ -1508,66 +1561,156 @@ export default function PostEditorScreen() {
                         />
                       </VStack>
 
-                      {/* Platform Specific Image Override */}
+                      {/* Platform Specific Hashtags */}
                       <VStack space="xs" style={{ marginTop: 8 }}>
                         <Text style={styles.inputLabel}>
-                          {targetPlatform.toUpperCase()} Custom Image (Optional Override)
+                          {targetPlatform.toUpperCase()} Hashtags (comma separated)
                         </Text>
-                        {currentOverride.image_url ? (
-                          <Box style={styles.imagePreviewBox}>
-                            <Image
-                              source={{ uri: currentOverride.image_url }}
-                              style={styles.uploadedImage}
-                              resizeMode="cover"
-                            />
+                        <TextInput
+                          style={styles.input}
+                          value={
+                            platformHashtagsInput[targetPlatform] !== undefined
+                              ? platformHashtagsInput[targetPlatform]
+                              : (currentOverride.hashtags && currentOverride.hashtags.length > 0
+                                  ? currentOverride.hashtags.join(', ')
+                                  : hashtagsInput)
+                          }
+                          onChangeText={(val) => {
+                            setPlatformHashtagsInput((prev) => ({
+                              ...prev,
+                              [targetPlatform]: val,
+                            }));
+                            const parsed = val
+                              .split(',')
+                              .map((tag) => tag.replace(/^#/, '').trim())
+                              .filter(Boolean);
+                            setPlatformOverrides((prev) => ({
+                              ...prev,
+                              [targetPlatform]: {
+                                ...prev[targetPlatform],
+                                hashtags: parsed,
+                              },
+                            }));
+                          }}
+                          placeholder={`Custom hashtags for ${targetPlatform}...`}
+                          placeholderTextColor="#94a3b8"
+                          maxLength={300}
+                        />
+                        {(() => {
+                          const rawVal =
+                            platformHashtagsInput[targetPlatform] !== undefined
+                              ? platformHashtagsInput[targetPlatform]
+                              : (currentOverride.hashtags && currentOverride.hashtags.length > 0
+                                  ? currentOverride.hashtags.join(', ')
+                                  : hashtagsInput);
+                          if (!rawVal || !rawVal.trim()) return null;
+                          const tags = rawVal
+                            .split(',')
+                            .map((t) => t.trim().replace(/^#/, ''))
+                            .filter(Boolean);
+                          if (tags.length === 0) return null;
+                          return (
+                            <HStack space="xs" className="mt-2 flex-wrap">
+                              {tags.map((tag, idx) => (
+                                <Box key={idx} style={styles.tagChip}>
+                                  <Text style={styles.tagText}>#{tag}</Text>
+                                </Box>
+                              ))}
+                            </HStack>
+                          );
+                        })()}
+                      </VStack>
+
+                      {/* Platform Specific Image Override */}
+                      <VStack space="xs" style={{ marginTop: 8 }}>
+                        <HStack className="items-center justify-between">
+                          <Text style={styles.inputLabel}>
+                            {targetPlatform.toUpperCase()} Image
+                          </Text>
+                          {currentOverride.image_url !== undefined &&
+                            currentOverride.image_url !== imageUrl &&
+                            Boolean(imageUrl) && (
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setPlatformOverrides((prev) => {
+                                    const updated = { ...prev[targetPlatform] };
+                                    delete updated.image_url;
+                                    return { ...prev, [targetPlatform]: updated };
+                                  });
+                                }}
+                              >
+                                <Text style={{ fontSize: 11, color: '#2563eb', fontWeight: '600' }}>
+                                  Reset to General Image
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                        </HStack>
+
+                        {(() => {
+                          const displayPlatformImg =
+                            currentOverride.image_url !== undefined
+                              ? currentOverride.image_url
+                              : imageUrl;
+                          const isUploading = Boolean(uploadingPlatformImage[targetPlatform]);
+
+                          if (displayPlatformImg) {
+                            return (
+                              <Box style={styles.imagePreviewBox}>
+                                <Image
+                                  source={{ uri: displayPlatformImg }}
+                                  style={styles.uploadedImage}
+                                  resizeMode="cover"
+                                />
+                                <HStack space="xs" style={styles.imageActionOverlay}>
+                                  <TouchableOpacity
+                                    style={styles.imgActionBtn}
+                                    onPress={() => pickPlatformImage(targetPlatform)}
+                                    disabled={isUploading}
+                                  >
+                                    {isUploading ? (
+                                      <ActivityIndicator size="small" color="#fff" />
+                                    ) : (
+                                      <Feather name="refresh-cw" size={14} color="#fff" />
+                                    )}
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={[styles.imgActionBtn, { backgroundColor: '#dc2626' }]}
+                                    onPress={() => {
+                                      setPlatformOverrides((prev) => ({
+                                        ...prev,
+                                        [targetPlatform]: {
+                                          ...prev[targetPlatform],
+                                          image_url: '',
+                                        },
+                                      }));
+                                    }}
+                                  >
+                                    <Feather name="trash-2" size={14} color="#fff" />
+                                  </TouchableOpacity>
+                                </HStack>
+                              </Box>
+                            );
+                          }
+
+                          return (
                             <TouchableOpacity
-                              style={styles.removeImgBtn}
-                              onPress={() => {
-                                setPlatformOverrides((prev) => ({
-                                  ...prev,
-                                  [targetPlatform]: {
-                                    ...prev[targetPlatform],
-                                    image_url: '',
-                                  },
-                                }));
-                              }}
+                              style={[styles.uploadBox, { paddingVertical: 12 }]}
+                              onPress={() => pickPlatformImage(targetPlatform)}
+                              disabled={isUploading}
                             >
-                              <Feather name="trash-2" size={16} color="#fff" />
+                              {isUploading ? (
+                                <ActivityIndicator size="small" color="#0052d4" />
+                              ) : (
+                                <>
+                                  <Feather name="image" size={20} color="#0052d4" />
+                                  <Text style={[styles.uploadText, { fontSize: 12 }]}>
+                                    Upload Image for {targetPlatform.toUpperCase()}
+                                  </Text>
+                                </>
+                              )}
                             </TouchableOpacity>
-                          </Box>
-                        ) : (
-                          <TouchableOpacity
-                            style={[styles.uploadBox, { paddingVertical: 12 }]}
-                            onPress={async () => {
-                              try {
-                                const result = await ImagePicker.launchImageLibraryAsync({
-                                  mediaTypes:
-                                    (ImagePicker as any).MediaType?.Images ||
-                                    ImagePicker.MediaTypeOptions.Images,
-                                  allowsEditing: true,
-                                  quality: 0.8,
-                                });
-                                if (!result.canceled && result.assets && result.assets.length > 0) {
-                                  const uri = result.assets[0].uri;
-                                  setPlatformOverrides((prev) => ({
-                                    ...prev,
-                                    [targetPlatform]: {
-                                      ...prev[targetPlatform],
-                                      image_url: uri,
-                                    },
-                                  }));
-                                }
-                              } catch {
-                                Alert.alert('Error', 'Failed to pick platform image.');
-                              }
-                            }}
-                          >
-                            <Feather name="image" size={20} color="#0052d4" />
-                            <Text style={[styles.uploadText, { fontSize: 12 }]}>
-                              Upload Custom Image for {targetPlatform.toUpperCase()}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
+                          );
+                        })()}
                       </VStack>
                     </VStack>
                   );
