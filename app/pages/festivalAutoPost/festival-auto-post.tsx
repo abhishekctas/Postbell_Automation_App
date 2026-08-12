@@ -85,6 +85,7 @@ function FestivalPostCard({
   onSendNotification: () => void;
   onViewImage: () => void;
 }) {
+  const [isLiked, setIsLiked] = useState(false);
   const catToken = getCategoryToken(post.category, post.name);
   const catColors = tokenColor(catToken);
   const eventColors = getEventColor(post.category, post.name);
@@ -155,12 +156,12 @@ function FestivalPostCard({
       {/* Action icons row */}
       <HStack style={styles.igActions} className="items-center justify-between">
         <HStack className="items-center">
-          <TouchableOpacity style={styles.igActionBtn} onPress={() => onSelectPost(!isSelected)}>
+          <TouchableOpacity style={styles.igActionBtn} onPress={() => setIsLiked((prev) => !prev)}>
             <Feather
               name="heart"
               size={22}
-              color={isSelected ? '#ef4444' : '#0f172a'}
-              style={isSelected ? { opacity: 1 } : undefined}
+              color={isLiked ? '#ef4444' : '#0f172a'}
+              style={isLiked ? { opacity: 1 } : undefined}
             />
           </TouchableOpacity>
           <TouchableOpacity

@@ -1,4 +1,4 @@
-import { fetchWithAuth, API_ENDPOINTS } from '@/services/api';
+import { fetchWithAuth, API_ENDPOINTS, API_BASE_URL } from '@/services/api';
 
 const BASE = API_ENDPOINTS.dashboard.replace('/dashboard', '');
 
@@ -27,6 +27,7 @@ export interface RecentPost {
   image_url?: string;
   hashtags: string[];
   engagement: number;
+  expanded?: boolean;
 }
 
 export interface TopUser {
@@ -103,6 +104,13 @@ export interface WebsiteVisitorDay {
   count: number;
 }
 
+export const getCustomerAvatarUrl = (image?: string): string => {
+  if (!image) return '';
+  if (/^https?:\/\//i.test(image) || image.startsWith('file://')) return image;
+  const staticBase = API_BASE_URL.replace(/\/v1\/?$/, '');
+  return `${staticBase}/customer-profile/${encodeURIComponent(image)}`;
+};
+
 const hasError = (res: any) => res && typeof res === 'object' && 'success' in res && !res.success;
 
 export const getDashboardStats = async (params = ''): Promise<DashboardStats> => {
@@ -116,21 +124,24 @@ export const getRecentPosts = async (limit = 10, params = ''): Promise<RecentPos
   const query = params ? `&${params}` : '';
   const data = await fetchWithAuth(`${BASE}/dashboard/posts?limit=${limit}${query}`);
   if (hasError(data)) throw new Error(data.message);
-  return data?.data ?? data ?? [];
+  const res = data?.data ?? data?.posts ?? data ?? [];
+  return Array.isArray(res) ? res : [];
 };
 
-export const getTopUsers = async (limit = 5, params = ''): Promise<TopUser[]> => {
+export const getTopUsers = async (limit = 10, params = ''): Promise<TopUser[]> => {
   const query = params ? `&${params}` : '';
   const data = await fetchWithAuth(`${BASE}/dashboard/users?limit=${limit}${query}`);
   if (hasError(data)) throw new Error(data.message);
-  return data?.data ?? data ?? [];
+  const res = data?.data ?? data?.users ?? data ?? [];
+  return Array.isArray(res) ? res : [];
 };
 
 export const getPlatformAnalytics = async (params = ''): Promise<PlatformAnalytics[]> => {
   const query = params ? `?${params}` : '';
   const data = await fetchWithAuth(`${BASE}/dashboard/platforms${query}`);
   if (hasError(data)) throw new Error(data.message);
-  return data?.data ?? data ?? [];
+  const res = data?.data ?? data?.platforms ?? data ?? [];
+  return Array.isArray(res) ? res : [];
 };
 
 export const getSubscriptionAnalytics = async (params = ''): Promise<SubscriptionAnalytics> => {
@@ -153,5 +164,6 @@ export const getWebsiteVisitorsCount = async (params = ''): Promise<WebsiteVisit
     `${BASE}/website-visitor/get-total-website-visitor-count${query}`
   );
   if (hasError(data)) throw new Error(data.message);
-  return data?.data ?? data ?? [];
+  const res = data?.data ?? data ?? [];
+  return Array.isArray(res) ? res : [];
 };

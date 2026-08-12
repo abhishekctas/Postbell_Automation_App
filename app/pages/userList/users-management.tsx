@@ -217,13 +217,13 @@ export default function UsersManagementScreen() {
     {
       key: 'created_by_name',
       label: 'Created By',
-      width: '160px',
+      width: '180px',
       render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
     },
     {
       key: 'updatedAt',
       label: 'Updated At',
-      width: '130px',
+      width: '120px',
       render: (v) => {
         if (!v) return '—';
         const date = new Date(v);
@@ -251,7 +251,7 @@ export default function UsersManagementScreen() {
     {
       key: 'updated_by_name',
       label: 'Updated By',
-      width: '140px',
+      width: '180px',
       render: (v) => <Text style={styles.tableCellText}>{v || '—'}</Text>,
     },
   ];
@@ -492,7 +492,7 @@ export default function UsersManagementScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Top Search & Filter Bar */}
       <Box style={styles.filterSection}>
-        <HStack className="mb-3 items-center justify-between">
+        <HStack className="mb-2 items-center justify-between">
           <Text style={styles.sectionHeaderTitle}>Users Management</Text>
           <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
             <Text style={styles.addBtnText}>+ Add User</Text>
@@ -853,7 +853,8 @@ export default function UsersManagementScreen() {
 
 const styles = StyleSheet.create({
   filterSection: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',

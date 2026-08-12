@@ -45,9 +45,9 @@ const SOCIAL_PLATFORMS = [
   { id: 'facebook', label: 'Facebook', icon: 'facebook-square', color: '#1877f2' },
   { id: 'instagram', label: 'Instagram', icon: 'instagram', color: '#e1306c' },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp', color: '#25d366' },
-  { id: 'twitter', label: 'Twitter', icon: 'twitter', color: '#1da1f2' },
-  { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', color: '#0a66c2' },
-  { id: 'youtube', label: 'YouTube', icon: 'youtube-play', color: '#ff0000' },
+  // { id: 'twitter', label: 'Twitter', icon: 'twitter', color: '#1da1f2' },
+  // { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', color: '#0a66c2' },
+  // { id: 'youtube', label: 'YouTube', icon: 'youtube-play', color: '#ff0000' },
 ];
 
 const getInitialScheduledDate = () => {
@@ -685,9 +685,12 @@ export default function PostEditorScreen() {
         {activeTab === 'ai' && (
           <VStack space="md">
             <Box style={styles.card}>
-              <Heading size="sm" style={styles.cardTitle}>
-                🤖 Generate Post with AI
-              </Heading>
+              <HStack space="xs" className="items-center">
+                <Ionicons name="sparkles" size={18} color="#2563eb" />
+                <Heading size="sm" style={styles.cardTitle}>
+                  Generate Post with AI
+                </Heading>
+              </HStack>
               <Text style={styles.cardSub}>
                 Describe your post topic or campaign idea, and AI will auto-generate copy, hashtags,
                 and format.
@@ -723,20 +726,38 @@ export default function PostEditorScreen() {
                       style={[
                         styles.providerChip,
                         aiProvider === prov && styles.providerChipActive,
+                        { flexDirection: 'row', alignItems: 'center', gap: 5 },
                       ]}
                       onPress={() => setAiProvider(prov)}
                     >
+                      {prov === 'auto' && (
+                        <Feather
+                          name="zap"
+                          size={13}
+                          color={aiProvider === prov ? '#0369a1' : '#64748b'}
+                        />
+                      )}
+                      {prov === 'gemini' && (
+                        <Ionicons
+                          name="sparkles"
+                          size={13}
+                          color={aiProvider === prov ? '#0369a1' : '#64748b'}
+                        />
+                      )}
+                      {prov === 'openai' && (
+                        <Feather
+                          name="cpu"
+                          size={13}
+                          color={aiProvider === prov ? '#0369a1' : '#64748b'}
+                        />
+                      )}
                       <Text
                         style={[
                           styles.providerChipText,
                           aiProvider === prov && styles.providerChipTextActive,
                         ]}
                       >
-                        {prov === 'auto'
-                          ? '⚡ Auto'
-                          : prov === 'gemini'
-                            ? '🔷 Gemini'
-                            : '🟢 OpenAI'}
+                        {prov === 'auto' ? 'Auto' : prov === 'gemini' ? 'Gemini' : 'OpenAI'}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -901,7 +922,7 @@ export default function PostEditorScreen() {
             {/* 1. AI Image Generator from Reference Card */}
             <Box style={styles.card}>
               <HStack className="mb-2 items-center justify-between">
-                <HStack space="xs" className="items-center">
+                <HStack space="xs" className="items-center gap-2">
                   <Ionicons name="sparkles" size={18} color="#2563eb" />
                   <Heading size="sm" style={styles.cardTitle}>
                     AI Image Generator from Reference
@@ -984,20 +1005,38 @@ export default function PostEditorScreen() {
                           style={[
                             styles.providerChip,
                             referenceImageProvider === prov && styles.providerChipActive,
+                            { flexDirection: 'row', alignItems: 'center', gap: 5 },
                           ]}
                           onPress={() => setReferenceImageProvider(prov)}
                         >
+                          {prov === 'auto' && (
+                            <Feather
+                              name="zap"
+                              size={13}
+                              color={referenceImageProvider === prov ? '#0369a1' : '#64748b'}
+                            />
+                          )}
+                          {prov === 'gemini' && (
+                            <Ionicons
+                              name="sparkles"
+                              size={13}
+                              color={referenceImageProvider === prov ? '#0369a1' : '#64748b'}
+                            />
+                          )}
+                          {prov === 'openai' && (
+                            <Feather
+                              name="cpu"
+                              size={13}
+                              color={referenceImageProvider === prov ? '#0369a1' : '#64748b'}
+                            />
+                          )}
                           <Text
                             style={[
                               styles.providerChipText,
                               referenceImageProvider === prov && styles.providerChipTextActive,
                             ]}
                           >
-                            {prov === 'auto'
-                              ? '⚡ Auto'
-                              : prov === 'gemini'
-                                ? '🔷 Gemini'
-                                : '🟢 OpenAI'}
+                            {prov === 'auto' ? 'Auto' : prov === 'gemini' ? 'Gemini' : 'OpenAI'}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -1074,9 +1113,12 @@ export default function PostEditorScreen() {
 
             {/* 2. General Content Card */}
             <Box style={styles.card}>
-              <Heading size="sm" style={styles.cardTitle}>
-                📝 General Content
-              </Heading>
+              <HStack space="xs" className="items-center gap-2">
+                <Feather name="edit-3" size={17} color="#2563eb" />
+                <Heading size="sm" style={styles.cardTitle}>
+                  General Content
+                </Heading>
+              </HStack>
 
               {/* Company Name Field */}
               <VStack style={{ marginTop: 12 }}>
@@ -1093,46 +1135,6 @@ export default function PostEditorScreen() {
                   maxLength={100}
                 />
                 {errors.companyName && <Text style={styles.errorText}>{errors.companyName}</Text>}
-              </VStack>
-
-              {/* Title Field (Optional) */}
-              <VStack style={{ marginTop: 12 }}>
-                <Text style={styles.inputLabel}>Title</Text>
-                <TextInput
-                  style={[styles.input, errors.title ? styles.inputError : null]}
-                  value={title}
-                  onChangeText={(text) => {
-                    setTitle(text);
-                    if (errors.title || errors.main)
-                      setErrors((prev) => ({ ...prev, title: '', main: '' }));
-                  }}
-                  placeholder="Post title (optional)"
-                  placeholderTextColor="#94a3b8"
-                  maxLength={150}
-                />
-                {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
-              </VStack>
-
-              {/* Website Link Field */}
-              <VStack style={{ marginTop: 12 }}>
-                <Text style={styles.inputLabel}>Website / Link URL</Text>
-                <TextInput
-                  style={[styles.input, errors.companyWebsite ? styles.inputError : null]}
-                  value={companyWebsite}
-                  onChangeText={(text) => {
-                    setCompanyWebsite(text);
-                    if (errors.companyWebsite)
-                      setErrors((prev) => ({ ...prev, companyWebsite: '' }));
-                  }}
-                  placeholder="https://yourwebsite.com/link"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="url"
-                  autoCapitalize="none"
-                  maxLength={500}
-                />
-                {errors.companyWebsite && (
-                  <Text style={styles.errorText}>{errors.companyWebsite}</Text>
-                )}
               </VStack>
 
               {/* Caption Field */}
@@ -1225,30 +1227,6 @@ export default function PostEditorScreen() {
                         Supports JPG, PNG, WEBP
                       </Text>
                     </TouchableOpacity>
-
-                    <Text
-                      style={{
-                        textAlign: 'center',
-                        color: '#94a3b8',
-                        fontSize: 12,
-                        marginVertical: 4,
-                      }}
-                    >
-                      — OR —
-                    </Text>
-
-                    <TextInput
-                      style={[styles.input, errors.imageUrl ? styles.inputError : null]}
-                      value={imageUrl}
-                      onChangeText={(text) => {
-                        setImageUrl(text);
-                        if (errors.imageUrl || errors.main)
-                          setErrors((prev) => ({ ...prev, imageUrl: '', main: '' }));
-                      }}
-                      placeholder="Paste Image URL (https://...)"
-                      placeholderTextColor="#94a3b8"
-                      maxLength={1000}
-                    />
                   </VStack>
                 )}
                 {errors.imageUrl && <Text style={styles.errorText}>{errors.imageUrl}</Text>}
@@ -1258,9 +1236,12 @@ export default function PostEditorScreen() {
             {/* 3. Target Platforms Picker Card */}
             <Box style={styles.card}>
               <HStack className="items-center justify-between">
-                <Heading size="sm" style={styles.cardTitle}>
-                  🌐 Select Target Social Platforms *
-                </Heading>
+                <HStack space="xs" className="items-center gap-2">
+                  <Feather name="share-2" size={17} color="#2563eb" />
+                  <Heading size="sm" style={styles.cardTitle}>
+                    Select Target Social Platforms *
+                  </Heading>
+                </HStack>
               </HStack>
               {errors.platforms && <Text style={styles.errorText}>{errors.platforms}</Text>}
 
@@ -1369,17 +1350,21 @@ export default function PostEditorScreen() {
                 elevation: 5,
               }}
             >
+              <Feather name="settings" size={16} color="#fff" style={{ marginRight: 6 }} />
               <Text style={{ fontSize: 15, color: '#fff', fontWeight: '900' }}>
-                ⚙️ Platform Configuration
+                Platform Configuration
               </Text>
             </TouchableOpacity>
 
             {/* 4. Platform-Specific Content Overrides Card (Displayed when platforms are selected) */}
             {selectedPlatforms.length > 0 && (
               <Box style={styles.card}>
-                <Heading size="sm" style={styles.cardTitle}>
-                  🎯 Platform-Specific Content Overrides
-                </Heading>
+                <HStack space="xs" className="items-center gap-2">
+                  <Feather name="sliders" size={17} color="#2563eb" />
+                  <Heading size="sm" style={styles.cardTitle}>
+                    Platform-Specific Content Overrides
+                  </Heading>
+                </HStack>
                 <Text style={styles.cardSub}>
                   Customize caption, link, or image specifically for each selected social platform.
                 </Text>
@@ -1592,9 +1577,12 @@ export default function PostEditorScreen() {
 
             {/* Publishing & Scheduling Section */}
             <Box style={styles.card}>
-              <Heading size="sm" style={styles.cardTitle}>
-                📅 Publishing & Scheduling
-              </Heading>
+              <HStack space="xs" className="items-center gap-2">
+                <Feather name="calendar" size={17} color="#2563eb" />
+                <Heading size="sm" style={styles.cardTitle}>
+                  Publishing & Scheduling
+                </Heading>
+              </HStack>
 
               <HStack className="mt-3 items-center justify-between">
                 <VStack style={{ flex: 1 }}>
@@ -1686,16 +1674,25 @@ export default function PostEditorScreen() {
             {/* Live Social Post Preview Panel (Per Platform & Per Account matching Control Panel) */}
             <Box style={styles.card}>
               <VStack space="xs" className="mb-3">
-                <HStack className="items-center justify-between">
-                  <Heading size="sm" style={styles.cardTitle}>
-                    👁 Live Social Feed Preview
-                  </Heading>
+                <HStack style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                  <HStack space="xs" style={{ alignItems: 'center', gap: 4 }}>
+                    <Feather name="eye" size={17} color="#2563eb" />
+                    <Heading size="sm" style={styles.cardTitle}>
+                      Preview
+                    </Heading>
+                  </HStack>
 
                   {/* Filter tabs: All, Facebook, Instagram, WhatsApp, etc. */}
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ gap: 4 }}
+                    style={{ flex: 1, marginLeft: 10 }}
+                    contentContainerStyle={{
+                      gap: 4,
+                      justifyContent: 'flex-end',
+                      flexGrow: 1,
+                      alignItems: 'center',
+                    }}
                   >
                     <TouchableOpacity
                       style={[styles.miniPrevTab, previewTab === 'all' && styles.miniPrevTabActive]}
@@ -2158,9 +2155,12 @@ export default function PostEditorScreen() {
         >
           <TouchableOpacity activeOpacity={1} style={styles.optionsModalCard}>
             <HStack className="mb-4 items-center justify-between">
-              <Heading size="md" style={{ color: '#0f172a', fontWeight: '700' }}>
-                🌐 Select Platforms & Accounts
-              </Heading>
+              <HStack space="xs" className="items-center gap-2">
+                <Feather name="share-2" size={18} color="#2563eb" />
+                <Heading size="md" style={{ color: '#0f172a', fontWeight: '700' }}>
+                  Select Platforms & Accounts
+                </Heading>
+              </HStack>
               <TouchableOpacity onPress={() => setNetworksModalOpen(false)}>
                 <Feather name="x" size={20} color="#64748b" />
               </TouchableOpacity>
@@ -2320,6 +2320,7 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontWeight: '700',
     fontSize: 15,
+    marginLeft: 4,
   },
   cardSub: {
     fontSize: 12,
@@ -2540,10 +2541,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   miniPrevTab: {
-    padding: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
     borderRadius: 6,
     backgroundColor: '#f1f5f9',
-    marginRight: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   miniPrevTabActive: {
     backgroundColor: '#dbeafe',

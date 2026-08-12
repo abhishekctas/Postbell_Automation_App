@@ -1123,7 +1123,7 @@ export default function BlogEditorScreen() {
 
               <Text style={styles.label}>Cover Image</Text>
               <HStack space="xs" style={{ marginBottom: 8, alignItems: 'center' }}>
-                <TextInput
+                {/* <TextInput
                   style={[styles.input, { flex: 1, marginBottom: 0 }]}
                   placeholder="https://example.com/cover.jpg or choose file"
                   value={blogCoverImage}
@@ -1132,7 +1132,7 @@ export default function BlogEditorScreen() {
                     setCoverImageFile(null);
                   }}
                   maxLength={500}
-                />
+                /> */}
                 <TouchableOpacity
                   style={[styles.smallAddBtn, { height: 42, justifyContent: 'center' }]}
                   onPress={handlePickCoverImage}
