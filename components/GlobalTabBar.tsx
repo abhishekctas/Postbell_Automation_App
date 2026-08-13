@@ -157,7 +157,7 @@ export default function GlobalTabBar() {
 
   const isHideTabBar = pathname.includes('editor') || pathname.includes('details');
   const activeColor = '#0b53f8';
-  const inactiveColor = '#80889B';
+  const deactiveColor = '#80889B';
 
   const isCustomer = user?.loginType === 'customer';
   const isSuperAdmin = user?.isSuperAdmin === true;
@@ -252,10 +252,10 @@ export default function GlobalTabBar() {
             <Ionicons
               name={getIsActive(0) ? 'home' : 'home-outline'}
               size={22}
-              color={getIsActive(0) ? activeColor : inactiveColor}
+              color={getIsActive(0) ? activeColor : deactiveColor}
             />
             <Text
-              style={[styles.tabLabel, { color: getIsActive(0) ? activeColor : inactiveColor }]}
+              style={[styles.tabLabel, { color: getIsActive(0) ? activeColor : deactiveColor }]}
             >
               Dashboard
             </Text>
@@ -267,9 +267,9 @@ export default function GlobalTabBar() {
             onPress={() => handleTabPress(1)}
             activeOpacity={0.7}
           >
-            <Feather name="edit" size={21} color={getIsActive(1) ? activeColor : inactiveColor} />
+            <Feather name="edit" size={21} color={getIsActive(1) ? activeColor : deactiveColor} />
             <Text
-              style={[styles.tabLabel, { color: getIsActive(1) ? activeColor : inactiveColor }]}
+              style={[styles.tabLabel, { color: getIsActive(1) ? activeColor : deactiveColor }]}
             >
               Posts
             </Text>
@@ -292,9 +292,9 @@ export default function GlobalTabBar() {
             onPress={() => handleTabPress(3)}
             activeOpacity={0.7}
           >
-            <Feather name="user" size={21} color={getIsActive(3) ? activeColor : inactiveColor} />
+            <Feather name="user" size={21} color={getIsActive(3) ? activeColor : deactiveColor} />
             <Text
-              style={[styles.tabLabel, { color: getIsActive(3) ? activeColor : inactiveColor }]}
+              style={[styles.tabLabel, { color: getIsActive(3) ? activeColor : deactiveColor }]}
             >
               Profile
             </Text>
@@ -306,9 +306,9 @@ export default function GlobalTabBar() {
             onPress={() => handleTabPress(4)}
             activeOpacity={0.7}
           >
-            <Feather name="menu" size={22} color={getIsActive(4) ? activeColor : inactiveColor} />
+            <Feather name="menu" size={22} color={getIsActive(4) ? activeColor : deactiveColor} />
             <Text
-              style={[styles.tabLabel, { color: getIsActive(4) ? activeColor : inactiveColor }]}
+              style={[styles.tabLabel, { color: getIsActive(4) ? activeColor : deactiveColor }]}
             >
               Menu
             </Text>

@@ -235,7 +235,7 @@ export default function FeatureDetailsScreen() {
                     isActive ? styles.chipTextActive : styles.chipTextInactive,
                   ]}
                 >
-                  {isActive ? 'Active' : 'Inactive'}
+                  {isActive ? 'Active' : 'Deactive'}
                 </Text>
               </Box>
             </HStack>

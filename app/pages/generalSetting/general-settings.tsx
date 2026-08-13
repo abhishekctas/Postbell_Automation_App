@@ -239,17 +239,7 @@ export default function GeneralAccessScreen() {
       >
         <Box style={styles.headerGlow} />
         <Box style={styles.headerContent}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-            activeOpacity={0.8}
-          >
-            <HStack className="items-center gap-0.5">
-              <Feather name="arrow-left" size={16} color="#fff" />
-              <Text style={styles.backBtnText}>Back</Text>
-            </HStack>
-          </TouchableOpacity>
-          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
             <VStack style={{ flex: 1, paddingRight: 15 }}>
               <Heading style={styles.headerTitle}>General Settings</Heading>
               <Text style={styles.headerSubtitle}>
@@ -872,15 +862,6 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     zIndex: 2,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
   },
   backIcon: { color: '#fff', fontSize: 20, fontWeight: '600', marginRight: 4 },
   backBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },

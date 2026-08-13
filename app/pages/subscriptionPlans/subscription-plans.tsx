@@ -262,7 +262,7 @@ export default function SubscriptionPlansScreen() {
 
   // Search, filter and pagination state
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'deactive'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -282,7 +282,7 @@ export default function SubscriptionPlansScreen() {
   const [sortOrder, setSortOrder] = useState('0');
   const [isPopularMonthly, setIsPopularMonthly] = useState(false);
   const [isPopularAnnual, setIsPopularAnnual] = useState(false);
-  const [status, setStatus] = useState<number>(1); // 1 = Active, 0 = Inactive
+  const [status, setStatus] = useState<number>(1); // 1 = Active, 0 = Deactive
 
   // Validation Errors State & Modal Scroll Ref
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -478,7 +478,7 @@ export default function SubscriptionPlansScreen() {
                 }}
               />
               <Text style={{ fontSize: 11, fontWeight: '700', color }}>
-                {isAct ? 'Active' : 'Inactive'}
+                {isAct ? 'Active' : 'Deactive'}
               </Text>
             </Box>
           </TouchableOpacity>
@@ -826,13 +826,6 @@ export default function SubscriptionPlansScreen() {
       <LinearGradient colors={['#0d53fc', '#1d68f6']} style={styles.header}>
         <Box className="px-5 pb-3">
           <HStack className="mb-2 items-center justify-between">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={{ flexDirection: 'row', alignItems: 'center' }}
-            >
-              <ArrowLeft size={16} color="#ffffff" style={{ marginRight: 4 }} />
-              <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }}>Back</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
               <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
               <Text style={styles.addBtnText}>Add Plan</Text>
@@ -904,7 +897,7 @@ export default function SubscriptionPlansScreen() {
             onPress={() => {
               setStatusFilter((prev) => {
                 if (prev === 'all') return 'active';
-                if (prev === 'active') return 'inactive';
+                if (prev === 'active') return 'deactive';
                 return 'all';
               });
             }}
@@ -939,7 +932,7 @@ export default function SubscriptionPlansScreen() {
               }}
             >
               <Text style={{ fontSize: 11, fontWeight: '600', color: '#2563eb' }}>
-                Filter: {statusFilter === 'active' ? 'Active Plans' : 'Inactive Plans'}
+                Filter: {statusFilter === 'active' ? 'Active Plans' : 'Deactive Plans'}
               </Text>
               <TouchableOpacity onPress={() => setStatusFilter('all')} style={{ marginLeft: 6 }}>
                 <X size={12} color="#2563eb" />
@@ -1443,7 +1436,7 @@ export default function SubscriptionPlansScreen() {
                           color: status === 0 ? '#b91c1c' : '#475569',
                         }}
                       >
-                        Inactive
+                        Deactive
                       </Text>
                     </TouchableOpacity>
                   </HStack>
@@ -1509,15 +1502,15 @@ export default function SubscriptionPlansScreen() {
         }}
         onConfirm={handleConfirmStatusToggle}
         loading={statusLoading}
-        itemName={selectedPlanForStatus?.name}
         targetStatus={selectedPlanForStatus?.status === 1 ? 0 : 1}
         title={
           selectedPlanForStatus?.status === 1
-            ? 'Deactivate Subscription Plan'
-            : 'Activate Subscription Plan'
+            ? 'Deactive Subscription Plan'
+            : 'Active Subscription Plan'
         }
-        message={`Are you sure you want to ${selectedPlanForStatus?.status === 1 ? 'deactivate' : 'activate'} the plan "${selectedPlanForStatus?.name}"?`}
-        confirmText={selectedPlanForStatus?.status === 1 ? 'Deactivate' : 'Activate'}
+        message={`Are you sure you want to ${selectedPlanForStatus?.status === 1 ? 'deactive' : 'active'} the plan "${selectedPlanForStatus?.name}"?`}
+        confirmText={selectedPlanForStatus?.status === 1 ? 'Deactive' : 'Active'}
+        customBrandColor={selectedPlanForStatus?.status === 1 ? '#64748b' : '#2563EB'}
       />
 
       {/* Plan Details Modal Popup */}
@@ -1556,7 +1549,7 @@ export default function SubscriptionPlansScreen() {
                                 : styles.statusInactiveText,
                             ]}
                           >
-                            {selectedPlanForDetails.status === 1 ? 'Active' : 'Inactive'}
+                            {selectedPlanForDetails.status === 1 ? 'Active' : 'Deactive'}
                           </Text>
                         </Box>
                       </HStack>
@@ -1728,7 +1721,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 10,
   },
   addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   mainCard: {

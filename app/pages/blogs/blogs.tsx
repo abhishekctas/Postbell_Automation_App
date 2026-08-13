@@ -31,6 +31,7 @@ import {
 } from './blogs.api';
 import { router } from 'expo-router';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
+import { Plus } from 'lucide-react-native';
 
 const BLOG_ROW_ACTIONS = [
   { label: 'Edit', action: 'edit' },
@@ -492,13 +493,11 @@ export default function BlogsScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
         <Box className="px-5 pb-4 pt-12">
-          <HStack className="mb-2 items-center justify-between">
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text className="text-sm font-medium text-white">← Back</Text>
-            </TouchableOpacity>
+          <HStack className="mb-2 items-center">
             <HStack space="xs">
               <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
-                <Text style={styles.addBtnText}>+ Add Blog</Text>
+                <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
+                <Text style={styles.addBtnText}>Add Blog</Text>
               </TouchableOpacity>
             </HStack>
           </HStack>
@@ -863,6 +862,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   addBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
   headerIllustration: {

@@ -154,7 +154,7 @@ export default function RolesManagementScreen() {
           <TouchableOpacity onPress={() => handleOpenStatusConfirm(row)}>
             <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
               <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
-                {isActive ? 'Active' : 'Inactive'}
+                {isActive ? 'Active' : 'Deactive'}
               </Text>
             </Box>
           </TouchableOpacity>
@@ -362,11 +362,11 @@ export default function RolesManagementScreen() {
         }}
         onConfirm={handleConfirmStatusToggle}
         loading={statusLoading}
-        itemName={selectedRoleForStatus?.name || selectedRoleForStatus?.role_name}
         targetStatus={selectedRoleForStatus?.status === 0 ? 1 : 0}
-        title={selectedRoleForStatus?.status === 0 ? 'Activate Role' : 'Deactivate Role'}
-        message={`Are you sure you want to ${selectedRoleForStatus?.status === 0 ? 'activate' : 'deactivate'} role "${selectedRoleForStatus?.name || selectedRoleForStatus?.role_name}"?`}
-        confirmText={selectedRoleForStatus?.status === 0 ? 'Activate' : 'Deactivate'}
+        title={selectedRoleForStatus?.status === 0 ? 'Active Role' : 'Deactive Role'}
+        message={`Are you sure you want to ${selectedRoleForStatus?.status === 0 ? 'active' : 'deactive'} role "${selectedRoleForStatus?.name || selectedRoleForStatus?.role_name}"?`}
+        confirmText={selectedRoleForStatus?.status === 0 ? 'Active' : 'Deactive'}
+        customBrandColor={selectedRoleForStatus?.status === 1 ? '#64748b' : '#2563EB'}
       />
     </Box>
   );
@@ -375,7 +375,7 @@ export default function RolesManagementScreen() {
 const styles = StyleSheet.create({
   filterSection: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',

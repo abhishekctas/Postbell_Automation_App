@@ -275,14 +275,6 @@ export default function SystemLogsScreen() {
               Track system audits and changes
             </Text>
           </Box>
-          <HStack className="mb-2 items-center justify-between">
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <HStack className="items-center gap-0.5">
-                <Feather name="arrow-left" size={16} color="#fff" />
-                <Text style={styles.backBtnText}>Back</Text>
-              </HStack>
-            </TouchableOpacity>
-          </HStack>
         </Box>
       </LinearGradient>
 
@@ -342,8 +334,18 @@ export default function SystemLogsScreen() {
                 data={logs}
                 rowActions={LOG_ROW_ACTIONS}
                 onRowAction={(action, rowId) => {
-                  if (action === 'view') {
-                    const l = logs.find((x) => String(x._id) === String(rowId));
+                  if (action === 'view' || action === 'details') {
+                    const l =
+                      logs.find(
+                        (x: any, idx: number) =>
+                          String(x._id || x.id) === String(rowId) ||
+                          String(rowId).startsWith(String(x._id || x.id)) ||
+                          String(rowId) === `row-${idx}` ||
+                          String(rowId) === `${x._id || x.id}-${idx}`
+                      ) ||
+                      (String(rowId).startsWith('row-')
+                        ? logs[parseInt(String(rowId).replace('row-', ''), 10)]
+                        : undefined);
                     if (l) setSelectedLog(l);
                   }
                 }}
@@ -663,7 +665,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   closeModalBtn: {
     alignItems: 'center',

@@ -17,7 +17,7 @@ export interface StatusConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   loading?: boolean;
-  targetStatus?: 0 | 1 | 'active' | 'inactive' | 'activate' | 'deactivate' | 'delete';
+  targetStatus?: 0 | 1 | 'active' | 'deactive' | 'delete';
   headerIcon?: keyof typeof Feather.glyphMap;
   confirmColor?: string;
   customBrandColor?: string;
@@ -39,23 +39,18 @@ export default function StatusConfirmDialog({
   confirmColor,
   customBrandColor,
 }: StatusConfirmDialogProps) {
-  const isActivating =
-    targetStatus === 1 || targetStatus === 'active' || targetStatus === 'activate';
+  const isActivating = targetStatus === 1 || targetStatus === 'active';
   const isDelete = targetStatus === 'delete';
 
-  const defaultTitle = isDelete
-    ? 'Delete Item'
-    : isActivating
-      ? 'Activate Item'
-      : 'Deactivate Item';
+  const defaultTitle = isDelete ? 'Delete Item' : isActivating ? 'Active Item' : 'Deactive Item';
 
   const defaultMessage = isDelete
     ? 'This action cannot be undone. Are you sure you want to delete this item?'
     : isActivating
-      ? 'Are you sure you want to activate this item?'
-      : 'Are you sure you want to deactivate this item?';
+      ? 'Are you sure you want to active this item?'
+      : 'Are you sure you want to deactive this item?';
 
-  const defaultConfirmText = isDelete ? 'Delete' : isActivating ? 'Activate' : 'Deactivate';
+  const defaultConfirmText = isDelete ? 'Delete' : isActivating ? 'Active' : 'Deactive';
 
   const iconName: keyof typeof Feather.glyphMap =
     headerIcon || (isDelete ? 'trash-2' : isActivating ? 'check-circle' : 'alert-circle');

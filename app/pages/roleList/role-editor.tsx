@@ -326,7 +326,7 @@ export default function RoleEditorScreen() {
                       status === 0 && styles.statusToggleTextInactive,
                     ]}
                   >
-                    Inactive
+                    Deactive
                   </Text>
                 </TouchableOpacity>
               </HStack>

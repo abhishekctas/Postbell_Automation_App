@@ -23,7 +23,7 @@ export interface FestivalData {
   name: string;
   date: string;
   category?: string;
-  status: 'active' | 'inactive';
+  status: 'active' | 'deactive';
   autoGenerate?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -36,7 +36,7 @@ export interface FestivalGeneratedPost {
   name: string;
   date: string;
   category?: string;
-  status: 'active' | 'inactive';
+  status: 'active' | 'deactive';
   selectedFestival?: boolean;
   autoGenerate?: boolean;
   image?: string;
@@ -76,7 +76,7 @@ export interface UpdateFestivalPostPayload {
   name?: string;
   date?: string;
   category?: string;
-  status?: 'active' | 'inactive';
+  status?: 'active' | 'deactive';
   selectedFestival?: boolean;
   autoGenerate?: boolean;
   caption?: string;
@@ -89,7 +89,7 @@ export interface CreateFestivalPostPayload {
   name: string;
   date: string;
   category?: string;
-  status?: 'active' | 'inactive';
+  status?: 'active' | 'deactive';
   selectedFestival?: boolean;
   autoGenerate?: boolean;
   caption?: string;
@@ -137,7 +137,7 @@ export const normalizeFestivalPosts = (response: any): FestivalGeneratedPost[] =
       name: post.name || post.festivalName || '',
       date: post.date || post.festivalDate || '',
       category: post.category || post.festivalCategory || '',
-      status: (post.status || post.festivalStatus || 'active') as 'active' | 'inactive',
+      status: (post.status || post.festivalStatus || 'active') as 'active' | 'deactive',
       selectedFestival: Boolean(post.selectedFestival ?? post.selected ?? post.isAutoPost),
       autoGenerate:
         post.autoGenerate !== undefined

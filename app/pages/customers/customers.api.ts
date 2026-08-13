@@ -11,7 +11,7 @@ export interface Customer {
   contact_no?: string | number;
   dob?: string;
   gender?: number; // 1 - MALE, 2 - FEMALE, 3 - OTHER
-  status?: number; // 0 inactive, 1 active, 2 deleted
+  status?: number; // 0 deactive, 1 active, 2 deleted
   address?: any;
   image?: string;
   is_email_verified?: boolean;

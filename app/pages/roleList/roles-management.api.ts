@@ -33,7 +33,7 @@ export interface Role {
   name?: string;
   role_name?: string;
   description?: string;
-  status?: number; // 1 active, 0 inactive
+  status?: number; // 1 active, 0 deactive
   section_list?: SectionItem[];
   sectionMatrix?: SectionMatrixItem[];
   createdAt?: string;

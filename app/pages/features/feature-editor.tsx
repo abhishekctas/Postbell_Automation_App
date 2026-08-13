@@ -685,7 +685,7 @@ export default function FeatureEditorScreen() {
                       status === 0 && styles.statusToggleTextInactive,
                     ]}
                   >
-                    Inactive
+                    Deactive
                   </Text>
                 </TouchableOpacity>
               </HStack>

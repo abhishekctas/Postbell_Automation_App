@@ -10,7 +10,7 @@ export interface User {
   email: string;
   contact_no?: string | number;
   address?: string;
-  status?: number; // 0 inactive, 1 active
+  status?: number; // 0 deactive, 1 active
   role_name?: string;
   role_id?: string;
 }

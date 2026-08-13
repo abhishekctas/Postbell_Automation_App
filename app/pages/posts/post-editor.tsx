@@ -223,7 +223,11 @@ export default function PostEditorScreen() {
                     hashtags: first.hashtags || [],
                     image_url: first.mediaUrl || first.media_url || '',
                   };
-                  if (first.hashtags && Array.isArray(first.hashtags) && first.hashtags.length > 0) {
+                  if (
+                    first.hashtags &&
+                    Array.isArray(first.hashtags) &&
+                    first.hashtags.length > 0
+                  ) {
                     initialPlatformTags[plat] = first.hashtags.join(', ');
                   }
                 }
@@ -553,12 +557,10 @@ export default function PostEditorScreen() {
         const platformLink = formatWebsiteUrl(override.link) || formattedWebsite;
 
         const platformHashtags =
-          override.hashtags && override.hashtags.length > 0
-            ? override.hashtags
-            : hashtagsArray;
+          override.hashtags && override.hashtags.length > 0 ? override.hashtags : hashtagsArray;
 
         const platformMediaUrl =
-          override.image_url !== undefined ? override.image_url : (imageUrl || '');
+          override.image_url !== undefined ? override.image_url : imageUrl || '';
 
         if (platformAccs.length > 0) {
           platformSpecificContentObj[platform] = platformAccs.map((acc) => ({
@@ -603,12 +605,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-              {
-                type: 'image',
-                url: imageUrl,
-                imagePath: imagePath || imageUrl,
-              },
-            ]
+                {
+                  type: 'image',
+                  url: imageUrl,
+                  imagePath: imagePath || imageUrl,
+                },
+              ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -1436,7 +1438,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                        styles.subTabBtnActive,
+                          styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -1445,7 +1447,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabTextActive,
+                            styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -1571,9 +1573,9 @@ export default function PostEditorScreen() {
                           value={
                             platformHashtagsInput[targetPlatform] !== undefined
                               ? platformHashtagsInput[targetPlatform]
-                              : (currentOverride.hashtags && currentOverride.hashtags.length > 0
-                                  ? currentOverride.hashtags.join(', ')
-                                  : hashtagsInput)
+                              : currentOverride.hashtags && currentOverride.hashtags.length > 0
+                                ? currentOverride.hashtags.join(', ')
+                                : hashtagsInput
                           }
                           onChangeText={(val) => {
                             setPlatformHashtagsInput((prev) => ({
@@ -1600,9 +1602,9 @@ export default function PostEditorScreen() {
                           const rawVal =
                             platformHashtagsInput[targetPlatform] !== undefined
                               ? platformHashtagsInput[targetPlatform]
-                              : (currentOverride.hashtags && currentOverride.hashtags.length > 0
-                                  ? currentOverride.hashtags.join(', ')
-                                  : hashtagsInput);
+                              : currentOverride.hashtags && currentOverride.hashtags.length > 0
+                                ? currentOverride.hashtags.join(', ')
+                                : hashtagsInput;
                           if (!rawVal || !rawVal.trim()) return null;
                           const tags = rawVal
                             .split(',')
