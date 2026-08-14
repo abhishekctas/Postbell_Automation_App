@@ -578,9 +578,6 @@ export default function CustomerSubscriptionsScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
         <Box className="px-5 pb-4 pt-14">
-          <TouchableOpacity onPress={() => router.back()} className="mb-2">
-            <Text className="text-sm font-medium text-white">← Back</Text>
-          </TouchableOpacity>
           <Heading size="xl" style={{ color: '#fff' }}>
             Customer Subscriptions
           </Heading>
@@ -854,7 +851,7 @@ export default function CustomerSubscriptionsScreen() {
                               color: customerDetails.status === 1 ? '#0369a1' : '#4b5563',
                             }}
                           >
-                            {customerDetails.status === 1 ? '● Account Active' : '● Inactive'}
+                            {customerDetails.status === 1 ? '● Account Active' : '● Deactive'}
                           </Text>
                         </Box>
                       </HStack>

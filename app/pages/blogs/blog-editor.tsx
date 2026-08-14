@@ -20,9 +20,9 @@ import { Heading } from '@/components/ui/heading';
 import { Button, ButtonText } from '@/components/ui/button';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import {
   BlogPost,
-  BlogFormData,
   Tag,
   TagFormData,
   FaqItem,
@@ -140,6 +140,11 @@ export default function BlogEditorScreen() {
   const [blogExcerpt, setBlogExcerpt] = useState('');
   const [blogBody, setBlogBody] = useState('');
   const [blogCategory, setBlogCategory] = useState('');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [contentTags, setContentTags] = useState<string[]>([]);
+  const [newContentTag, setNewContentTag] = useState('');
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [tagsDropdownOpen, setTagsDropdownOpen] = useState(false);
   const [blogReadTime, setBlogReadTime] = useState('5');
   const [blogAuthor, setBlogAuthor] = useState('');
   const [blogCoverImage, setBlogCoverImage] = useState('');
@@ -248,6 +253,24 @@ export default function BlogEditorScreen() {
                 ? blogObj.category
                 : '';
           setBlogCategory(catVal || '');
+
+          const tagIdsObj = safeParseJson(blogObj.tag_ids);
+          if (Array.isArray(tagIdsObj) && tagIdsObj.length) {
+            const ids = tagIdsObj
+              .map((item: any) => (item && typeof item === 'object' ? item._id || item.id : item))
+              .filter(Boolean);
+            setSelectedTagIds(ids);
+          } else {
+            setSelectedTagIds([]);
+          }
+
+          const contentTagsObj = safeParseJson(blogObj.content_tags);
+          if (Array.isArray(contentTagsObj) && contentTagsObj.length) {
+            setContentTags(contentTagsObj.filter(Boolean));
+          } else {
+            setContentTags([]);
+          }
+
           setBlogReadTime(String(blogObj.read_time_minutes || 5));
           setBlogAuthor(blogObj.author_label || '');
           setBlogCoverImage(getBlogCoverImageUrl(blogObj.cover_image));
@@ -548,6 +571,19 @@ export default function BlogEditorScreen() {
     }
   };
 
+  const handleAddContentTag = () => {
+    const trimmed = newContentTag.trim();
+    if (!trimmed) return;
+    if (!contentTags.includes(trimmed)) {
+      setContentTags((prev) => [...prev, trimmed]);
+    }
+    setNewContentTag('');
+  };
+
+  const handleRemoveContentTag = (idx: number) => {
+    setContentTags((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleToggleFaqSelection = (fId: string) => {
     setSelectedFaqIds((prev) =>
       prev.includes(fId) ? prev.filter((id) => id !== fId) : [...prev, fId]
@@ -593,6 +629,8 @@ export default function BlogEditorScreen() {
         excerpt: blogExcerpt.trim(),
         body: blogBody.trim(),
         category: blogCategory || undefined,
+        tag_ids: selectedTagIds,
+        content_tags: contentTags,
         read_time_minutes: parseInt(blogReadTime, 10) || 5,
         author_label: blogAuthor.trim(),
         cover_image: blogCoverImage.trim(),
@@ -645,7 +683,7 @@ export default function BlogEditorScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* ── HEADER ──────────────────────────────────────────────────────────── */}
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-4 pt-12">
+        <Box className="px-5 pb-2 pt-12">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity onPress={() => router.back()}>
               <Text className="text-sm font-medium text-white">← Back to Blogs</Text>
@@ -669,8 +707,13 @@ export default function BlogEditorScreen() {
               scrollViewRef.current?.scrollTo({ y: 0, animated: true });
             }}
           >
+            <Ionicons
+              name="settings-outline"
+              size={18}
+              color={activeTab === 0 ? '#2563EB' : '#ffffff'}
+            />
             <Text style={[styles.tabText, activeTab === 0 && styles.tabTextActive]}>
-              ⚙️ Blog Config
+              Blog Config
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -680,8 +723,13 @@ export default function BlogEditorScreen() {
               scrollViewRef.current?.scrollTo({ y: 0, animated: true });
             }}
           >
+            <Ionicons
+              name="pricetag-outline"
+              size={17}
+              color={activeTab === 1 ? '#2563EB' : '#ffffff'}
+            />
             <Text style={[styles.tabText, activeTab === 1 && styles.tabTextActive]}>
-              🏷️ Global Resources
+              Global Resources
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -691,8 +739,13 @@ export default function BlogEditorScreen() {
               scrollViewRef.current?.scrollTo({ y: 0, animated: true });
             }}
           >
+            <Ionicons
+              name="create-outline"
+              size={18}
+              color={activeTab === 2 ? '#2563EB' : '#ffffff'}
+            />
             <Text style={[styles.tabText, activeTab === 2 && styles.tabTextActive]}>
-              📝 Blog Editor
+              Blog Editor
             </Text>
           </TouchableOpacity>
         </HStack>
@@ -1072,30 +1125,117 @@ export default function BlogEditorScreen() {
                 maxLength={500}
               />
 
-              <Text style={styles.label}>Category (Select Tag)</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={{ marginBottom: 12 }}
+              {/* CATEGORY DROPDOWN */}
+              <Text style={styles.label}>Category</Text>
+              <TouchableOpacity
+                style={styles.dropdownTrigger}
+                onPress={() => setCategoryDropdownOpen(true)}
               >
-                <HStack space="xs">
-                  {tags.map((t) => {
-                    const tId = t._id || t.id || '';
-                    const isSel = blogCategory === tId;
+                <Text
+                  style={[styles.dropdownTriggerText, !blogCategory && styles.dropdownPlaceholder]}
+                >
+                  {tags.find((t) => (t._id || t.id) === blogCategory)?.title ||
+                    'None (Select Category)'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color="#64748b" />
+              </TouchableOpacity>
+
+              {/* TAGS DROPDOWN (MULTI-SELECT) */}
+              <Text style={styles.label}>
+                Tags {selectedTagIds.length > 0 ? `(${selectedTagIds.length})` : ''}
+              </Text>
+              <TouchableOpacity
+                style={styles.dropdownTrigger}
+                onPress={() => setTagsDropdownOpen(true)}
+              >
+                <Text
+                  style={[
+                    styles.dropdownTriggerText,
+                    selectedTagIds.length === 0 && styles.dropdownPlaceholder,
+                  ]}
+                >
+                  {selectedTagIds.length === 0
+                    ? 'Select tags…'
+                    : `${selectedTagIds.length} tag${selectedTagIds.length > 1 ? 's' : ''} selected`}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color="#64748b" />
+              </TouchableOpacity>
+
+              {/* Selected Tags Chips */}
+              {selectedTagIds.length > 0 ? (
+                <View style={styles.chipsContainer}>
+                  {selectedTagIds.map((tId) => {
+                    const tagObj = tags.find((t) => (t._id || t.id) === tId);
+                    const title = tagObj?.title || tId;
                     return (
-                      <TouchableOpacity
-                        key={tId}
-                        style={[styles.pillBtn, isSel && styles.pillBtnSelected]}
-                        onPress={() => setBlogCategory(isSel ? '' : tId)}
-                      >
-                        <Text style={[styles.pillText, isSel && styles.pillTextSelected]}>
-                          {t.title}
-                        </Text>
-                      </TouchableOpacity>
+                      <View key={tId} style={styles.tagChip}>
+                        <Text style={styles.tagChipText}>{title}</Text>
+                        <TouchableOpacity
+                          onPress={() =>
+                            setSelectedTagIds((prev) => prev.filter((id) => id !== tId))
+                          }
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Ionicons name="close-circle" size={16} color="#2563eb" />
+                        </TouchableOpacity>
+                      </View>
                     );
                   })}
-                </HStack>
-              </ScrollView>
+                </View>
+              ) : null}
+
+              {/* CONTENT TAGS */}
+              <Text style={styles.label}>
+                Content Tags {contentTags.length > 0 ? `(${contentTags.length})` : ''}
+              </Text>
+              <HStack space="xs" style={{ alignItems: 'center', marginBottom: 6 }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  placeholder="Type and press Enter…"
+                  value={newContentTag}
+                  onChangeText={setNewContentTag}
+                  onSubmitEditing={handleAddContentTag}
+                  returnKeyType="done"
+                  maxLength={50}
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.smallAddBtn,
+                    { height: 44, paddingHorizontal: 16, justifyContent: 'center' },
+                  ]}
+                  onPress={handleAddContentTag}
+                >
+                  <Text style={styles.smallAddBtnText}>Add</Text>
+                </TouchableOpacity>
+              </HStack>
+
+              {/* Content Tags Chips */}
+              <View style={styles.chipsContainer}>
+                {contentTags.length === 0 ? (
+                  <Text
+                    style={{
+                      color: '#94a3b8',
+                      fontSize: 12,
+                      fontStyle: 'italic',
+                      marginVertical: 4,
+                    }}
+                  >
+                    No content tags yet
+                  </Text>
+                ) : (
+                  contentTags.map((tag, idx) => (
+                    <View key={idx} style={styles.contentTagChip}>
+                      <Text style={styles.contentTagChipText}>{tag}</Text>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveContentTag(idx)}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Ionicons name="close-circle" size={16} color="#ffffff" />
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                )}
+              </View>
 
               <HStack space="md">
                 <VStack style={{ flex: 1 }}>
@@ -1567,6 +1707,138 @@ export default function BlogEditorScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── CATEGORY SELECTION DROPDOWN MODAL ──────────────────────────────────── */}
+      <Modal
+        visible={categoryDropdownOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCategoryDropdownOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setCategoryDropdownOpen(false)}
+        >
+          <View style={styles.dropdownModalBox} onStartShouldSetResponder={() => true}>
+            <HStack style={styles.dropdownModalHeader}>
+              <Text style={styles.dropdownModalTitle}>Select Category</Text>
+              <TouchableOpacity
+                onPress={() => setCategoryDropdownOpen(false)}
+                style={styles.modalCloseIconBtn}
+              >
+                <Ionicons name="close" size={20} color="#64748b" />
+              </TouchableOpacity>
+            </HStack>
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              <TouchableOpacity
+                style={[styles.dropdownItem, !blogCategory && styles.dropdownItemActive]}
+                onPress={() => {
+                  setBlogCategory('');
+                  setCategoryDropdownOpen(false);
+                }}
+              >
+                <Text
+                  style={[styles.dropdownItemText, !blogCategory && styles.dropdownItemTextActive]}
+                >
+                  None (No Category)
+                </Text>
+                {!blogCategory ? (
+                  <Ionicons name="checkmark-circle" size={18} color="#2563eb" />
+                ) : null}
+              </TouchableOpacity>
+              {tags.map((t) => {
+                const tId = t._id || t.id || '';
+                const isSel = blogCategory === tId;
+                return (
+                  <TouchableOpacity
+                    key={tId}
+                    style={[styles.dropdownItem, isSel && styles.dropdownItemActive]}
+                    onPress={() => {
+                      setBlogCategory(tId);
+                      setCategoryDropdownOpen(false);
+                    }}
+                  >
+                    <Text style={[styles.dropdownItemText, isSel && styles.dropdownItemTextActive]}>
+                      {t.title}
+                    </Text>
+                    {isSel ? <Ionicons name="checkmark-circle" size={18} color="#2563eb" /> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── TAGS SELECTION MULTI-SELECT MODAL ─────────────────────────────────── */}
+      <Modal
+        visible={tagsDropdownOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTagsDropdownOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setTagsDropdownOpen(false)}
+        >
+          <View style={styles.dropdownModalBox} onStartShouldSetResponder={() => true}>
+            <HStack style={styles.dropdownModalHeader}>
+              <Text style={styles.dropdownModalTitle}>Select Tags</Text>
+              <TouchableOpacity
+                onPress={() => setTagsDropdownOpen(false)}
+                style={styles.modalCloseIconBtn}
+              >
+                <Ionicons name="close" size={20} color="#64748b" />
+              </TouchableOpacity>
+            </HStack>
+            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              {tags.length === 0 ? (
+                <Text style={{ color: '#94a3b8', fontSize: 13, padding: 12, textAlign: 'center' }}>
+                  No tags available in Global Resources.
+                </Text>
+              ) : (
+                tags.map((t) => {
+                  const tId = t._id || t.id || '';
+                  const isChecked = selectedTagIds.includes(tId);
+                  return (
+                    <TouchableOpacity
+                      key={tId}
+                      style={[styles.dropdownItem, isChecked && styles.dropdownItemActive]}
+                      onPress={() => {
+                        setSelectedTagIds((prev) =>
+                          prev.includes(tId) ? prev.filter((id) => id !== tId) : [...prev, tId]
+                        );
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownItemText,
+                          isChecked && styles.dropdownItemTextActive,
+                        ]}
+                      >
+                        {t.title}
+                      </Text>
+                      <Ionicons
+                        name={isChecked ? 'checkbox' : 'square-outline'}
+                        size={20}
+                        color={isChecked ? '#2563eb' : '#94a3b8'}
+                      />
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+            <TouchableOpacity
+              style={[styles.submitBtn, { marginTop: 14, paddingVertical: 12, flex: 0 }]}
+              onPress={() => setTagsDropdownOpen(false)}
+            >
+              <Text style={styles.submitBtnText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </Box>
   );
 }
@@ -1580,16 +1852,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
     padding: 4,
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: 'center',
     borderRadius: 10,
+    flexDirection: 'row',
+    gap: 5,
+    justifyContent: 'center',
   },
   tabButtonActive: {
     backgroundColor: '#ffffff',
@@ -1799,5 +2074,110 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
     marginBottom: 6,
+  },
+  dropdownTrigger: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  dropdownTriggerText: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '500',
+  },
+  dropdownPlaceholder: {
+    color: '#94a3b8',
+  },
+  dropdownModalBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 18,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  dropdownModalHeader: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dropdownModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  modalCloseIconBtn: {
+    padding: 4,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  dropdownItemActive: {
+    backgroundColor: '#eff6ff',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  dropdownItemTextActive: {
+    color: '#2563eb',
+    fontWeight: '700',
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  tagChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  contentTagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    borderRadius: 16,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  contentTagChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });

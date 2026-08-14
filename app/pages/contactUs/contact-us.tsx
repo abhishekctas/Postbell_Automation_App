@@ -369,16 +369,6 @@ export default function ContactUsScreen() {
       >
         <Box style={styles.headerGlow} />
         <Box style={styles.headerContent}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-            activeOpacity={0.8}
-          >
-            <HStack className="items-center gap-0.5">
-              <Feather name="arrow-left" size={16} color="#fff" />
-              <Text style={styles.backBtnText}>Back</Text>
-            </HStack>
-          </TouchableOpacity>
           <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
             <VStack style={{ flex: 1, paddingRight: 15 }}>
               <Heading style={styles.headerTitle}>Contact</Heading>
@@ -666,7 +656,7 @@ export default function ContactUsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { height: 220, overflow: 'hidden', paddingBottom: 4 },
+  header: { height: 200, overflow: 'hidden', paddingBottom: 4 },
   headerContent: { flex: 1, paddingHorizontal: 22, paddingTop: 58 },
   headerGlow: {
     position: 'absolute',
@@ -676,14 +666,6 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 110,
     backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
   },
   backIcon: { color: '#fff', fontSize: 20, marginRight: 8, fontWeight: '600' },
   backBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },

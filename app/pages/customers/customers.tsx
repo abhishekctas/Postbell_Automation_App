@@ -31,6 +31,7 @@ import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
+import { Plus } from 'lucide-react-native';
 
 const CUSTOMER_ROW_ACTIONS = [
   { label: 'Details', action: 'details' },
@@ -73,7 +74,7 @@ export default function CustomersScreen() {
   const [contactNo, setContactNo] = useState('');
   const [gender, setGender] = useState<number>(1); // 1 = Male, 2 = Female, 3 = Other
   const [dob, setDob] = useState('');
-  const [status, setStatus] = useState<number>(1); // 1 = Active, 0 = Inactive
+  const [status, setStatus] = useState<number>(1); // 1 = Active, 0 = Deactive
   const [imageUri, setImageUri] = useState<string>('');
   const [imageAsset, setImageAsset] = useState<any>(null);
 
@@ -230,7 +231,7 @@ export default function CustomersScreen() {
       width: '130px',
       render: (v, row) => {
         const isActive = Number(v) === 1;
-        const label = isActive ? 'Active' : 'Inactive';
+        const label = isActive ? 'Active' : 'Deactive';
         const bg = isActive ? '#eff6ff' : '#f8fafc';
         const color = isActive ? '#2563eb' : '#64748b';
         const border = isActive ? '#bfdbfe' : '#e2e8f0';
@@ -549,11 +550,9 @@ export default function CustomersScreen() {
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
         <Box className="px-5 pb-2 pt-12">
           <HStack className="mb-3 items-center justify-between">
-            {/* <TouchableOpacity onPress={() => router.back()}>
-              <Text className="text-white text-sm font-medium">← Back</Text>
-            </TouchableOpacity> */}
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
-              <Text style={styles.addBtnText}>+ Add Customer</Text>
+              <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
+              <Text style={styles.addBtnText}>Add Customer</Text>
             </TouchableOpacity>
           </HStack>
           <HStack className="items-start justify-between">
@@ -934,7 +933,7 @@ export default function CustomersScreen() {
                         <Text
                           style={[styles.genderText, status === 0 && styles.statusTextInactive]}
                         >
-                          Inactive
+                          Deactive
                         </Text>
                       </TouchableOpacity>
                     </HStack>
@@ -976,15 +975,13 @@ export default function CustomersScreen() {
         }}
         onConfirm={handleConfirmStatusToggle}
         loading={statusLoading}
-        itemName={`${selectedCustomerForStatus?.first_name || ''} ${selectedCustomerForStatus?.last_name || ''}`.trim()}
         targetStatus={Number(selectedCustomerForStatus?.status) === 1 ? 0 : 1}
         title={
-          Number(selectedCustomerForStatus?.status) === 1
-            ? 'Deactivate Customer'
-            : 'Activate Customer'
+          Number(selectedCustomerForStatus?.status) === 1 ? 'Deactive Customer' : 'Active Customer'
         }
-        message={`Are you sure you want to ${Number(selectedCustomerForStatus?.status) === 1 ? 'deactivate' : 'activate'} customer "${selectedCustomerForStatus?.first_name || ''} ${selectedCustomerForStatus?.last_name || ''}"?`}
-        confirmText={Number(selectedCustomerForStatus?.status) === 1 ? 'Deactivate' : 'Activate'}
+        message={`Are you sure you want to ${Number(selectedCustomerForStatus?.status) === 1 ? 'deactive' : 'active'} customer "${selectedCustomerForStatus?.first_name || ''} ${selectedCustomerForStatus?.last_name || ''}"?`}
+        confirmText={Number(selectedCustomerForStatus?.status) === 1 ? 'Deactive' : 'Active'}
+        customBrandColor={selectedCustomerForStatus?.status === 1 ? '#64748b' : '#2563EB'}
       />
     </Box>
   );
@@ -994,9 +991,13 @@ const styles = StyleSheet.create({
   header: { paddingBottom: 4 },
   addBtn: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
   addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   headerIconBox: {

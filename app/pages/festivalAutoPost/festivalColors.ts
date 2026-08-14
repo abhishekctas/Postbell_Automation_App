@@ -1,6 +1,6 @@
 export type CategoryToken = 'secondary' | 'info' | 'success' | 'warning' | 'error' | 'primary';
 
-export type StatusToken = 'selected' | 'active' | 'inactive';
+export type StatusToken = 'selected' | 'active' | 'deactive';
 
 /**
  * Vibrant, distinct colors for event bars — matched to the
@@ -115,13 +115,13 @@ export const getEventColor = (
 export const STATUS_TOKEN_MAP: Record<StatusToken, CategoryToken | 'grey'> = {
   selected: 'success',
   active: 'info',
-  inactive: 'grey',
+  deactive: 'grey',
 };
 
 export const STATUS_LABELS: Record<StatusToken, string> = {
   selected: 'Selected',
   active: 'Active',
-  inactive: 'Deactive',
+  deactive: 'Deactive',
 };
 
 export const tokenColor = (

@@ -1784,7 +1784,7 @@ export default function CustomerSetupWizard() {
               <Feather name="check-circle" size={18} color="#0b53f8" />
             </Box>
             <VStack style={{ flex: 1 }}>
-              <Heading style={styles.cardTitle}>Review & Activate</Heading>
+              <Heading style={styles.cardTitle}>Review & Active</Heading>
               <Text style={styles.cardSubtitle}>
                 Review workspace setup summary before activation
               </Text>
@@ -1842,7 +1842,7 @@ export default function CustomerSetupWizard() {
                     color="#ffffff"
                     style={{ marginRight: 8 }}
                   />
-                  <Text style={styles.primaryBtnText}>Activate & Complete Setup</Text>
+                  <Text style={styles.primaryBtnText}>Active & Complete Setup</Text>
                 </HStack>
               )}
             </TouchableOpacity>

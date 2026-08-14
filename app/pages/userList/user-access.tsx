@@ -6,7 +6,6 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import UsersManagementScreen from './users-management';
 import RolesManagementScreen from '../roleList/roles-management';
 
@@ -26,12 +25,6 @@ export default function UserAccessScreen() {
                 Manage staff members and assign{'\n'}permission roles
               </Text>
             </Box>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <HStack className="items-center space-x-1">
-                <Feather name="arrow-left" size={16} color="#fff" />
-                <Text style={styles.backBtnText}>Back</Text>
-              </HStack>
-            </TouchableOpacity>
           </HStack>
         </Box>
       </LinearGradient>

@@ -213,7 +213,7 @@ export default function CustomerDetailsScreen() {
                     isActive ? styles.textActive : styles.textInactive,
                   ]}
                 >
-                  {isActive ? 'Active Account' : 'Inactive Account'}
+                  {isActive ? 'Active Account' : 'Deactive Account'}
                 </Text>
               </Box>
             </Box>

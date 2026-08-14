@@ -207,7 +207,7 @@ export default function UsersManagementScreen() {
           <TouchableOpacity onPress={() => handleOpenStatusConfirm(row)}>
             <Box style={[styles.statusBadge, isActive ? styles.badgeActive : styles.badgeInactive]}>
               <Text style={[styles.statusText, isActive ? styles.textActive : styles.textInactive]}>
-                {isActive ? 'Active' : 'Inactive'}
+                {isActive ? 'Active' : 'Deactive'}
               </Text>
             </Box>
           </TouchableOpacity>
@@ -811,7 +811,7 @@ export default function UsersManagementScreen() {
                       <Text
                         style={[styles.statusToggleText, status === 0 && styles.statusTextInactive]}
                       >
-                        Inactive
+                        Deactive
                       </Text>
                     </TouchableOpacity>
                   </HStack>
@@ -841,11 +841,11 @@ export default function UsersManagementScreen() {
         }}
         onConfirm={handleConfirmStatusToggle}
         loading={statusLoading}
-        itemName={`${selectedUserForStatus?.first_name || ''} ${selectedUserForStatus?.last_name || ''}`.trim()}
         targetStatus={Number(selectedUserForStatus?.status) === 1 ? 0 : 1}
-        title={Number(selectedUserForStatus?.status) === 1 ? 'Deactivate User' : 'Activate User'}
-        message={`Are you sure you want to ${Number(selectedUserForStatus?.status) === 1 ? 'deactivate' : 'activate'} staff user "${selectedUserForStatus?.first_name || ''} ${selectedUserForStatus?.last_name || ''}"?`}
-        confirmText={Number(selectedUserForStatus?.status) === 1 ? 'Deactivate' : 'Activate'}
+        title={Number(selectedUserForStatus?.status) === 1 ? 'Deactive User' : 'Active User'}
+        message={`Are you sure you want to ${Number(selectedUserForStatus?.status) === 1 ? 'deactive' : 'active'} staff user "${selectedUserForStatus?.first_name || ''} ${selectedUserForStatus?.last_name || ''}"?`}
+        confirmText={Number(selectedUserForStatus?.status) === 1 ? 'Deactive' : 'Active'}
+        customBrandColor={selectedUserForStatus?.status === 1 ? '#64748b' : '#2563EB'}
       />
     </Box>
   );

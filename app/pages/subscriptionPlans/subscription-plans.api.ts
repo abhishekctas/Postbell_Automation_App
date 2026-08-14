@@ -15,7 +15,7 @@ export interface SubscriptionPlan {
   ai_content_generation_limit: number;
   features: string[];
   description?: string;
-  status: number; // 0 - INACTIVE, 1 - ACTIVE, 2 - DELETE
+  status: number; // 0 - DEACTIVE, 1 - ACTIVE, 2 - DELETE
   is_popular_monthly: boolean;
   is_popular_annual: boolean;
   sort_order: number;

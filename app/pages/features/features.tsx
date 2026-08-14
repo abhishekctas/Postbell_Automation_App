@@ -26,6 +26,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
+import { Plus } from 'lucide-react-native';
 
 const FEATURE_ROW_ACTIONS = [
   { label: 'Details', action: 'details' },
@@ -280,10 +281,10 @@ export default function FeaturesScreen() {
     {
       key: 'status',
       label: 'Status',
-      width: '120px',
+      width: '130px',
       render: (v, row) => {
         const isActive = Number(v) === 1;
-        const label = isActive ? 'Active' : 'Inactive';
+        const label = isActive ? 'Active' : 'Deactive';
         const bg = isActive ? '#eff6ff' : '#f8fafc';
         const color = isActive ? '#2563eb' : '#64748b';
         const border = isActive ? '#bfdbfe' : '#e2e8f0';
@@ -381,14 +382,9 @@ export default function FeaturesScreen() {
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
         <Box className="px-5 pb-2 pt-12">
           <HStack className="mb-3 items-center justify-between">
-            <TouchableOpacity onPress={() => router.back()}>
-              <HStack className="items-center space-x-1">
-                <Feather name="arrow-left" size={16} color="#fff" />
-                <Text className="text-sm font-medium text-white">Back</Text>
-              </HStack>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
-              <Text style={styles.addBtnText}>+ Add Feature</Text>
+              <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
+              <Text style={styles.addBtnText}>Add Feature</Text>
             </TouchableOpacity>
           </HStack>
           <HStack className="items-start justify-between">
@@ -615,11 +611,11 @@ export default function FeaturesScreen() {
         }}
         onConfirm={handleConfirmStatusToggle}
         loading={statusLoading}
-        itemName={selectedFeatureForStatus?.title}
         targetStatus={selectedFeatureForStatus?.status === 1 ? 0 : 1}
-        title={selectedFeatureForStatus?.status === 1 ? 'Deactivate Feature' : 'Activate Feature'}
-        message={`Are you sure you want to ${selectedFeatureForStatus?.status === 1 ? 'deactivate' : 'activate'} this feature?`}
-        confirmText={selectedFeatureForStatus?.status === 1 ? 'Deactivate' : 'Activate'}
+        title={selectedFeatureForStatus?.status === 1 ? 'Deactive Feature' : 'Active Feature'}
+        message={`Are you sure you want to ${selectedFeatureForStatus?.status === 1 ? 'deactive' : 'active'} this feature?`}
+        confirmText={selectedFeatureForStatus?.status === 1 ? 'Deactive' : 'Active'}
+        customBrandColor={selectedFeatureForStatus?.status === 1 ? '#64748b' : '#2563EB'}
       />
     </Box>
   );
@@ -629,9 +625,11 @@ const styles = StyleSheet.create({
   header: { paddingBottom: 4 },
   addBtn: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   headerIconBox: {

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
@@ -42,6 +41,7 @@ import { getCategoryToken, tokenColor, getEventColor } from './festivalColors';
 import { isPastDate, formatDisplayDate, getTimeAgo } from './festival-auto-post.dateUtils';
 import FestivalCalendarView from './FestivalCalendarView';
 import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
+import { Plus } from 'lucide-react-native';
 
 type ViewMode = 'feed' | 'calendar';
 
@@ -85,7 +85,7 @@ function FestivalPostCard({
   onSendNotification: () => void;
   onViewImage: () => void;
 }) {
-  const [isLiked, setIsLiked] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const catToken = getCategoryToken(post.category, post.name);
   const catColors = tokenColor(catToken);
   const eventColors = getEventColor(post.category, post.name);
@@ -94,12 +94,7 @@ function FestivalPostCard({
   const hasMoreHashtags = (post.hashtags?.length || 0) > 5 && !expandedHashtag;
 
   const openActionMenu = () => {
-    Alert.alert(post.name || 'Festival Post', 'Choose an action', [
-      { text: 'Edit post', onPress: onEditPost },
-      { text: 'Send notification', onPress: onSendNotification },
-      { text: 'View full image', onPress: onViewImage },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    setActionMenuOpen(true);
   };
 
   return (
@@ -156,13 +151,8 @@ function FestivalPostCard({
       {/* Action icons row */}
       <HStack style={styles.igActions} className="items-center justify-between">
         <HStack className="items-center">
-          <TouchableOpacity style={styles.igActionBtn} onPress={() => setIsLiked((prev) => !prev)}>
-            <Feather
-              name="heart"
-              size={22}
-              color={isLiked ? '#ef4444' : '#0f172a'}
-              style={isLiked ? { opacity: 1 } : undefined}
-            />
+          <TouchableOpacity style={styles.igActionBtn}>
+            <Feather name="heart" size={22} color="#ef4444" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.igActionBtn}
@@ -187,9 +177,9 @@ function FestivalPostCard({
             thumbColor={Platform.OS === 'android' ? '#ffffff' : undefined}
             style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
           />
-          <TouchableOpacity style={styles.igActionBtn} onPress={onViewImage}>
+          {/* <TouchableOpacity style={styles.igActionBtn} onPress={onViewImage}>
             <Feather name="bookmark" size={21} color="#0f172a" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </HStack>
       </HStack>
 
@@ -272,6 +262,68 @@ function FestivalPostCard({
 
         <Text style={styles.igTimeAgo}>{getTimeAgo(post.date)}</Text>
       </Box>
+
+      {/* ── ACTION MENU POPUP MODAL ────────────────────────────────────── */}
+      <Modal
+        visible={actionMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionMenuOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalOverlay}
+          activeOpacity={1}
+          onPress={() => setActionMenuOpen(false)}
+        >
+          <Box style={styles.actionMenuModalBox} onStartShouldSetResponder={() => true}>
+            <Text style={styles.actionMenuModalTitle} numberOfLines={1}>
+              {post.name || 'Festival Post'}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.actionMenuItem}
+              onPress={() => {
+                setActionMenuOpen(false);
+                onEditPost();
+              }}
+            >
+              <Feather name="edit-2" size={16} color="#2563EB" />
+              <Text style={styles.actionMenuItemText}>Edit post</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionMenuItem}
+              onPress={() => {
+                setActionMenuOpen(false);
+                onSendNotification();
+              }}
+            >
+              <Feather name="send" size={16} color="#059669" />
+              <Text style={styles.actionMenuItemText}>Send notification</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionMenuItem}
+              onPress={() => {
+                setActionMenuOpen(false);
+                onViewImage();
+              }}
+            >
+              <Feather name="eye" size={16} color="#475569" />
+              <Text style={styles.actionMenuItemText}>View full image</Text>
+            </TouchableOpacity>
+
+            <Box style={styles.actionMenuDivider} />
+
+            <TouchableOpacity
+              style={styles.actionMenuCancelBtn}
+              onPress={() => setActionMenuOpen(false)}
+            >
+              <Text style={styles.actionMenuCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </Box>
+        </TouchableOpacity>
+      </Modal>
     </Box>
   );
 }
@@ -339,7 +391,7 @@ export default function FestivalAutoPostScreen() {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [category, setCategory] = useState('');
-  const [status, setStatus] = useState<'active' | 'inactive'>('active');
+  const [status, setStatus] = useState<'active' | 'deactive'>('active');
   const [selectedFestival, setSelectedFestival] = useState(true);
   const [autoGenerate, setAutoGenerate] = useState(false);
   const [caption, setCaption] = useState('');
@@ -722,8 +774,8 @@ export default function FestivalAutoPostScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Top Header matching customer page */}
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-1 pt-16">
-          <HStack className="items-start justify-between">
+        <Box className="px-5 pb-0 pt-14">
+          <HStack className="items-center justify-between">
             <VStack style={{ flex: 1 }}>
               <Heading size="xl" style={{ color: '#fff' }}>
                 Festival Auto Posts
@@ -732,11 +784,9 @@ export default function FestivalAutoPostScreen() {
                 Your festival auto posts for this month
               </Text>
             </VStack>
-            <Box style={styles.headerIconBox}>
-              <TouchableOpacity onPress={() => handleOpenAdd()}>
-                <Text style={styles.addBtnText}>+</Text>
-              </TouchableOpacity>
-            </Box>
+            <TouchableOpacity style={styles.addBtn} onPress={() => handleOpenAdd()}>
+              <Plus size={23} color="#ffffff" />
+            </TouchableOpacity>
           </HStack>
         </Box>
       </LinearGradient>
@@ -1066,9 +1116,8 @@ export default function FestivalAutoPostScreen() {
             ? `Are you sure you want to active the festival post "${confirmDialog.post?.name}"? Customers will receive greetings.`
             : `Are you sure you want to deactive the festival post "${confirmDialog.post?.name}"?`
         }
-        itemName={confirmDialog.post?.name}
         confirmText={confirmDialog.type === 'active' ? 'Active Post' : 'Deactive Post'}
-        targetStatus={confirmDialog.type === 'active' ? 'active' : 'inactive'}
+        targetStatus={confirmDialog.type === 'active' ? 'active' : 'deactive'}
         customBrandColor={confirmDialog.type === 'active' ? '#2563EB' : '#64748b'}
       />
 
@@ -1476,17 +1525,17 @@ export default function FestivalAutoPostScreen() {
                     <TouchableOpacity
                       style={[
                         styles.statusToggleBtn,
-                        status === 'inactive' && styles.statusToggleBtnActiveDanger,
+                        status === 'deactive' && styles.statusToggleBtnActiveDanger,
                       ]}
-                      onPress={() => setStatus('inactive')}
+                      onPress={() => setStatus('deactive')}
                     >
                       <Text
                         style={[
                           styles.statusToggleText,
-                          status === 'inactive' && styles.statusToggleTextActiveDanger,
+                          status === 'deactive' && styles.statusToggleTextActiveDanger,
                         ]}
                       >
-                        Inactive
+                        Deactive
                       </Text>
                     </TouchableOpacity>
                   </HStack>
@@ -1528,22 +1577,17 @@ const styles = StyleSheet.create({
   header: {
     paddingBottom: 16,
   },
-  addBtnText: {
-    color: '#ffffff',
+  addBtn: {
     fontWeight: '600',
-    fontSize: 32,
-  },
-  headerIconBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    padding: 8,
   },
   filterSection: {
     paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingVertical: 10,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
@@ -1606,7 +1650,7 @@ const styles = StyleSheet.create({
   },
   refreshBtn: {
     width: 38,
-    height: 38,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#eff6ff',
@@ -2229,5 +2273,56 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontWeight: '700',
     fontSize: 14,
+  },
+  actionMenuModalBox: {
+    width: 250,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  actionMenuModalTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    marginBottom: 4,
+  },
+  actionMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderRadius: 10,
+    gap: 10,
+  },
+  actionMenuItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  actionMenuDivider: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
+    marginVertical: 4,
+  },
+  actionMenuCancelBtn: {
+    paddingVertical: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#f8fafc',
+  },
+  actionMenuCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748b',
   },
 });
