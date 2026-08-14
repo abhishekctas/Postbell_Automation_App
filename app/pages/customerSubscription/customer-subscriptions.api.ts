@@ -122,12 +122,12 @@ export const cancelSubscription = async (subId: string): Promise<any> => {
     res = await fetchWithAuth(`${BASE}/cancel/${subId}`, {
       method: 'DELETE',
     });
-  } catch (e) {
+  } catch (e: any) {
     try {
       res = await fetchWithAuth(`${BASE}/admin/cancel/${subId}`, {
         method: 'DELETE',
       });
-    } catch (e2) {
+    } catch (e2: any) {
       res = await fetchWithAuth(`${BASE}/cancel/${subId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

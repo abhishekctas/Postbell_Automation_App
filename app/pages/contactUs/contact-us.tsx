@@ -22,7 +22,6 @@ import {
   deleteContactRequest,
   ContactRequest,
 } from './contact-us.api';
-import { router } from 'expo-router';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import { Feather } from '@expo/vector-icons';
 

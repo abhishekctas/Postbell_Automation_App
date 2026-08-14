@@ -17,9 +17,8 @@ import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { LinearGradient } from 'expo-linear-gradient';
-import { listSubscriptions, cancelSubscription, Subscription } from './customer-subscriptions.api';
+import { listSubscriptions, Subscription } from './customer-subscriptions.api';
 import { getCustomerDetails, Customer } from '../customers/customers.api';
-import { router } from 'expo-router';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import {
   Calendar,
@@ -55,6 +54,7 @@ function renderStatusChip(v: any) {
   const isActive = normalizedStatus === 'active' || normalizedStatus === 1;
   const isExpired = normalizedStatus === 'expired' || normalizedStatus === 0;
   const isCancelled = normalizedStatus === 'cancelled' || normalizedStatus === 2;
+  const isPending = normalizedStatus === 'pending' || normalizedStatus === 3;
 
   let label = 'Unknown';
   let bg = '#f1f5f9';
@@ -76,6 +76,11 @@ function renderStatusChip(v: any) {
     bg = '#fee2e2';
     border = '#fca5a5';
     color = '#dc2626';
+  } else if (isPending) {
+    label = 'Pending';
+    bg = '#fffbeb';
+    border = '#fcd34d';
+    color = '#b45309';
   }
 
   return (
@@ -309,7 +314,7 @@ const SUB_TABLE_COLUMNS: HtmlTableColumn<Subscription>[] = [
   {
     key: 'status',
     label: 'Status',
-    width: '120px',
+    width: '130px',
     render: (v) => renderStatusChip(v),
   },
 
@@ -523,7 +528,7 @@ export default function CustomerSubscriptionsScreen() {
           if (data) {
             setCustomerDetails(data);
           }
-        } catch (err) {
+        } catch (err: any) {
           if (typeof sub.customer_id === 'string' && sub.customer_id !== uId) {
             try {
               const data2 = await getCustomerDetails(sub.customer_id);

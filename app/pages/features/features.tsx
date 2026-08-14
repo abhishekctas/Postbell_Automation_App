@@ -108,7 +108,7 @@ export default function FeaturesScreen() {
         setRefreshing(false);
       }
     },
-    [search]
+    [search, totalPages]
   );
 
   useEffect(() => {
@@ -630,6 +630,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
   addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   headerIconBox: {

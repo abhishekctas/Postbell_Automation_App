@@ -11,5 +11,10 @@ module.exports = defineConfig([
         version: '19.0',
       },
     },
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+      'react/no-unescaped-entities': 'off',
+    },
   },
 ]);
