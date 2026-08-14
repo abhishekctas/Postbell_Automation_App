@@ -15,7 +15,7 @@ import { Text } from '@/components/ui/text';
 import { Feather } from '@expo/vector-icons';
 import type { FestivalGeneratedPost } from './festival-auto-post.api';
 import { getFestivalImageUrl } from './festival-auto-post.api';
-import { getEventColor, type CategoryToken } from './festivalColors';
+import { getEventColor } from './festivalColors';
 import {
   startOfMonth,
   endOfMonth,

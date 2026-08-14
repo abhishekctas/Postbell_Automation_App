@@ -24,7 +24,6 @@ import {
   updateStatusPlan,
   SubscriptionPlan,
 } from './subscription-plans.api';
-import { router } from 'expo-router';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
 import {

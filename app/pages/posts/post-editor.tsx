@@ -108,7 +108,6 @@ export default function PostEditorScreen() {
   // AI Marketing Image & Reference Media Analysis State
   const [aiMarketingGenerating, setAiMarketingGenerating] = useState(false);
   const [aiMarketingImageUrl, setAiMarketingImageUrl] = useState('');
-  const [aiReferencePrompt, setAiReferencePrompt] = useState('');
   const [aiAnalyzingRef, setAiAnalyzingRef] = useState(false);
   const [aiRefAnalysisSummary, setAiRefAnalysisSummary] = useState('');
   const [referenceImageUri, setReferenceImageUri] = useState<string>('');
@@ -409,7 +408,7 @@ export default function PostEditorScreen() {
     setAiMarketingGenerating(true);
     try {
       const res = await generateMarketingImageFromReference(imgUri, {
-        prompt: referenceImagePrompt || aiPrompt || aiReferencePrompt,
+        prompt: referenceImagePrompt || aiPrompt,
         company_name: companyName,
         company_website: companyWebsite,
         company_email: companyEmail,
@@ -658,16 +657,6 @@ export default function PostEditorScreen() {
       </Box>
     );
   }
-
-  const currentDisplayCaption =
-    activePlatformTab !== 'general' && platformOverrides[activePlatformTab]?.caption
-      ? platformOverrides[activePlatformTab].caption
-      : caption;
-
-  const currentDisplayImage =
-    activePlatformTab !== 'general' && platformOverrides[activePlatformTab]?.image_url
-      ? platformOverrides[activePlatformTab].image_url
-      : imageUrl;
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">

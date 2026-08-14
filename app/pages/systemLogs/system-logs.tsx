@@ -16,10 +16,8 @@ import { Heading } from '@/components/ui/heading';
 import { LinearGradient } from 'expo-linear-gradient';
 import { listSystemLogs, SystemLog } from './system-logs.api';
 import { Calendar } from 'react-native-calendars';
-import { router } from 'expo-router';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import { Feather } from '@expo/vector-icons';
-import { useAuth } from '@/context/AuthContext';
 
 function getPageNumbers(currentPage: number, lastPage: number) {
   const pages: number[] = [];

@@ -16,12 +16,9 @@ import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
-import { Button, ButtonText } from '@/components/ui/button';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   listBlogs,
-  createBlog,
-  updateBlog,
   deleteBlog,
   updateBlogStatus,
   getBlogCoverImageUrl,
@@ -65,15 +62,8 @@ export default function BlogsScreen() {
   const [viewingImage, setViewingImage] = useState<{ url: string; title: string } | null>(null);
 
   // Form State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingBlog, setEditingBlog] = useState<BlogPost | null>(null);
-  const [title, setTitle] = useState('');
-  const [slug, setSlug] = useState('');
-  const [excerpt, setExcerpt] = useState('');
-  const [body, setBody] = useState('');
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [showTagSelect, setShowTagSelect] = useState(false);
-  const [status, setStatus] = useState<number>(1); // 1 = Published, 0 = Draft
 
   const fetchTagsList = async () => {
     try {
@@ -142,11 +132,6 @@ export default function BlogsScreen() {
     fetchTagsList();
   };
 
-  const loadMore = () => {
-    if (page >= totalPages) return;
-    fetchBlogsList(page + 1);
-  };
-
   const handleOpenAdd = () => {
     router.push('/pages/blogs/blog-editor');
   };
@@ -159,40 +144,6 @@ export default function BlogsScreen() {
     });
   };
 
-  const handleSave = async () => {
-    if (!title.trim()) {
-      Alert.alert('Validation Error', 'Title is required.');
-      return;
-    }
-    if (!slug.trim()) {
-      Alert.alert('Validation Error', 'Slug is required.');
-      return;
-    }
-
-    try {
-      const payload: Partial<BlogPost> = {
-        title,
-        slug,
-        excerpt,
-        body,
-        status,
-        category: selectedTag?._id || selectedTag?.id || undefined,
-      };
-
-      if (editingBlog) {
-        await updateBlog(editingBlog._id || editingBlog.id || '', payload);
-        Alert.alert('Success', 'Blog post updated successfully!');
-      } else {
-        await createBlog(payload);
-        Alert.alert('Success', 'Blog post created successfully!');
-      }
-
-      setModalVisible(false);
-      fetchBlogsList(1);
-    } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to save blog post.');
-    }
-  };
 
   const handleToggleStatus = useCallback((blog: BlogPost) => {
     const id = blog._id || blog.id || '';
@@ -649,135 +600,6 @@ export default function BlogsScreen() {
           )}
         </ScrollView>
       )}
-
-      {/* Add / Edit Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <Box style={styles.modalOverlay}>
-          <Box style={styles.modalContainer}>
-            <Heading size="md" className="mb-4">
-              {editingBlog ? 'Edit Blog' : 'Add Blog'}
-            </Heading>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
-              <VStack space="md">
-                <VStack space="xs">
-                  <Text style={styles.label}>Title *</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={title}
-                    onChangeText={(val) => {
-                      setTitle(val);
-                      setSlug(
-                        val
-                          .toLowerCase()
-                          .trim()
-                          .replace(/[^\w\s-]/g, '')
-                          .replace(/[\s_-]+/g, '-')
-                          .replace(/^-+|-+$/g, '')
-                      );
-                    }}
-                    placeholder="Article title"
-                  />
-                </VStack>
-
-                <VStack space="xs">
-                  <Text style={styles.label}>Slug *</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={slug}
-                    onChangeText={setSlug}
-                    placeholder="article-slug"
-                  />
-                </VStack>
-
-                {/* Tag Selection */}
-                <VStack space="xs">
-                  <Text style={styles.label}>Category / Tag</Text>
-                  <TouchableOpacity style={styles.selectBtn} onPress={() => setShowTagSelect(true)}>
-                    <Text style={styles.selectBtnText}>
-                      {selectedTag ? selectedTag.title : 'No category selected'}
-                    </Text>
-                  </TouchableOpacity>
-                </VStack>
-
-                <VStack space="xs">
-                  <Text style={styles.label}>Excerpt</Text>
-                  <TextInput
-                    style={[styles.modalInput, { minHeight: 45 }]}
-                    value={excerpt}
-                    onChangeText={setExcerpt}
-                    multiline
-                    placeholder="Short summary preview"
-                  />
-                </VStack>
-
-                <VStack space="xs">
-                  <Text style={styles.label}>Body content</Text>
-                  <TextInput
-                    style={[styles.modalInput, { minHeight: 120 }]}
-                    value={body}
-                    onChangeText={setBody}
-                    multiline
-                    placeholder="Enter HTML or text body content..."
-                  />
-                </VStack>
-
-                <VStack space="xs">
-                  <Text style={styles.label}>Status *</Text>
-                  <HStack space="sm">
-                    <TouchableOpacity
-                      style={[styles.statusToggleBtn, status === 1 && styles.statusToggleBtnActive]}
-                      onPress={() => setStatus(1)}
-                    >
-                      <Text
-                        style={[
-                          styles.statusToggleText,
-                          status === 1 && styles.statusToggleTextActive,
-                        ]}
-                      >
-                        Published
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.statusToggleBtn,
-                        status === 0 && styles.statusToggleBtnActiveDanger,
-                      ]}
-                      onPress={() => setStatus(0)}
-                    >
-                      <Text
-                        style={[
-                          styles.statusToggleText,
-                          status === 0 && styles.statusToggleTextActiveDanger,
-                        ]}
-                      >
-                        Draft
-                      </Text>
-                    </TouchableOpacity>
-                  </HStack>
-                </VStack>
-              </VStack>
-            </ScrollView>
-
-            <HStack space="sm" className="mt-6">
-              <Button
-                style={{ flex: 1 }}
-                className="rounded-xl bg-primary-700"
-                onPress={handleSave}
-              >
-                <ButtonText>Save</ButtonText>
-              </Button>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-            </HStack>
-          </Box>
-        </Box>
-      </Modal>
 
       {/* Category / Tag Selection Modal */}
       <Modal

@@ -24,7 +24,6 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import CustomerSetupWizard from './CustomerSetupWizard';
 import AiLogoGeneratorModal from './steps/AiLogoGenerate';
-import { router } from 'expo-router';
 
 export default function GeneralAccessScreen() {
   const { user } = useAuth();
@@ -55,40 +54,6 @@ export default function GeneralAccessScreen() {
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [workingTime, setWorkingTime] = useState('');
   const [companyNameFooter, setCompanyNameFooter] = useState('');
-
-  const fetchSettings = async () => {
-    try {
-      const data = await getGeneralSettings();
-      if (data) {
-        setCompanyName(data.company_name || '');
-        setCompanyEmail(data.company_email || '');
-        setCompanyPhone(data.company_phone || '');
-        setCompanyAddress(data.company_address || '');
-        setWebsite(data.website || '');
-        setLogoUrl(data.logo_url || '');
-        setFacebookUrl(data.social_links?.facebook_url || '');
-        setInstagramUrl(data.social_links?.instagram_url || '');
-        setTwitterUrl(data.social_links?.twitter_url || '');
-        setLinkedinUrl(data.social_links?.linkedin_url || '');
-        setDefaultHashtags(data.default_hashtags?.join(', ') || '');
-        setAboutText(data.about_text || '');
-        setCopyright(data.copyright || '');
-        setContactAddress(data.contact_address || '');
-        setContactNo(data.contact_no || '');
-        setEmailAddress(data.email_address || '');
-        setLocationAddress(data.location_address || '');
-        setWhatsappNo(data.whatsapp_no || '');
-        setGeminiApiKey(data.gemini_api_key || '');
-        setOpenaiApiKey(data.openai_api_key || '');
-        setWorkingTime(data.working_time || '');
-        setCompanyNameFooter(data.company_name_footer || '');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to load general settings.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     let isMounted = true;

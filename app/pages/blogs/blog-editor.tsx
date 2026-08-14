@@ -22,7 +22,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  BlogPost,
   Tag,
   TagFormData,
   FaqItem,
@@ -94,7 +93,6 @@ export default function BlogEditorScreen() {
   // Data Collections
   const [tags, setTags] = useState<Tag[]>([]);
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
-  const [allBlogs, setAllBlogs] = useState<BlogPost[]>([]);
 
   // ─── TAB 0: BLOG CONFIGURATION STATE ──────────────────────────────────────
   const [configId, setConfigId] = useState<string>('');
@@ -206,8 +204,7 @@ export default function BlogEditorScreen() {
 
       setTags(tagsData);
       setFaqs(faqsData);
-      const bItems = (blogsRes as any)?.data || (Array.isArray(blogsRes) ? blogsRes : []);
-      setAllBlogs(bItems);
+      (blogsRes as any)?.data || (Array.isArray(blogsRes) ? blogsRes : []);
 
       if (configRes) {
         if (configRes._id) setConfigId(configRes._id);
@@ -691,7 +688,7 @@ export default function BlogEditorScreen() {
             {saving && <ActivityIndicator size="small" color="#fff" />}
           </HStack>
           <Heading size="xl" style={{ color: '#fff' }}>
-            {isEditMode ? 'Edit Blog Post' : 'Blog Management & Editor'}
+            {isEditMode ? 'Edit Blog Post' : 'Add Blog & Editor'}
           </Heading>
           <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 2 }}>
             Manage configuration, global tags & FAQs, and blog content
