@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ScrollView,
   TextInput,
@@ -19,24 +19,28 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   getGeneralSettings,
   createOrUpdateGeneralSettings,
+  getCompanyLogoUrl,
+  uploadLogo,
+  deleteLogo,
   GeneralSettings,
 } from './general-settings.api';
 import { useAuth } from '@/context/AuthContext';
+import { useFocusEffect } from 'expo-router';
 import CustomerSetupWizard from './CustomerSetupWizard';
-import AiLogoGeneratorModal from './steps/AiLogoGenerate';
 
 export default function GeneralAccessScreen() {
   const { user } = useAuth();
   const isCustomer = user?.loginType === 'customer';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [aiModalVisible, setAiModalVisible] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [companyEmail, setCompanyEmail] = useState('');
   const [companyPhone, setCompanyPhone] = useState('');
   const [companyAddress, setCompanyAddress] = useState('');
   const [website, setWebsite] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoAsset, setLogoAsset] = useState<any>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [facebookUrl, setFacebookUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
   const [twitterUrl, setTwitterUrl] = useState('');
@@ -55,52 +59,49 @@ export default function GeneralAccessScreen() {
   const [workingTime, setWorkingTime] = useState('');
   const [companyNameFooter, setCompanyNameFooter] = useState('');
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadSettingsData = useCallback(async () => {
+    try {
+      const data = await getGeneralSettings();
+      if (!data) return;
 
-    const loadSettings = async () => {
-      try {
-        const data = await getGeneralSettings();
-        if (!isMounted || !data) return;
-
-        setCompanyName(data.company_name || '');
-        setCompanyEmail(data.company_email || '');
-        setCompanyPhone(data.company_phone || '');
-        setCompanyAddress(data.company_address || '');
-        setWebsite(data.website || '');
-        setLogoUrl(data.logo_url || '');
-        setFacebookUrl(data.social_links?.facebook_url || '');
-        setInstagramUrl(data.social_links?.instagram_url || '');
-        setTwitterUrl(data.social_links?.twitter_url || '');
-        setLinkedinUrl(data.social_links?.linkedin_url || '');
-        setDefaultHashtags(data.default_hashtags?.join(', ') || '');
-        setAboutText(data.about_text || '');
-        setCopyright(data.copyright || '');
-        setContactAddress(data.contact_address || '');
-        setContactNo(data.contact_no || '');
-        setEmailAddress(data.email_address || '');
-        setLocationAddress(data.location_address || '');
-        setWhatsappNo(data.whatsapp_no || '');
-        setGeminiApiKey(data.gemini_api_key || '');
-        setOpenaiApiKey(data.openai_api_key || '');
-        setWorkingTime(data.working_time || '');
-        setCompanyNameFooter(data.company_name_footer || '');
-      } catch (error: any) {
-        if (!isMounted) return;
-        Alert.alert('Error', error.message || 'Failed to load general settings.');
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void loadSettings();
-
-    return () => {
-      isMounted = false;
-    };
+      setCompanyName(data.company_name || '');
+      setCompanyEmail(data.company_email || '');
+      setCompanyPhone(data.company_phone || '');
+      setCompanyAddress(data.company_address || '');
+      setWebsite(data.website || '');
+      setLogoUrl(data.logo_url ? getCompanyLogoUrl(data.logo_url) : '');
+      setFacebookUrl(data.social_links?.facebook_url || '');
+      setInstagramUrl(data.social_links?.instagram_url || '');
+      setTwitterUrl(data.social_links?.twitter_url || '');
+      setLinkedinUrl(data.social_links?.linkedin_url || '');
+      setDefaultHashtags(data.default_hashtags?.join(', ') || '');
+      setAboutText(data.about_text || '');
+      setCopyright(data.copyright || '');
+      setContactAddress(data.contact_address || '');
+      setContactNo(data.contact_no || '');
+      setEmailAddress(data.email_address || '');
+      setLocationAddress(data.location_address || '');
+      setWhatsappNo(data.whatsapp_no || '');
+      setGeminiApiKey(data.gemini_api_key || '');
+      setOpenaiApiKey(data.openai_api_key || '');
+      setWorkingTime(data.working_time || '');
+      setCompanyNameFooter(data.company_name_footer || '');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to load general settings.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadSettingsData();
+  }, [loadSettingsData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadSettingsData();
+    }, [loadSettingsData])
+  );
 
   const handlePickLogo = async () => {
     try {
@@ -116,15 +117,48 @@ export default function GeneralAccessScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
-        base64: true,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const uri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
-        setLogoUrl(uri);
+        setLogoAsset(asset);
+        setLogoUrl(asset.uri);
+
+        // Upload to server immediately so logo persists reliably
+        setUploadingLogo(true);
+        try {
+          const uploadRes = await uploadLogo(asset);
+          const filename =
+            uploadRes?.filename ||
+            uploadRes?.data?.filename ||
+            uploadRes?.settings?.logo_url ||
+            uploadRes?.data?.settings?.logo_url;
+          if (filename) {
+            setLogoUrl(getCompanyLogoUrl(filename));
+          }
+        } catch (uploadErr: any) {
+          console.log('Immediate logo upload notice:', uploadErr?.message);
+        } finally {
+          setUploadingLogo(false);
+        }
       }
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to pick logo image.');
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    const prevLogo = logoUrl;
+    setLogoUrl('');
+    setLogoAsset(null);
+    if (prevLogo && !prevLogo.startsWith('data:') && !prevLogo.startsWith('file://')) {
+      const filename = prevLogo.split('/').pop();
+      if (filename) {
+        try {
+          await deleteLogo(filename);
+        } catch (e) {
+          console.log('Failed to delete logo:', e);
+        }
+      }
     }
   };
 
@@ -144,6 +178,30 @@ export default function GeneralAccessScreen() {
 
     setSaving(true);
     try {
+      let currentLogoFilename = logoUrl;
+      if (logoAsset) {
+        try {
+          const uploadRes = await uploadLogo(logoAsset);
+          const fn =
+            uploadRes?.filename ||
+            uploadRes?.data?.filename ||
+            uploadRes?.settings?.logo_url ||
+            uploadRes?.data?.settings?.logo_url;
+          if (fn) {
+            currentLogoFilename = fn;
+            setLogoUrl(getCompanyLogoUrl(fn));
+            setLogoAsset(null);
+          }
+        } catch (upErr) {
+          console.log('Upload during save notice:', upErr);
+        }
+      }
+
+      let cleanLogoUrl = currentLogoFilename;
+      if (cleanLogoUrl.includes('/company-logos/')) {
+        cleanLogoUrl = cleanLogoUrl.split('/company-logos/').pop() || cleanLogoUrl;
+      }
+
       const hashtagsArray = defaultHashtags
         .split(',')
         .map((tag) => tag.trim())
@@ -155,7 +213,7 @@ export default function GeneralAccessScreen() {
         company_phone: companyPhone,
         company_address: companyAddress,
         website: website,
-        logo_url: logoUrl,
+        logo_url: cleanLogoUrl,
         social_links: {
           facebook_url: facebookUrl,
           instagram_url: instagramUrl,
@@ -176,7 +234,10 @@ export default function GeneralAccessScreen() {
         company_name_footer: companyNameFooter,
       };
 
-      await createOrUpdateGeneralSettings(payload);
+      const res = await createOrUpdateGeneralSettings(payload);
+      if (res?.logo_url) {
+        setLogoUrl(getCompanyLogoUrl(res.logo_url));
+      }
       Alert.alert('Success', 'General settings saved successfully!');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to save settings.');
@@ -343,9 +404,11 @@ export default function GeneralAccessScreen() {
                     <Box style={styles.logoContainer}>
                       <HStack style={{ alignItems: 'center' }} space="md">
                         <Box style={styles.logoPreviewBox}>
-                          {logoUrl ? (
+                          {uploadingLogo ? (
+                            <ActivityIndicator size="small" color="#0b53f8" />
+                          ) : logoUrl ? (
                             <Image
-                              source={{ uri: logoUrl }}
+                              source={{ uri: getCompanyLogoUrl(logoUrl) }}
                               style={styles.logoImage}
                               resizeMode="contain"
                             />
@@ -359,6 +422,7 @@ export default function GeneralAccessScreen() {
                               style={styles.uploadLogoBtn}
                               onPress={handlePickLogo}
                               activeOpacity={0.8}
+                              disabled={uploadingLogo}
                             >
                               <Feather
                                 name="upload"
@@ -367,28 +431,18 @@ export default function GeneralAccessScreen() {
                                 style={{ marginRight: 6 }}
                               />
                               <Text style={styles.uploadLogoText}>
-                                {logoUrl ? 'Change Logo' : 'Upload Logo'}
+                                {uploadingLogo
+                                  ? 'Uploading...'
+                                  : logoUrl
+                                    ? 'Change Logo'
+                                    : 'Upload Logo'}
                               </Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                              style={styles.aiLogoBtn}
-                              onPress={() => setAiModalVisible(true)}
-                              activeOpacity={0.8}
-                            >
-                              <Feather
-                                name="zap"
-                                size={14}
-                                color="#ffffff"
-                                style={{ marginRight: 6 }}
-                              />
-                              <Text style={styles.uploadLogoText}>Generate with AI</Text>
-                            </TouchableOpacity>
-
-                            {logoUrl ? (
+                            {logoUrl && !uploadingLogo ? (
                               <TouchableOpacity
                                 style={styles.removeLogoBtn}
-                                onPress={() => setLogoUrl('')}
+                                onPress={handleRemoveLogo}
                                 activeOpacity={0.8}
                               >
                                 <Feather name="trash-2" size={14} color="#dc2626" />
@@ -797,13 +851,6 @@ export default function GeneralAccessScreen() {
           </ScrollView>
         )}
       </Box>
-
-      <AiLogoGeneratorModal
-        open={aiModalVisible}
-        onClose={() => setAiModalVisible(false)}
-        onLogoSelected={(filename, previewUrl) => setLogoUrl(previewUrl)}
-        initialCompanyName={companyName}
-      />
     </Box>
   );
 }

@@ -191,13 +191,35 @@ export default function HtmlTable({
                         >
                           <View style={styles.actionsContainer}>
                             {rowActions.map((actionInfo) => {
-                              const isDanger = actionInfo.style === 'danger';
+                              const isDanger =
+                                actionInfo.style === 'danger' || actionInfo.action === 'delete';
+                              const isEdit =
+                                actionInfo.style === 'edit' || actionInfo.action === 'edit';
+                              const isDetails =
+                                actionInfo.style === 'details' ||
+                                actionInfo.action === 'view' ||
+                                actionInfo.action === 'details';
+
+                              const btnStyle = isDanger
+                                ? styles.actionBtnDanger
+                                : isEdit
+                                  ? styles.actionBtnEdit
+                                  : isDetails
+                                    ? styles.actionBtnDetails
+                                    : styles.actionBtnNormal;
+
+                              const textStyle = isDanger
+                                ? styles.actionBtnTextDanger
+                                : isEdit
+                                  ? styles.actionBtnTextEdit
+                                  : styles.actionBtnTextNormal;
+
                               return (
                                 <TouchableOpacity
                                   key={actionInfo.action}
                                   style={[
                                     styles.actionBtn,
-                                    isDanger ? styles.actionBtnDanger : styles.actionBtnNormal,
+                                    btnStyle,
                                     iconOnlyActions && {
                                       width: 32,
                                       height: 32,
@@ -217,7 +239,7 @@ export default function HtmlTable({
                                   {actionInfo.action === 'edit' ? (
                                     <Pencil
                                       size={14}
-                                      color={isDanger ? '#dc2626' : '#2563eb'}
+                                      color={isDanger ? '#dc2626' : '#16a34a'}
                                       style={!iconOnlyActions && { marginRight: 4 }}
                                     />
                                   ) : actionInfo.action === 'delete' ? (
@@ -253,9 +275,7 @@ export default function HtmlTable({
                                     <Text
                                       style={[
                                         styles.actionBtnText,
-                                        isDanger
-                                          ? styles.actionBtnTextDanger
-                                          : styles.actionBtnTextNormal,
+                                        textStyle,
                                       ]}
                                     >
                                       {actionInfo.label}
@@ -374,8 +394,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   actionBtnNormal: {
-    backgroundColor: '#f5f3ff',
-    borderColor: '#ddd6fe',
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  actionBtnDetails: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
+  actionBtnEdit: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#bbf7d0',
   },
   actionBtnDanger: {
     backgroundColor: '#fef2f2',
@@ -386,7 +414,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   actionBtnTextNormal: {
-    color: '#4f46e5',
+    color: '#2563eb',
+  },
+  actionBtnTextEdit: {
+    color: '#16a34a',
   },
   actionBtnTextDanger: {
     color: '#dc2626',

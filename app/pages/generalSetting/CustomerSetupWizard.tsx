@@ -21,11 +21,6 @@ import {
   createOrUpdateGeneralSettings,
   GeneralSettings,
 } from './general-settings.api';
-import {
-  getCustomerDetails,
-  updateCustomer,
-  uploadCustomerProfileImage,
-} from '../customers/customers.api';
 import { useAuth } from '@/context/AuthContext';
 import AiLogoGeneratorModal from './steps/AiLogoGenerate';
 
@@ -130,24 +125,10 @@ const initialData: SetupWizardData = {
 };
 
 export default function CustomerSetupWizard() {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const [activeStep, setActiveStep] = useState<number>(0);
   const [setupData, setSetupData] = useState<SetupWizardData>(initialData);
   const [hashtagsText, setHashtagsText] = useState('postbell, automation, socialmedia');
-
-  // Customer Profile State
-  const [custProfileImage, setCustProfileImage] = useState(user?.image || '');
-  const [uploadingProfileImage, setUploadingProfileImage] = useState(false);
-  const [custFirstName, setCustFirstName] = useState(user?.first_name || '');
-  const [custLastName, setCustLastName] = useState(user?.last_name || '');
-  const [custEmail, setCustEmail] = useState(user?.email || '');
-  const [custPhone, setCustPhone] = useState(user?.contact_no ? String(user.contact_no) : '');
-  const [custGender, setCustGender] = useState<number>(user?.gender || 1);
-  const [custAddressLine1, setCustAddressLine1] = useState('');
-  const [custCity, setCustCity] = useState('');
-  const [custState, setCustState] = useState('');
-  const [custPincode, setCustPincode] = useState('');
-  const [savingProfile, setSavingProfile] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
 
   // AI Logo Generator Modal State
@@ -165,33 +146,6 @@ export default function CustomerSetupWizard() {
     let isMounted = true;
 
     const loadData = async () => {
-      const custId = user?.id || user?._id;
-      if (user?.image && isMounted) {
-        setCustProfileImage(user.image);
-      }
-
-      if (custId) {
-        try {
-          const data = await getCustomerDetails(custId);
-          if (!isMounted || !data) return;
-
-          if (data.first_name) setCustFirstName(data.first_name);
-          if (data.last_name) setCustLastName(data.last_name);
-          if (data.email) setCustEmail(data.email);
-          if (data.contact_no) setCustPhone(String(data.contact_no));
-          if (data.gender) setCustGender(data.gender);
-          if (data.image) setCustProfileImage(data.image);
-          if (data.address) {
-            setCustAddressLine1(data.address.address_line_1 || '');
-            setCustCity(data.address.city || '');
-            setCustState(data.address.state || '');
-            setCustPincode(data.address.pincode || '');
-          }
-        } catch {
-          // Ignore customer profile fetch errors.
-        }
-      }
-
       try {
         const data = await getGeneralSettings();
         if (!isMounted || !data) return;
@@ -236,57 +190,6 @@ export default function CustomerSetupWizard() {
     };
   }, [user]);
 
-  const handlePickAndUploadProfileImage = async () => {
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Permission Required', 'Permission to access photo gallery is required.');
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        setUploadingProfileImage(true);
-
-        const formData = new FormData();
-        const filename = asset.uri.split('/').pop() || 'profile-image.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-        formData.append('image', {
-          uri: asset.uri,
-          name: filename,
-          type,
-        } as any);
-
-        if (asset.base64) {
-          formData.append('base64', asset.base64);
-        }
-
-        const res = await uploadCustomerProfileImage(formData);
-        const uploadedUrl = res?.data?.image || res?.image || res?.data?.url || asset.uri;
-
-        setCustProfileImage(uploadedUrl);
-        if (updateUser) {
-          await updateUser({ image: uploadedUrl });
-        }
-        Alert.alert('Success', 'Profile image uploaded successfully!');
-      }
-    } catch (err: any) {
-      console.error('Profile image upload failed:', err);
-      Alert.alert('Error', err.message || 'Failed to upload profile image.');
-    } finally {
-      setUploadingProfileImage(false);
-    }
-  };
-
   const handlePickLogo = async () => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -310,40 +213,6 @@ export default function CustomerSetupWizard() {
     }
   };
 
-  // const handleGenerateAiLogo = () => {
-  //   const compName = logoCompanyName || setupData.company_name;
-  //   if (!compName.trim() && !logoPrompt.trim()) {
-  //     Alert.alert('Input Required', 'Please enter company name or logo prompt.');
-  //     return;
-  //   }
-  //   setIsGeneratingLogo(true);
-  //   setSelectedLogoIndex(null);
-
-  //   setTimeout(() => {
-  //     const seedName = encodeURIComponent(compName || logoPrompt || 'brand');
-  //     const styleSeed = encodeURIComponent(logoStyle);
-  //     const colorSeed = encodeURIComponent(logoColorTheme);
-
-  //     const variation1 = `https://api.dicebear.com/7.x/identicon/png?seed=${seedName}_v1&backgroundColor=0b53f8,3b82f6`;
-  //     const variation2 = `https://api.dicebear.com/7.x/shapes/png?seed=${seedName}_${styleSeed}_v2&backgroundColor=ec4899,8b5cf6`;
-  //     const variation3 = `https://api.dicebear.com/7.x/bottts/png?seed=${seedName}_${colorSeed}_v3&backgroundColor=10b981,059669`;
-
-  //     setGeneratedLogos([variation1, variation2, variation3]);
-  //     setSelectedLogoIndex(0);
-  //     setIsGeneratingLogo(false);
-  //   }, 1200);
-  // };
-
-  // const handleApplySelectedLogo = () => {
-  //   if (selectedLogoIndex !== null && generatedLogos[selectedLogoIndex]) {
-  //     setSetupData((prev) => ({ ...prev, company_logo: generatedLogos[selectedLogoIndex] }));
-  //     setAiModalVisible(false);
-  //     Alert.alert('Success', 'AI Logo applied to company profile successfully!');
-  //   } else {
-  //     Alert.alert('Selection Required', 'Please select a generated logo option.');
-  //   }
-  // };
-
   const handleTestAiConnection = () => {
     setTestingConnection(true);
     setConnectionStatus('idle');
@@ -358,47 +227,6 @@ export default function CustomerSetupWizard() {
       }
       setTestingConnection(false);
     }, 1200);
-  };
-
-  const handleSaveProfile = async () => {
-    const custId = user?.id || user?._id;
-    if (!custId) {
-      Alert.alert('Error', 'User ID not found.');
-      return;
-    }
-    if (!custFirstName.trim() || !custLastName.trim()) {
-      Alert.alert('Validation Error', 'First and last name are required.');
-      return;
-    }
-
-    setSavingProfile(true);
-    try {
-      await updateCustomer(custId, {
-        first_name: custFirstName,
-        last_name: custLastName,
-        gender: custGender,
-        address: {
-          address_line_1: custAddressLine1,
-          city: custCity,
-          state: custState,
-          pincode: custPincode,
-          contact_no: custPhone,
-        },
-      });
-      if (updateUser) {
-        await updateUser({
-          first_name: custFirstName,
-          last_name: custLastName,
-          contact_no: custPhone,
-          gender: custGender,
-        });
-      }
-      Alert.alert('Success', 'My profile updated successfully!');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update profile.');
-    } finally {
-      setSavingProfile(false);
-    }
   };
 
   const handleSaveWorkspaceSetup = async () => {
@@ -443,13 +271,12 @@ export default function CustomerSetupWizard() {
   };
 
   const wizardSteps = [
-    { key: 0, label: 'My Profile', icon: 'user' as const },
-    { key: 1, label: 'Company', icon: 'briefcase' as const },
-    { key: 2, label: 'Auth', icon: 'shield' as const },
-    { key: 3, label: 'Links', icon: 'share-2' as const },
-    { key: 4, label: 'Branding', icon: 'sliders' as const },
-    { key: 5, label: 'AI Config', icon: 'cpu' as const },
-    { key: 6, label: 'Review', icon: 'check-circle' as const },
+    { key: 0, label: 'Company', icon: 'briefcase' as const },
+    { key: 1, label: 'Auth', icon: 'shield' as const },
+    { key: 2, label: 'Links', icon: 'share-2' as const },
+    { key: 3, label: 'Branding', icon: 'sliders' as const },
+    { key: 4, label: 'AI Config', icon: 'cpu' as const },
+    { key: 5, label: 'Review', icon: 'check-circle' as const },
   ];
 
   return (
@@ -484,218 +311,8 @@ export default function CustomerSetupWizard() {
         })}
       </ScrollView>
 
-      {/* STEP 0: MY PROFILE */}
+      {/* STEP 0: COMPANY INFORMATION */}
       {activeStep === 0 && (
-        <Box style={styles.card}>
-          <HStack style={styles.cardHeader}>
-            <Box style={styles.cardIconBox}>
-              <Feather name="user" size={18} color="#0b53f8" />
-            </Box>
-            <VStack style={{ flex: 1 }}>
-              <Heading style={styles.cardTitle}>My Personal Profile</Heading>
-              <Text style={styles.cardSubtitle}>Manage personal account details and address</Text>
-            </VStack>
-          </HStack>
-
-          <VStack space="md" style={styles.formStack}>
-            {/* Profile Avatar Image Upload Section */}
-            <VStack space="xs" style={{ alignItems: 'center', marginBottom: 10 }}>
-              <Text style={styles.label}>Profile Picture</Text>
-              <Box style={styles.profileAvatarBox}>
-                {custProfileImage ? (
-                  <Image
-                    source={{ uri: custProfileImage }}
-                    style={styles.profileAvatarImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <Box style={styles.profileAvatarPlaceholder}>
-                    <Text style={styles.profileAvatarInitial}>
-                      {(custFirstName || 'C').charAt(0).toUpperCase()}
-                    </Text>
-                  </Box>
-                )}
-                {uploadingProfileImage && (
-                  <Box style={styles.profileAvatarOverlay}>
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  </Box>
-                )}
-              </Box>
-
-              <TouchableOpacity
-                style={styles.uploadProfilePicBtn}
-                onPress={handlePickAndUploadProfileImage}
-                disabled={uploadingProfileImage}
-                activeOpacity={0.8}
-              >
-                <Feather name="camera" size={13} color="#ffffff" style={{ marginRight: 6 }} />
-                <Text style={styles.uploadProfilePicText}>
-                  {uploadingProfileImage
-                    ? 'Uploading...'
-                    : custProfileImage
-                      ? 'Change Picture'
-                      : 'Upload Picture'}
-                </Text>
-              </TouchableOpacity>
-            </VStack>
-
-            <VStack space="xs">
-              <Text style={styles.label}>First Name *</Text>
-              <TextInput
-                style={styles.input}
-                value={custFirstName}
-                onChangeText={setCustFirstName}
-                placeholder="First Name"
-                placeholderTextColor="#94a3b8"
-              />
-            </VStack>
-
-            <VStack space="xs">
-              <Text style={styles.label}>Last Name *</Text>
-              <TextInput
-                style={styles.input}
-                value={custLastName}
-                onChangeText={setCustLastName}
-                placeholder="Last Name"
-                placeholderTextColor="#94a3b8"
-              />
-            </VStack>
-
-            <VStack space="xs">
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: '#f1f5f9' }]}
-                value={custEmail}
-                editable={false}
-                placeholder="Email"
-                placeholderTextColor="#94a3b8"
-              />
-            </VStack>
-
-            <VStack space="xs">
-              <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                value={custPhone}
-                onChangeText={setCustPhone}
-                keyboardType="phone-pad"
-                placeholder="Phone Number"
-                placeholderTextColor="#94a3b8"
-              />
-            </VStack>
-
-            <VStack space="xs">
-              <Text style={styles.label}>Gender</Text>
-              <HStack space="sm">
-                {[
-                  { id: 1, label: 'Male' },
-                  { id: 2, label: 'Female' },
-                  { id: 3, label: 'Other' },
-                ].map((g) => {
-                  const isSel = custGender === g.id;
-                  return (
-                    <TouchableOpacity
-                      key={g.id}
-                      onPress={() => setCustGender(g.id)}
-                      style={{
-                        flex: 1,
-                        paddingVertical: 10,
-                        borderRadius: 10,
-                        borderWidth: 1,
-                        borderColor: isSel ? '#0b53f8' : '#cbd5e1',
-                        backgroundColor: isSel ? '#eff6ff' : '#ffffff',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontWeight: '700',
-                          color: isSel ? '#0b53f8' : '#64748b',
-                        }}
-                      >
-                        {g.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </HStack>
-            </VStack>
-
-            <VStack space="xs">
-              <Text style={styles.label}>Address Line 1</Text>
-              <TextInput
-                style={[styles.input, styles.multilineInput]}
-                value={custAddressLine1}
-                onChangeText={setCustAddressLine1}
-                multiline
-                numberOfLines={3}
-                placeholder="Street address or location"
-                placeholderTextColor="#94a3b8"
-              />
-            </VStack>
-
-            <HStack space="sm">
-              <VStack space="xs" style={{ flex: 1 }}>
-                <Text style={styles.label}>City</Text>
-                <TextInput
-                  style={styles.input}
-                  value={custCity}
-                  onChangeText={setCustCity}
-                  placeholder="City"
-                  placeholderTextColor="#94a3b8"
-                />
-              </VStack>
-              <VStack space="xs" style={{ flex: 1 }}>
-                <Text style={styles.label}>Pincode</Text>
-                <TextInput
-                  style={styles.input}
-                  value={custPincode}
-                  onChangeText={setCustPincode}
-                  keyboardType="number-pad"
-                  placeholder="Pincode"
-                  placeholderTextColor="#94a3b8"
-                />
-              </VStack>
-            </HStack>
-
-            <VStack space="xs">
-              <Text style={styles.label}>State</Text>
-              <TextInput
-                style={styles.input}
-                value={custState}
-                onChangeText={setCustState}
-                placeholder="State"
-                placeholderTextColor="#94a3b8"
-              />
-            </VStack>
-
-            <TouchableOpacity
-              onPress={handleSaveProfile}
-              disabled={savingProfile}
-              activeOpacity={0.85}
-              style={[styles.primaryBtn, savingProfile && styles.btnDisabled]}
-            >
-              {savingProfile ? (
-                <ActivityIndicator color="#ffffff" size="small" />
-              ) : (
-                <HStack style={{ alignItems: 'center', justifyContent: 'center' }}>
-                  <Feather
-                    name="check-circle"
-                    size={18}
-                    color="#ffffff"
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text style={styles.primaryBtnText}>Update Profile</Text>
-                </HStack>
-              )}
-            </TouchableOpacity>
-          </VStack>
-        </Box>
-      )}
-
-      {/* STEP 1: COMPANY INFORMATION */}
-      {activeStep === 1 && (
         <Box style={styles.card}>
           <HStack style={styles.cardHeader}>
             <Box style={styles.cardIconBox}>
@@ -841,7 +458,7 @@ export default function CustomerSetupWizard() {
       )}
 
       {/* STEP 2: AUTH (Connected Platforms) */}
-      {activeStep === 2 && (
+      {activeStep === 1 && (
         <Box style={styles.card}>
           <HStack style={styles.cardHeader}>
             <Box style={styles.cardIconBox}>
@@ -987,7 +604,7 @@ export default function CustomerSetupWizard() {
       )}
 
       {/* STEP 3: LINKS (Profile URLs) */}
-      {activeStep === 3 && (
+      {activeStep === 2 && (
         <Box style={styles.card}>
           <HStack style={styles.cardHeader}>
             <Box style={styles.cardIconBox}>
@@ -1109,7 +726,7 @@ export default function CustomerSetupWizard() {
       )}
 
       {/* STEP 4: BRANDING (Brand Colors, Voice & Content) */}
-      {activeStep === 4 && (
+      {activeStep === 3 && (
         <Box style={styles.card}>
           <HStack style={styles.cardHeader}>
             <Box style={styles.cardIconBox}>
@@ -1388,7 +1005,7 @@ export default function CustomerSetupWizard() {
       )}
 
       {/* STEP 5: AI CONFIG (Step-by-Step Configuration) */}
-      {activeStep === 5 && (
+      {activeStep === 4 && (
         <Box style={styles.card}>
           <HStack style={styles.cardHeader}>
             <Box style={styles.cardIconBox}>
@@ -1777,7 +1394,7 @@ export default function CustomerSetupWizard() {
       )}
 
       {/* STEP 6: REVIEW & FINISH */}
-      {activeStep === 6 && (
+      {activeStep === 5 && (
         <Box style={styles.card}>
           <HStack style={styles.cardHeader}>
             <Box style={styles.cardIconBox}>
