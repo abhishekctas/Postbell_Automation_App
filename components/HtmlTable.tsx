@@ -272,12 +272,7 @@ export default function HtmlTable({
                                     />
                                   ) : null}
                                   {!iconOnlyActions && (
-                                    <Text
-                                      style={[
-                                        styles.actionBtnText,
-                                        textStyle,
-                                      ]}
-                                    >
+                                    <Text style={[styles.actionBtnText, textStyle]}>
                                       {actionInfo.label}
                                     </Text>
                                   )}

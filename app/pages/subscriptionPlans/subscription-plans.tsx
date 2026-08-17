@@ -439,10 +439,7 @@ export default function SubscriptionPlansScreen() {
           return <Text style={{ fontSize: 12, color: '#94a3b8' }}>—</Text>;
         }
         return (
-          <TouchableOpacity
-            style={styles.pointsBtn}
-            onPress={() => handleOpenDetails(row)}
-          >
+          <TouchableOpacity style={styles.pointsBtn} onPress={() => handleOpenDetails(row)}>
             <Eye size={12} color="#193867" style={{ marginRight: 4 }} />
             <Text style={styles.pointsBtnText}>View ({featList.length})</Text>
           </TouchableOpacity>
@@ -766,9 +763,7 @@ export default function SubscriptionPlansScreen() {
                 style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
                 onPress={() => setCurrentPage(p)}
               >
-                <Text
-                  style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}
-                >
+                <Text style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}>
                   {p}
                 </Text>
               </TouchableOpacity>
@@ -781,10 +776,7 @@ export default function SubscriptionPlansScreen() {
             onPress={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
           >
             <Text
-              style={[
-                styles.pageNavText,
-                safePage >= totalPages && styles.pageNavTextDisabled,
-              ]}
+              style={[styles.pageNavText, safePage >= totalPages && styles.pageNavTextDisabled]}
             >
               ›
             </Text>
@@ -797,7 +789,7 @@ export default function SubscriptionPlansScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#0d53fc', '#1d68f6']} style={styles.header}>
-        <Box className="px-5 pb-3">
+        <Box className="px-5 pb-3 pt-6">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
               <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
@@ -1633,21 +1625,21 @@ export default function SubscriptionPlansScreen() {
                 {/* Popularity badges if any */}
                 {(selectedPlanForDetails.is_popular_monthly ||
                   selectedPlanForDetails.is_popular_annual) && (
-                    <HStack space="xs" className="mb-4">
-                      {selectedPlanForDetails.is_popular_monthly && (
-                        <Box style={styles.popularTag}>
-                          <Star size={12} color="#d97706" />
-                          <Text style={styles.popularTagText}>Popular Monthly</Text>
-                        </Box>
-                      )}
-                      {selectedPlanForDetails.is_popular_annual && (
-                        <Box style={styles.popularTag}>
-                          <Crown size={12} color="#d97706" />
-                          <Text style={styles.popularTagText}>Popular Annual</Text>
-                        </Box>
-                      )}
-                    </HStack>
-                  )}
+                  <HStack space="xs" className="mb-4">
+                    {selectedPlanForDetails.is_popular_monthly && (
+                      <Box style={styles.popularTag}>
+                        <Star size={12} color="#d97706" />
+                        <Text style={styles.popularTagText}>Popular Monthly</Text>
+                      </Box>
+                    )}
+                    {selectedPlanForDetails.is_popular_annual && (
+                      <Box style={styles.popularTag}>
+                        <Crown size={12} color="#d97706" />
+                        <Text style={styles.popularTagText}>Popular Annual</Text>
+                      </Box>
+                    )}
+                  </HStack>
+                )}
 
                 {/* Modal Footer / Close Button */}
                 <TouchableOpacity

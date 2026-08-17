@@ -49,8 +49,18 @@ const formatFullDate = (raw?: string) => {
   if (isNaN(date.getTime())) return raw;
   const day = date.getDate();
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   const month = months[date.getMonth()];
   const year = date.getFullYear();
@@ -126,7 +136,10 @@ export default function MySubscriptionScreen() {
       setActiveSub((prev) => (prev ? { ...prev, auto_renew: pendingRenewValue } : null));
       setAutoRenewModalVisible(false);
       setPendingRenewValue(null);
-      Alert.alert('Success', `Auto-renew ${pendingRenewValue ? 'enabled' : 'disabled'} successfully.`);
+      Alert.alert(
+        'Success',
+        `Auto-renew ${pendingRenewValue ? 'enabled' : 'disabled'} successfully.`
+      );
       loadData();
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to update auto-renew.');
@@ -151,10 +164,10 @@ export default function MySubscriptionScreen() {
   };
 
   const price = activeSub
-    ? activeSub.plan_snapshot?.price ??
+    ? (activeSub.plan_snapshot?.price ??
       (activeSub.billing_cycle === 'monthly'
-        ? activeSub.plan_id?.price_per_month ?? 0
-        : activeSub.plan_id?.price_per_year ?? 0)
+        ? (activeSub.plan_id?.price_per_month ?? 0)
+        : (activeSub.plan_id?.price_per_year ?? 0)))
     : 0;
 
   // Billing timeline calculations
@@ -165,24 +178,45 @@ export default function MySubscriptionScreen() {
   const elapsedDuration = Math.max(now.getTime() - startDate.getTime(), 0);
   const periodProgressPct = Math.min(100, Math.max(0, (elapsedDuration / totalDuration) * 100));
   const totalDays = Math.max(1, Math.round(totalDuration / (1000 * 60 * 60 * 24)));
-  const daysRemaining = activeSub?.days_remaining ?? Math.max(0, Math.round((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const daysRemaining =
+    activeSub?.days_remaining ??
+    Math.max(0, Math.round((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   const usedDays = Math.max(0, totalDays - daysRemaining);
 
-  const postsUsedThisMonth = usageStats?.posts?.used_this_month ?? activeSub?.posts_used_this_month ?? 0;
-  const postsLimitMonth = usageStats?.posts?.limit_per_month ?? activeSub?.plan_snapshot?.posts_per_month ?? 0;
-  const postsRemainingMonth = usageStats?.posts?.remaining_this_month ?? activeSub?.remaining_posts_this_month ?? Math.max(0, postsLimitMonth - postsUsedThisMonth);
+  const postsUsedThisMonth =
+    usageStats?.posts?.used_this_month ?? activeSub?.posts_used_this_month ?? 0;
+  const postsLimitMonth =
+    usageStats?.posts?.limit_per_month ?? activeSub?.plan_snapshot?.posts_per_month ?? 0;
+  const postsRemainingMonth =
+    usageStats?.posts?.remaining_this_month ??
+    activeSub?.remaining_posts_this_month ??
+    Math.max(0, postsLimitMonth - postsUsedThisMonth);
 
   const postsUsedToday = usageStats?.posts?.used_today ?? activeSub?.posts_used_today ?? 0;
-  const postsLimitDay = usageStats?.posts?.limit_per_day ?? activeSub?.plan_snapshot?.posts_per_day ?? 0;
-  const postsRemainingDay = usageStats?.posts?.remaining_today ?? activeSub?.remaining_posts_today ?? Math.max(0, postsLimitDay - postsUsedToday);
+  const postsLimitDay =
+    usageStats?.posts?.limit_per_day ?? activeSub?.plan_snapshot?.posts_per_day ?? 0;
+  const postsRemainingDay =
+    usageStats?.posts?.remaining_today ??
+    activeSub?.remaining_posts_today ??
+    Math.max(0, postsLimitDay - postsUsedToday);
 
   const aiUsedToday = usageStats?.ai_content?.used_today ?? activeSub?.ai_content_used_today ?? 0;
-  const aiLimitDay = usageStats?.ai_content?.limit_per_day ?? activeSub?.plan_snapshot?.ai_content_generation_limit ?? 0;
-  const aiRemainingDay = usageStats?.ai_content?.remaining_today ?? activeSub?.remaining_ai_today ?? Math.max(0, aiLimitDay - aiUsedToday);
+  const aiLimitDay =
+    usageStats?.ai_content?.limit_per_day ??
+    activeSub?.plan_snapshot?.ai_content_generation_limit ??
+    0;
+  const aiRemainingDay =
+    usageStats?.ai_content?.remaining_today ??
+    activeSub?.remaining_ai_today ??
+    Math.max(0, aiLimitDay - aiUsedToday);
 
-  const usagePct = usageStats?.posts?.usage_percentage ?? activeSub?.usage_percentage ?? (postsLimitMonth > 0 ? Math.round((postsUsedThisMonth / postsLimitMonth) * 100) : 0);
+  const usagePct =
+    usageStats?.posts?.usage_percentage ??
+    activeSub?.usage_percentage ??
+    (postsLimitMonth > 0 ? Math.round((postsUsedThisMonth / postsLimitMonth) * 100) : 0);
 
-  const featuresList: string[] = activeSub?.plan_snapshot?.features || activeSub?.plan_id?.features || [];
+  const featuresList: string[] =
+    activeSub?.plan_snapshot?.features || activeSub?.plan_id?.features || [];
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
@@ -203,11 +237,7 @@ export default function MySubscriptionScreen() {
               </Text>
             </VStack>
 
-            <TouchableOpacity
-              onPress={onRefresh}
-              style={styles.refreshIconBtn}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity onPress={onRefresh} style={styles.refreshIconBtn} activeOpacity={0.8}>
               {refreshing ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
@@ -284,24 +314,35 @@ export default function MySubscriptionScreen() {
                       <View style={styles.heroPlanGradientBar} />
 
                       <Box style={{ padding: 16 }}>
-                        <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <HStack
+                          style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}
+                        >
                           <VStack style={{ flex: 1, paddingRight: 10 }}>
                             <Text style={styles.heroPlanBadgeText}>CURRENT PLAN</Text>
                             <Text style={styles.heroPlanTitle}>
-                              {activeSub.plan_snapshot?.name || activeSub.plan_id?.name || 'Pro Plan'}
+                              {activeSub.plan_snapshot?.name ||
+                                activeSub.plan_id?.name ||
+                                'Pro Plan'}
                             </Text>
                             <Text style={styles.heroPlanCycleSub}>
-                              {activeSub.billing_cycle === 'annual' || activeSub.billing_cycle === 'yearly'
+                              {activeSub.billing_cycle === 'annual' ||
+                              activeSub.billing_cycle === 'yearly'
                                 ? 'Billed annually'
                                 : 'Billed monthly'}
-                              {activeSub.plan_id?.description ? ` · ${activeSub.plan_id.description}` : ''}
+                              {activeSub.plan_id?.description
+                                ? ` · ${activeSub.plan_id.description}`
+                                : ''}
                             </Text>
                           </VStack>
 
                           <Box style={styles.heroStatusChip}>
                             <View style={styles.heroStatusDot} />
                             <Text style={styles.heroStatusChipText}>
-                              {activeSub.status === 1 ? 'Active' : activeSub.status === 2 ? 'Cancelled' : 'Expired'}
+                              {activeSub.status === 1
+                                ? 'Active'
+                                : activeSub.status === 2
+                                  ? 'Cancelled'
+                                  : 'Expired'}
                             </Text>
                           </Box>
                         </HStack>
@@ -319,7 +360,11 @@ export default function MySubscriptionScreen() {
                           <Box style={styles.priceBox}>
                             <Text style={styles.priceNumber}>₹{price}</Text>
                             <Text style={styles.priceCycle}>
-                              per {activeSub.billing_cycle === 'annual' || activeSub.billing_cycle === 'yearly' ? 'year' : 'month'}
+                              per{' '}
+                              {activeSub.billing_cycle === 'annual' ||
+                              activeSub.billing_cycle === 'yearly'
+                                ? 'year'
+                                : 'month'}
                             </Text>
                           </Box>
 
@@ -350,7 +395,13 @@ export default function MySubscriptionScreen() {
 
                         {/* Billing Period Progress Timeline */}
                         <Box style={styles.timelineBox}>
-                          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <HStack
+                            style={{
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: 8,
+                            }}
+                          >
                             <Text style={styles.timelineLabel}>Billing period progress</Text>
                             <Box style={styles.daysRemainingBadge}>
                               <View style={styles.daysRemainingDot} />
@@ -359,20 +410,28 @@ export default function MySubscriptionScreen() {
                           </HStack>
 
                           <Box style={styles.timelineTrack}>
-                            <Box style={[styles.timelineFill, { width: `${periodProgressPct}%` }]} />
+                            <Box
+                              style={[styles.timelineFill, { width: `${periodProgressPct}%` }]}
+                            />
                           </Box>
 
                           <HStack style={{ justifyContent: 'space-between', marginTop: 8 }}>
                             <VStack>
                               <Text style={styles.timelineDateLabel}>Start</Text>
-                              <Text style={styles.timelineDateVal}>{formatDate(activeSub.start_date)}</Text>
+                              <Text style={styles.timelineDateVal}>
+                                {formatDate(activeSub.start_date)}
+                              </Text>
                             </VStack>
                             <VStack style={{ alignItems: 'center' }}>
-                              <Text style={styles.timelineUsedText}>{usedDays} of {totalDays} days used</Text>
+                              <Text style={styles.timelineUsedText}>
+                                {usedDays} of {totalDays} days used
+                              </Text>
                             </VStack>
                             <VStack style={{ alignItems: 'flex-end' }}>
                               <Text style={styles.timelineDateLabel}>End</Text>
-                              <Text style={styles.timelineDateVal}>{formatDate(activeSub.end_date)}</Text>
+                              <Text style={styles.timelineDateVal}>
+                                {formatDate(activeSub.end_date)}
+                              </Text>
                             </VStack>
                           </HStack>
                         </Box>
@@ -394,7 +453,10 @@ export default function MySubscriptionScreen() {
                           <HStack style={styles.infoRow}>
                             <Text style={styles.infoLabel}>Cycle</Text>
                             <Text style={styles.infoVal}>
-                              {activeSub.billing_cycle === 'annual' || activeSub.billing_cycle === 'yearly' ? 'Annual' : 'Monthly'}
+                              {activeSub.billing_cycle === 'annual' ||
+                              activeSub.billing_cycle === 'yearly'
+                                ? 'Annual'
+                                : 'Monthly'}
                             </Text>
                           </HStack>
                           <HStack style={styles.infoRow}>
@@ -409,7 +471,12 @@ export default function MySubscriptionScreen() {
                           </HStack>
                           <HStack style={[styles.infoRow, { borderBottomWidth: 0 }]}>
                             <Text style={styles.infoLabel}>Next billing</Text>
-                            <Text style={[styles.infoVal, { fontFamily: 'monospace', color: '#0b53f8' }]}>
+                            <Text
+                              style={[
+                                styles.infoVal,
+                                { fontFamily: 'monospace', color: '#0b53f8' },
+                              ]}
+                            >
                               {formatDate(activeSub.next_billing_date || activeSub.end_date)}
                             </Text>
                           </HStack>
@@ -432,7 +499,10 @@ export default function MySubscriptionScreen() {
                               style={[
                                 styles.infoVal,
                                 {
-                                  color: (activeSub.payment?.status || '').toLowerCase() === 'success' ? '#16a34a' : '#d97706',
+                                  color:
+                                    (activeSub.payment?.status || '').toLowerCase() === 'success'
+                                      ? '#16a34a'
+                                      : '#d97706',
                                   textTransform: 'capitalize',
                                 },
                               ]}
@@ -442,7 +512,9 @@ export default function MySubscriptionScreen() {
                           </HStack>
                           <HStack style={styles.infoRow}>
                             <Text style={styles.infoLabel}>Amount paid</Text>
-                            <Text style={styles.infoVal}>₹{activeSub.payment?.amount ?? price}</Text>
+                            <Text style={styles.infoVal}>
+                              ₹{activeSub.payment?.amount ?? price}
+                            </Text>
                           </HStack>
                           <HStack style={styles.infoRow}>
                             <Text style={styles.infoLabel}>Start date</Text>
@@ -498,13 +570,22 @@ export default function MySubscriptionScreen() {
                       <HStack style={{ flexWrap: 'wrap', gap: 10, marginTop: 10 }}>
                         {/* 1. Posts this month */}
                         <Box style={styles.usageCard}>
-                          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <HStack
+                            style={{
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: 10,
+                            }}
+                          >
                             <Box style={[styles.usageIconBox, { backgroundColor: '#eff6ff' }]}>
                               <Feather name="package" size={15} color="#0b53f8" />
                             </Box>
                             <Box style={[styles.usagePctBadge, { backgroundColor: '#eff6ff' }]}>
                               <Text style={[styles.usagePctText, { color: '#0b53f8' }]}>
-                                {postsLimitMonth > 0 ? Math.round((postsUsedThisMonth / postsLimitMonth) * 100) : 0}%
+                                {postsLimitMonth > 0
+                                  ? Math.round((postsUsedThisMonth / postsLimitMonth) * 100)
+                                  : 0}
+                                %
                               </Text>
                             </Box>
                           </HStack>
@@ -524,18 +605,29 @@ export default function MySubscriptionScreen() {
                               ]}
                             />
                           </View>
-                          <Text style={styles.usageRemainingText}>{postsRemainingMonth} remaining</Text>
+                          <Text style={styles.usageRemainingText}>
+                            {postsRemainingMonth} remaining
+                          </Text>
                         </Box>
 
                         {/* 2. Posts today */}
                         <Box style={styles.usageCard}>
-                          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <HStack
+                            style={{
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: 10,
+                            }}
+                          >
                             <Box style={[styles.usageIconBox, { backgroundColor: '#f5f3ff' }]}>
                               <Feather name="bar-chart-2" size={15} color="#7c3aed" />
                             </Box>
                             <Box style={[styles.usagePctBadge, { backgroundColor: '#f5f3ff' }]}>
                               <Text style={[styles.usagePctText, { color: '#7c3aed' }]}>
-                                {postsLimitDay > 0 ? Math.round((postsUsedToday / postsLimitDay) * 100) : 0}%
+                                {postsLimitDay > 0
+                                  ? Math.round((postsUsedToday / postsLimitDay) * 100)
+                                  : 0}
+                                %
                               </Text>
                             </Box>
                           </HStack>
@@ -555,12 +647,20 @@ export default function MySubscriptionScreen() {
                               ]}
                             />
                           </View>
-                          <Text style={styles.usageRemainingText}>{postsRemainingDay} remaining</Text>
+                          <Text style={styles.usageRemainingText}>
+                            {postsRemainingDay} remaining
+                          </Text>
                         </Box>
 
                         {/* 3. AI content today */}
                         <Box style={styles.usageCard}>
-                          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <HStack
+                            style={{
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: 10,
+                            }}
+                          >
                             <Box style={[styles.usageIconBox, { backgroundColor: '#fffbeb' }]}>
                               <Feather name="zap" size={15} color="#d97706" />
                             </Box>
@@ -591,12 +691,20 @@ export default function MySubscriptionScreen() {
 
                         {/* 4. Monthly quota */}
                         <Box style={styles.usageCard}>
-                          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <HStack
+                            style={{
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: 10,
+                            }}
+                          >
                             <Box style={[styles.usageIconBox, { backgroundColor: '#ecfdf5' }]}>
                               <Feather name="activity" size={15} color="#059669" />
                             </Box>
                             <Box style={[styles.usagePctBadge, { backgroundColor: '#ecfdf5' }]}>
-                              <Text style={[styles.usagePctText, { color: '#059669' }]}>{usagePct}%</Text>
+                              <Text style={[styles.usagePctText, { color: '#059669' }]}>
+                                {usagePct}%
+                              </Text>
                             </Box>
                           </HStack>
                           <Text style={styles.usageMainNumber}>
@@ -615,7 +723,9 @@ export default function MySubscriptionScreen() {
                               ]}
                             />
                           </View>
-                          <Text style={styles.usageRemainingText}>{Math.max(0, 100 - usagePct)}% remaining</Text>
+                          <Text style={styles.usageRemainingText}>
+                            {Math.max(0, 100 - usagePct)}% remaining
+                          </Text>
                         </Box>
                       </HStack>
                     </Box>
@@ -651,7 +761,8 @@ export default function MySubscriptionScreen() {
                     </Box>
                     <Heading style={styles.noActiveTitle}>No active subscription</Heading>
                     <Text style={styles.noActiveDesc}>
-                      Subscribe to a plan to unlock all features and continue using the platform with uninterrupted automated posts.
+                      Subscribe to a plan to unlock all features and continue using the platform
+                      with uninterrupted automated posts.
                     </Text>
                     <TouchableOpacity
                       onPress={() => router.push('/pages/subscriptionPlans/subscription-plans')}
@@ -659,7 +770,12 @@ export default function MySubscriptionScreen() {
                       activeOpacity={0.85}
                     >
                       <Text style={styles.viewPlansBtnText}>View Available Plans</Text>
-                      <Feather name="arrow-right" size={14} color="#ffffff" style={{ marginLeft: 6 }} />
+                      <Feather
+                        name="arrow-right"
+                        size={14}
+                        color="#ffffff"
+                        style={{ marginLeft: 6 }}
+                      />
                     </TouchableOpacity>
                   </Box>
                 )}
@@ -671,7 +787,8 @@ export default function MySubscriptionScreen() {
               <VStack space="sm">
                 {history.length > 0 ? (
                   history.map((item, index) => {
-                    const planName = item.plan_snapshot?.name || item.plan_id?.name || 'Subscription Plan';
+                    const planName =
+                      item.plan_snapshot?.name || item.plan_id?.name || 'Subscription Plan';
                     const isCancelled = item.status === 2 || !!item.cancelled_at;
                     const isActive = item.is_active || item.status === 1;
                     const isExpanded = expandedHistoryId === item._id;
@@ -698,17 +815,24 @@ export default function MySubscriptionScreen() {
                           style={{ padding: 14 }}
                         >
                           <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                            <HStack space="sm" style={{ flex: 1, alignItems: 'center', paddingRight: 8 }}>
+                            <HStack
+                              space="sm"
+                              style={{ flex: 1, alignItems: 'center', paddingRight: 8 }}
+                            >
                               <Box style={[styles.historyIconBox, { backgroundColor: pal.bg }]}>
                                 <Feather name="credit-card" size={16} color={pal.dot} />
                               </Box>
 
                               <VStack style={{ flex: 1 }}>
-                                <Text style={[styles.historyPlanTitle, { color: pal.text }]} numberOfLines={1}>
+                                <Text
+                                  style={[styles.historyPlanTitle, { color: pal.text }]}
+                                  numberOfLines={1}
+                                >
                                   {planName}
                                 </Text>
                                 <Text style={styles.historyCycleText}>
-                                  {(item.billing_cycle || 'monthly')} · {formatFullDate(item.start_date)}
+                                  {item.billing_cycle || 'monthly'} ·{' '}
+                                  {formatFullDate(item.start_date)}
                                 </Text>
                               </VStack>
                             </HStack>
@@ -722,7 +846,11 @@ export default function MySubscriptionScreen() {
                                 style={[
                                   styles.historyStatusPill,
                                   {
-                                    backgroundColor: isActive ? '#dcfce7' : isCancelled ? '#fee2e2' : '#f1f5f9',
+                                    backgroundColor: isActive
+                                      ? '#dcfce7'
+                                      : isCancelled
+                                        ? '#fee2e2'
+                                        : '#f1f5f9',
                                   },
                                 ]}
                               >
@@ -730,7 +858,11 @@ export default function MySubscriptionScreen() {
                                   style={{
                                     fontSize: 10,
                                     fontWeight: '700',
-                                    color: isActive ? '#16a34a' : isCancelled ? '#dc2626' : '#64748b',
+                                    color: isActive
+                                      ? '#16a34a'
+                                      : isCancelled
+                                        ? '#dc2626'
+                                        : '#64748b',
                                     textTransform: 'uppercase',
                                   }}
                                 >
@@ -750,16 +882,24 @@ export default function MySubscriptionScreen() {
 
                         {/* Expandable Details Accordion */}
                         {isExpanded && (
-                          <Box style={[styles.historyExpandedContent, { borderTopColor: pal.border }]}>
-                            <HStack style={{ flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}>
+                          <Box
+                            style={[styles.historyExpandedContent, { borderTopColor: pal.border }]}
+                          >
+                            <HStack
+                              style={{ flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' }}
+                            >
                               <VStack style={{ width: '45%' }}>
                                 <Text style={styles.expDetailLabel}>START DATE</Text>
-                                <Text style={styles.expDetailVal}>{formatFullDate(item.start_date)}</Text>
+                                <Text style={styles.expDetailVal}>
+                                  {formatFullDate(item.start_date)}
+                                </Text>
                               </VStack>
 
                               <VStack style={{ width: '45%' }}>
                                 <Text style={styles.expDetailLabel}>END DATE</Text>
-                                <Text style={styles.expDetailVal}>{formatFullDate(item.end_date)}</Text>
+                                <Text style={styles.expDetailVal}>
+                                  {formatFullDate(item.end_date)}
+                                </Text>
                               </VStack>
 
                               <VStack style={{ width: '45%' }}>
@@ -770,10 +910,13 @@ export default function MySubscriptionScreen() {
                                       width: 6,
                                       height: 6,
                                       borderRadius: 3,
-                                      backgroundColor: item.payment?.status === 'success' ? '#16a34a' : '#d97706',
+                                      backgroundColor:
+                                        item.payment?.status === 'success' ? '#16a34a' : '#d97706',
                                     }}
                                   />
-                                  <Text style={[styles.expDetailVal, { textTransform: 'capitalize' }]}>
+                                  <Text
+                                    style={[styles.expDetailVal, { textTransform: 'capitalize' }]}
+                                  >
                                     {item.payment?.provider || 'Razorpay'}
                                   </Text>
                                 </HStack>
@@ -821,8 +964,12 @@ export default function MySubscriptionScreen() {
                             {/* Usage info if available */}
                             {item.usage && (
                               <Box style={styles.expUsageBox}>
-                                <HStack style={{ justifyContent: 'space-between', marginBottom: 4 }}>
-                                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#64748b' }}>
+                                <HStack
+                                  style={{ justifyContent: 'space-between', marginBottom: 4 }}
+                                >
+                                  <Text
+                                    style={{ fontSize: 10, fontWeight: '700', color: '#64748b' }}
+                                  >
                                     AI USAGE TODAY
                                   </Text>
                                   <Text style={{ fontSize: 11, fontWeight: '700', color: pal.dot }}>
@@ -839,7 +986,8 @@ export default function MySubscriptionScreen() {
                                         width: `${Math.min(
                                           100,
                                           ((item.usage.ai_content_used_today || 0) /
-                                            (item.plan_snapshot?.ai_content_generation_limit || 200)) *
+                                            (item.plan_snapshot?.ai_content_generation_limit ||
+                                              200)) *
                                             100
                                         )}%`,
                                       },
@@ -856,7 +1004,9 @@ export default function MySubscriptionScreen() {
                 ) : (
                   <Box style={styles.emptyCard}>
                     <Feather name="clock" size={28} color="#94a3b8" />
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748b', marginTop: 8 }}>
+                    <Text
+                      style={{ fontSize: 14, fontWeight: '600', color: '#64748b', marginTop: 8 }}
+                    >
                       No subscription history found.
                     </Text>
                   </Box>

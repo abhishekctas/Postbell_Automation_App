@@ -147,7 +147,7 @@ export const getMediaUrl = (imageUrl?: string): string => {
  * GET /api/v1/customer-dashboard/get-customer-summary/:userId
  */
 export const getCustomerDashboardSummary = async (
-  userId: string,
+  userId: string
 ): Promise<CustomerDashboardSummary> => {
   try {
     const data = await fetchWithAuth(`${BASE}/get-customer-summary/${userId}`, {
@@ -160,25 +160,18 @@ export const getCustomerDashboardSummary = async (
 
     return (data as CommonResponse<CustomerDashboardSummary>).data ?? data;
   } catch (error: any) {
-    throw new Error(
-      error?.message || 'Failed to fetch customer dashboard summary',
-    );
+    throw new Error(error?.message || 'Failed to fetch customer dashboard summary');
   }
 };
 
 /**
  * GET /api/v1/customer-dashboard/get-customer-analytics/:userId
  */
-export const getCustomerAnalytics = async (
-  userId: string,
-): Promise<CustomerAnalytics> => {
+export const getCustomerAnalytics = async (userId: string): Promise<CustomerAnalytics> => {
   try {
-    const data = await fetchWithAuth(
-      `${BASE}/get-customer-analytics/${userId}`,
-      {
-        method: 'GET',
-      },
-    );
+    const data = await fetchWithAuth(`${BASE}/get-customer-analytics/${userId}`, {
+      method: 'GET',
+    });
 
     if (hasError(data)) {
       throw new Error(data.message);
@@ -193,16 +186,11 @@ export const getCustomerAnalytics = async (
 /**
  * GET /api/v1/customer-dashboard/get-customer-recent-activity/:userId
  */
-export const getCustomerRecentActivity = async (
-  userId: string,
-): Promise<RecentActivity[]> => {
+export const getCustomerRecentActivity = async (userId: string): Promise<RecentActivity[]> => {
   try {
-    const data = await fetchWithAuth(
-      `${BASE}/get-customer-recent-activity/${userId}`,
-      {
-        method: 'GET',
-      },
-    );
+    const data = await fetchWithAuth(`${BASE}/get-customer-recent-activity/${userId}`, {
+      method: 'GET',
+    });
 
     if (hasError(data)) {
       throw new Error(data.message);

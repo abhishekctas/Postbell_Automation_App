@@ -26,11 +26,9 @@ import {
 } from './general-settings.api';
 import { useAuth } from '@/context/AuthContext';
 import { useFocusEffect } from 'expo-router';
-import CustomerSetupWizard from './CustomerSetupWizard';
 
 export default function GeneralAccessScreen() {
   const { user } = useAuth();
-  const isCustomer = user?.loginType === 'customer';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [companyName, setCompanyName] = useState('');
@@ -281,11 +279,7 @@ export default function GeneralAccessScreen() {
 
       {/* Main Content Card */}
       <Box style={styles.mainCard}>
-        {isCustomer ? (
-          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            <CustomerSetupWizard />
-          </ScrollView>
-        ) : loading ? (
+        {loading ? (
           <Box className="flex-1 items-center justify-center py-20">
             <ActivityIndicator size="large" color="#0b53f8" />
           </Box>

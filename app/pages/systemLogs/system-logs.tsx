@@ -187,13 +187,21 @@ const LOG_TABLE_COLUMNS: HtmlTableColumn<SystemLog>[] = [
 
 const LOG_ROW_ACTIONS = [{ label: 'View Details', action: 'view', style: 'normal' }];
 
+const getTodayDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function SystemLogsScreen() {
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>(getTodayDateString());
+  const [dateTo, setDateTo] = useState<string>(getTodayDateString());
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -215,13 +223,13 @@ export default function SystemLogsScreen() {
         }
 
         if (dateFrom) {
-          const startDate = new Date(dateFrom);
+          const startDate = new Date(dateFrom.includes('T') ? dateFrom : `${dateFrom}T00:00:00`);
           startDate.setHours(0, 0, 0, 0);
           queryParams.append('startDate', startDate.toString());
         }
 
         if (dateTo) {
-          const endDate = new Date(dateTo);
+          const endDate = new Date(dateTo.includes('T') ? dateTo : `${dateTo}T23:59:59.999`);
           endDate.setHours(23, 59, 59, 999);
           queryParams.append('endDate', endDate.toString());
         }
@@ -291,14 +299,14 @@ export default function SystemLogsScreen() {
             onPress={() => setShowDatePicker('from')}
           >
             <Feather name="calendar" size={16} color="#2563EB" />
-            <Text style={styles.dateButtonText}>{dateFrom || 'Any Date'}</Text>
+            <Text style={styles.dateButtonText}>{dateFrom || 'Start Date'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.dateButton, { flex: 1 }]}
             onPress={() => setShowDatePicker('to')}
           >
             <Feather name="calendar" size={16} color="#2563EB" />
-            <Text style={styles.dateButtonText}>{dateTo || 'Any Date'}</Text>
+            <Text style={styles.dateButtonText}>{dateTo || 'End Date'}</Text>
           </TouchableOpacity>
           {(search || dateFrom || dateTo) && (
             <TouchableOpacity style={styles.clearBtn} onPress={handleClearFilters}>
@@ -445,6 +453,16 @@ export default function SystemLogsScreen() {
               Select {showDatePicker === 'from' ? 'Start' : 'End'} Date
             </Heading>
             <Calendar
+              current={showDatePicker === 'from' ? dateFrom || undefined : dateTo || undefined}
+              markedDates={
+                showDatePicker === 'from'
+                  ? dateFrom
+                    ? { [dateFrom]: { selected: true, selectedColor: '#2563EB' } }
+                    : undefined
+                  : dateTo
+                    ? { [dateTo]: { selected: true, selectedColor: '#2563EB' } }
+                    : undefined
+              }
               onDayPress={(day) => {
                 if (showDatePicker === 'from') {
                   setDateFrom(day.dateString);
@@ -455,9 +473,9 @@ export default function SystemLogsScreen() {
               }}
               maxDate={new Date().toISOString().split('T')[0]}
               theme={{
-                selectedDayBackgroundColor: '#193867',
-                todayTextColor: '#193867',
-                arrowColor: '#193867',
+                selectedDayBackgroundColor: '#2563EB',
+                todayTextColor: '#2563EB',
+                arrowColor: '#2563EB',
               }}
             />
             <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowDatePicker(null)}>

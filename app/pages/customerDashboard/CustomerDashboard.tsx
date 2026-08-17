@@ -26,12 +26,7 @@ import {
   RecentActivity,
   SocialMediaPlatform,
 } from './CustomerdashboardApi';
-import {
-  Feather,
-  FontAwesome,
-  AntDesign,
-  FontAwesome6,
-} from '@expo/vector-icons';
+import { Feather, FontAwesome, AntDesign, FontAwesome6 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 function formatNumber(num: number | undefined | null): string {
@@ -128,9 +123,7 @@ const formatDate = (dateStr: string) => {
 const renderPlatformIcons = (platform: string | string[]) => {
   const list = Array.isArray(platform) ? platform : platform ? [platform] : [];
   if (list.length === 0) {
-    return (
-      <Feather name="share-2" size={13} color="#64748b" style={{ marginRight: 5 }} />
-    );
+    return <Feather name="share-2" size={13} color="#64748b" style={{ marginRight: 5 }} />;
   }
   return (
     <HStack space="xs" style={{ alignItems: 'center' }}>
@@ -302,9 +295,7 @@ export default function CustomerDashboard() {
 
       // If summary failed, set error for visibility
       if (summaryRes.status === 'rejected') {
-        setError(
-          summaryRes.reason?.message || 'Failed to load customer dashboard data'
-        );
+        setError(summaryRes.reason?.message || 'Failed to load customer dashboard data');
       }
     } catch (err: any) {
       console.error('Failed to load customer dashboard data:', err);
@@ -637,9 +628,18 @@ export default function CustomerDashboard() {
 
                     {/* Sub Accounts (if any) */}
                     {hasAccounts && (
-                      <VStack space="xs" style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10 }}>
+                      <VStack
+                        space="xs"
+                        style={{
+                          marginTop: 12,
+                          borderTopWidth: 1,
+                          borderTopColor: '#f1f5f9',
+                          paddingTop: 10,
+                        }}
+                      >
                         {plat.accounts?.map((acc, accIdx) => {
-                          const accConnected = (acc.connectionStatus || '').toLowerCase() === 'connected';
+                          const accConnected =
+                            (acc.connectionStatus || '').toLowerCase() === 'connected';
                           return (
                             <Box
                               key={acc.accountId || accIdx}
@@ -651,13 +651,18 @@ export default function CustomerDashboard() {
                                 },
                               ]}
                             >
-                              <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                              <HStack
+                                style={{ justifyContent: 'space-between', alignItems: 'center' }}
+                              >
                                 <VStack style={{ flex: 1, paddingRight: 8 }}>
-                                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>
+                                  <Text
+                                    style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}
+                                  >
                                     {acc.accountName || 'Account'}
                                   </Text>
                                   <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-                                    Last: {acc.lastConnected ? formatDate(acc.lastConnected) : 'Never'}
+                                    Last:{' '}
+                                    {acc.lastConnected ? formatDate(acc.lastConnected) : 'Never'}
                                   </Text>
                                 </VStack>
                                 <View
@@ -675,7 +680,8 @@ export default function CustomerDashboard() {
                                       color: accConnected ? '#16a34a' : '#dc2626',
                                     }}
                                   >
-                                    {acc.connectionStatus || (accConnected ? 'connected' : 'disconnected')}
+                                    {acc.connectionStatus ||
+                                      (accConnected ? 'connected' : 'disconnected')}
                                   </Text>
                                 </View>
                               </HStack>
@@ -694,7 +700,15 @@ export default function CustomerDashboard() {
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b', marginTop: 10 }}>
                 No Social Connections
               </Text>
-              <Text style={{ fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 4, paddingHorizontal: 20 }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: '#64748b',
+                  textAlign: 'center',
+                  marginTop: 4,
+                  paddingHorizontal: 20,
+                }}
+              >
                 Connect your social media accounts to start automating and publishing posts.
               </Text>
             </Box>
@@ -720,7 +734,10 @@ export default function CustomerDashboard() {
                 const normStatus = (item.status || '').toLowerCase();
                 const previewImg = item.image_url ? getMediaUrl(item.image_url) : undefined;
                 return (
-                  <View key={item.id || idx} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
+                  <View
+                    key={item.id || idx}
+                    style={[styles.card, styles.shadowCard, styles.timelineCard]}
+                  >
                     <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <HStack space="sm" style={{ flex: 1, alignItems: 'flex-start' }}>
                         {/* Timeline Status Icon Dot */}
@@ -755,7 +772,10 @@ export default function CustomerDashboard() {
                             {item.title || 'Untitled Post'}
                           </Text>
 
-                          <HStack space="xs" style={{ alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
+                          <HStack
+                            space="xs"
+                            style={{ alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}
+                          >
                             {renderPlatformIcons(item.platform || [])}
                             <View style={styles.timeDivider} />
                             <Feather
@@ -780,7 +800,14 @@ export default function CustomerDashboard() {
                                 </View>
                               ))}
                               {item.hashtags.length > 3 && (
-                                <Text style={{ fontSize: 10, color: '#94a3b8', alignSelf: 'center', marginLeft: 2 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 10,
+                                    color: '#94a3b8',
+                                    alignSelf: 'center',
+                                    marginLeft: 2,
+                                  }}
+                                >
                                   +{item.hashtags.length - 3}
                                 </Text>
                               )}
@@ -812,7 +839,15 @@ export default function CustomerDashboard() {
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b', marginTop: 10 }}>
                 No Recent Activity
               </Text>
-              <Text style={{ fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 4, paddingHorizontal: 20 }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: '#64748b',
+                  textAlign: 'center',
+                  marginTop: 4,
+                  paddingHorizontal: 20,
+                }}
+              >
                 Your recent posts and interactions will appear here once you create content.
               </Text>
             </Box>
