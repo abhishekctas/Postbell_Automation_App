@@ -314,7 +314,7 @@ export default function SubscriptionPlansScreen() {
       label: 'Plan Name',
       width: '200px',
       render: (v, row: SubscriptionPlan) => {
-        const nameLower = String(v).toLowerCase();
+        const nameLower = String(v || row.name || '').toLowerCase();
         let IconComponent = Sparkles;
         let iconColor = '#2563eb';
         let bgColor = '#eff6ff';
@@ -341,35 +341,45 @@ export default function SubscriptionPlansScreen() {
         return (
           <TouchableOpacity onPress={() => handleOpenDetails(row)}>
             <HStack space="sm" className="items-center">
-              <VStack className="items-center justify-center">
-                <Box
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: bgColor,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <IconComponent size={16} color={iconColor} />
-                </Box>
-                {isPopular && (
-                  <Box
-                    style={{
-                      backgroundColor: '#fef3c7',
-                      paddingHorizontal: 4,
-                      borderRadius: 4,
-                      marginTop: 2,
-                    }}
+              <Box
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: bgColor,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <IconComponent size={16} color={iconColor} />
+              </Box>
+              <VStack style={{ justifyContent: 'center' }}>
+                <HStack space="xs" className="items-center">
+                  <Text
+                    style={{ fontSize: 13, fontWeight: '700', color: '#2563eb' }}
+                    numberOfLines={1}
                   >
-                    <Text style={{ fontSize: 7, fontWeight: '800', color: '#d97706' }}>
-                      POPULAR
-                    </Text>
-                  </Box>
-                )}
+                    {v || row.name || '—'}
+                  </Text>
+                  {isPopular && (
+                    <Box
+                      style={{
+                        backgroundColor: '#fef3c7',
+                        paddingHorizontal: 4,
+                        paddingVertical: 1,
+                        borderRadius: 4,
+                      }}
+                    >
+                      <Text style={{ fontSize: 8, fontWeight: '800', color: '#d97706' }}>
+                        POPULAR
+                      </Text>
+                    </Box>
+                  )}
+                </HStack>
+                <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                  {row.billing_cycle === 'annual' ? 'Annual Billing' : 'Monthly Billing'}
+                </Text>
               </VStack>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2563eb' }}>{v}</Text>
             </HStack>
           </TouchableOpacity>
         );
@@ -380,7 +390,9 @@ export default function SubscriptionPlansScreen() {
       label: 'Price/Month',
       width: '120px',
       render: (v) => (
-        <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>₹{v}</Text>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}>
+          {v !== undefined && v !== null ? `₹${v}` : '—'}
+        </Text>
       ),
     },
     {
@@ -397,48 +409,39 @@ export default function SubscriptionPlansScreen() {
       key: 'posts_per_month',
       label: 'Posts/Mo',
       width: '100px',
-      render: (v) => <Text style={{ fontSize: 13, color: '#475569' }}>{v ?? 0}</Text>,
+      render: (v) => (
+        <Text style={{ fontSize: 13, color: '#334155', fontWeight: '500' }}>{v ?? 0}</Text>
+      ),
     },
     {
       key: 'posts_per_day',
       label: 'Posts/Day',
       width: '110px',
-      render: (v) => <Text style={{ fontSize: 13, color: '#475569' }}>{v ?? 0}</Text>,
+      render: (v) => (
+        <Text style={{ fontSize: 13, color: '#334155', fontWeight: '500' }}>{v ?? 0}</Text>
+      ),
     },
     {
       key: 'ai_content_generation_limit',
       label: 'AI Limit',
       width: '100px',
-      render: (v) => <Text style={{ fontSize: 13, color: '#475569' }}>{v ?? 0}</Text>,
+      render: (v) => (
+        <Text style={{ fontSize: 13, color: '#334155', fontWeight: '500' }}>{v ?? 0}</Text>
+      ),
     },
     {
       key: 'features',
       label: 'Features',
-      width: '110px',
+      width: '130px',
       render: (v, row: SubscriptionPlan) => {
         const featList = Array.isArray(v) ? v : row.features || [];
         if (!featList.length) {
           return <Text style={{ fontSize: 12, color: '#94a3b8' }}>—</Text>;
         }
         return (
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: '#eff6ff',
-              borderWidth: 1,
-              borderColor: '#bfdbfe',
-              borderRadius: 8,
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              alignSelf: 'flex-start',
-            }}
-            onPress={() => handleOpenDetails(row)}
-          >
-            <Eye size={12} color="#1d4ed8" style={{ marginRight: 4 }} />
-            <Text style={{ fontSize: 11, fontWeight: '700', color: '#1d4ed8' }}>
-              View ({featList.length})
-            </Text>
+          <TouchableOpacity style={styles.pointsBtn} onPress={() => handleOpenDetails(row)}>
+            <Eye size={12} color="#193867" style={{ marginRight: 4 }} />
+            <Text style={styles.pointsBtnText}>View ({featList.length})</Text>
           </TouchableOpacity>
         );
       },
@@ -446,39 +449,27 @@ export default function SubscriptionPlansScreen() {
     {
       key: 'status',
       label: 'Status',
-      width: '110px',
+      width: '130px',
       render: (v, row: SubscriptionPlan) => {
-        const isAct = v === 1;
-        const bg = isAct ? '#eff6ff' : '#f8fafc';
-        const color = isAct ? '#2563eb' : '#64748b';
-        const border = isAct ? '#bfdbfe' : '#e2e8f0';
+        const isActive = Number(v) === 1;
+        const label = isActive ? 'Active' : 'Deactive';
+        const bg = isActive ? '#eff6ff' : '#f8fafc';
+        const color = isActive ? '#2563eb' : '#64748b';
+        const border = isActive ? '#bfdbfe' : '#e2e8f0';
         return (
           <TouchableOpacity onPress={() => handleOpenStatusConfirm(row)}>
             <Box
               style={{
-                backgroundColor: bg,
-                paddingHorizontal: 8,
-                paddingVertical: 3,
+                alignSelf: 'flex-start',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
                 borderRadius: 12,
+                backgroundColor: bg,
                 borderWidth: 1,
                 borderColor: border,
-                flexDirection: 'row',
-                alignItems: 'center',
-                alignSelf: 'flex-start',
               }}
             >
-              <Box
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: color,
-                  marginRight: 6,
-                }}
-              />
-              <Text style={{ fontSize: 11, fontWeight: '700', color }}>
-                {isAct ? 'Active' : 'Deactive'}
-              </Text>
+              <Text style={{ color, fontWeight: '700', fontSize: 11 }}>• {label}</Text>
             </Box>
           </TouchableOpacity>
         );
@@ -752,78 +743,53 @@ export default function SubscriptionPlansScreen() {
     const pageNumbers = getPageNumbers(safePage, totalPages);
 
     return (
-      <HStack className="mb-2 mt-4 items-center justify-center" space="sm">
-        <TouchableOpacity
-          disabled={safePage === 1}
-          onPress={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: '#e2e8f0',
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: safePage === 1 ? 0.4 : 1,
-          }}
-        >
-          <ChevronLeft size={16} color="#475569" />
-        </TouchableOpacity>
+      <Box style={styles.paginationWrapper}>
+        <HStack space="xs" className="items-center justify-center">
+          <TouchableOpacity
+            style={[styles.pageNavBtn, safePage === 1 && styles.pageNavBtnDisabled]}
+            disabled={safePage === 1}
+            onPress={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+          >
+            <Text style={[styles.pageNavText, safePage === 1 && styles.pageNavTextDisabled]}>
+              ‹
+            </Text>
+          </TouchableOpacity>
 
-        {pageNumbers.map((p) => {
-          const isActive = safePage === p;
-          return (
-            <TouchableOpacity
-              key={p}
-              onPress={() => setCurrentPage(p)}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                backgroundColor: isActive ? '#2563eb' : 'transparent',
-                borderWidth: isActive ? 0 : 1,
-                borderColor: '#e2e8f0',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text
-                style={{
-                  color: isActive ? '#ffffff' : '#475569',
-                  fontWeight: '700',
-                  fontSize: 12,
-                }}
+          {pageNumbers.map((p) => {
+            const isActive = safePage === p;
+            return (
+              <TouchableOpacity
+                key={p}
+                style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
+                onPress={() => setCurrentPage(p)}
               >
-                {p}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <Text style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}>
+                  {p}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
 
-        <TouchableOpacity
-          disabled={safePage === totalPages}
-          onPress={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: '#e2e8f0',
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: safePage === totalPages ? 0.4 : 1,
-          }}
-        >
-          <ChevronRight size={16} color="#475569" />
-        </TouchableOpacity>
-      </HStack>
+          <TouchableOpacity
+            style={[styles.pageNavBtn, safePage >= totalPages && styles.pageNavBtnDisabled]}
+            disabled={safePage >= totalPages}
+            onPress={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+          >
+            <Text
+              style={[styles.pageNavText, safePage >= totalPages && styles.pageNavTextDisabled]}
+            >
+              ›
+            </Text>
+          </TouchableOpacity>
+        </HStack>
+      </Box>
     );
   };
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#0d53fc', '#1d68f6']} style={styles.header}>
-        <Box className="px-5 pb-3">
+        <Box className="px-5 pb-3 pt-6">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
               <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
@@ -991,29 +957,20 @@ export default function SubscriptionPlansScreen() {
                   backgroundColor: '#f8fafc',
                   borderBottomWidth: 1.5,
                   borderBottomColor: '#e2e8f0',
+                  paddingVertical: 4,
                 }}
                 headerCellTextStyle={{
                   color: '#1e3a8a',
                   fontWeight: '700',
                   fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
                 }}
                 rowStyle={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#f1f5f9',
                   backgroundColor: '#ffffff',
-                  borderRadius: 12,
-                  marginBottom: 8,
-                  borderWidth: 1.5,
-                  borderColor: '#f1f5f9',
-                  shadowColor: '#0f172a',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.03,
-                  shadowRadius: 3,
-                  elevation: 1,
-                }}
-                rowEvenStyle={{}}
-                rowOddStyle={{}}
-                cellStyle={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 12,
+                  paddingVertical: 0,
                 }}
               />
             )}
@@ -1702,7 +1659,7 @@ export default function SubscriptionPlansScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 40,
+    paddingTop: 20,
     paddingBottom: 25,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
@@ -1932,5 +1889,75 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '700',
+  },
+  pointsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  pointsBtnText: { fontSize: 11, fontWeight: '600', color: '#193867' },
+  orderBadge: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  orderBadgeText: { fontSize: 12, fontWeight: '700', color: '#334155' },
+  paginationWrapper: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  pageNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 3,
+  },
+  pageNavBtnDisabled: {
+    backgroundColor: '#f8fafc',
+    opacity: 0.5,
+  },
+  pageNavText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  pageNavTextDisabled: {
+    color: '#94a3b8',
+  },
+  pageNumberBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 2,
+  },
+  pageNumberBtnActive: {
+    backgroundColor: '#2563eb',
+  },
+  pageNumberText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  pageNumberTextActive: {
+    color: '#ffffff',
   },
 });

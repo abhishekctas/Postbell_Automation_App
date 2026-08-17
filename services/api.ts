@@ -76,6 +76,7 @@ export const API_ENDPOINTS = {
   systemLog: `${API_BASE_URL}/system-log`,
   featuresCms: `${API_BASE_URL}/features-cms`,
   socialAccounts: `${API_BASE_URL}/social-accounts`,
+  customerDashboard: `${API_BASE_URL}/customer-dashboard`,
 };
 
 // Generic authenticated fetch helper using native fetch (compatible with React Native)

@@ -28,9 +28,11 @@ export default function PagesLayout() {
     const customerAllowedPages = [
       '/pages/festivalAutoPost',
       '/pages/generalSetting',
+      '/pages/customerGeneralSetting',
       '/pages/MySubscriptionPage',
       '/pages/festival-auto-post',
       '/pages/general-settings',
+      '/pages/customer-general-setting',
       '/pages/my-subscription',
       '/pages/posts',
     ];

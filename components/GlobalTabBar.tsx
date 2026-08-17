@@ -152,7 +152,11 @@ export default function GlobalTabBar() {
 
   const handleNavigate = (path: string) => {
     setDrawerOpen(false);
-    router.push(path as any);
+    let targetPath = path;
+    if (isCustomer && path.includes('generalSetting')) {
+      targetPath = '/pages/customerGeneralSetting/customer-general-setting';
+    }
+    router.push(targetPath as any);
   };
 
   const isHideTabBar = pathname.includes('editor') || pathname.includes('details');
@@ -162,7 +166,15 @@ export default function GlobalTabBar() {
   const isCustomer = user?.loginType === 'customer';
   const isSuperAdmin = user?.isSuperAdmin === true;
 
-  const visibleMenuItems = MENU_ITEMS.filter((item) => {
+  const visibleMenuItems = MENU_ITEMS.map((item) => {
+    if (isCustomer && item.path.includes('generalSetting')) {
+      return {
+        ...item,
+        path: '/pages/customerGeneralSetting/customer-general-setting',
+      };
+    }
+    return item;
+  }).filter((item) => {
     // "My Subscription" is strictly for Customer login only
     if (
       item.label === 'My Subscription' ||

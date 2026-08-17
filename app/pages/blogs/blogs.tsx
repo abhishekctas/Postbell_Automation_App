@@ -144,7 +144,6 @@ export default function BlogsScreen() {
     });
   };
 
-
   const handleToggleStatus = useCallback((blog: BlogPost) => {
     const id = blog._id || blog.id || '';
     if (!id) return;

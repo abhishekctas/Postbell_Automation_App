@@ -5,13 +5,11 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   View,
   Image,
   Alert,
   Platform,
 } from 'react-native';
-import { router } from 'expo-router';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
@@ -19,28 +17,21 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { useAuth } from '@/context/AuthContext';
 import {
-  getDashboardStats,
-  getRecentPosts,
-  DashboardStats,
-  RecentPost,
-} from '../dashboard/dashboard.api';
+  getCustomerDashboardSummary,
+  getCustomerAnalytics,
+  getCustomerRecentActivity,
+  getMediaUrl,
+  CustomerDashboardSummary,
+  CustomerAnalytics,
+  RecentActivity,
+  SocialMediaPlatform,
+} from './CustomerdashboardApi';
 import { Feather, FontAwesome, AntDesign, FontAwesome6 } from '@expo/vector-icons';
-import Svg, {
-  Path,
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  Stop,
-  Circle,
-  G,
-  Line,
-} from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 function formatNumber(num: number | undefined | null): string {
   if (num === undefined || num === null) return '0';
-  if (typeof num !== 'number') return num;
+  if (typeof num !== 'number') return String(num);
   if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return num.toString();
@@ -75,153 +66,26 @@ function StatCard({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const norm = (status || '').toLowerCase().trim();
   const MAP: Record<string, { bg: string; color: string; border: string; label: string }> = {
     published: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0', label: 'Published' },
     scheduled: { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe', label: 'Scheduled' },
     draft: { bg: '#fffbeb', color: '#d97706', border: '#fef3c7', label: 'Draft' },
     partial_published: { bg: '#faf5ff', color: '#7c3aed', border: '#e9d5ff', label: 'Partial' },
+    partial: { bg: '#faf5ff', color: '#7c3aed', border: '#e9d5ff', label: 'Partial' },
     failed: { bg: '#fef2f2', color: '#dc2626', border: '#fecaca', label: 'Failed' },
   };
-  const meta = MAP[status] ?? {
+  const meta = MAP[norm] ?? {
     bg: '#f1f5f9',
     color: '#64748b',
     border: '#e2e8f0',
-    label: status.replace('_', ' '),
+    label: status ? status.replace('_', ' ') : 'Draft',
   };
   return (
     <Box style={[styles.badge, { backgroundColor: meta.bg, borderColor: meta.border }]}>
       <View style={[styles.badgeDot, { backgroundColor: meta.color }]} />
       <Text style={[styles.badgeText, { color: meta.color }]}>{meta.label}</Text>
     </Box>
-  );
-}
-
-function ReachChart({ totalReach }: { totalReach: number }) {
-  const chartWidth = Math.min(screenWidth - 64, 520);
-  const chartHeight = 135;
-  const paddingLeft = 24;
-  const paddingRight = 20;
-  const paddingTop = 16;
-  const paddingBottom = 24;
-
-  const dataPoints = [
-    { day: 'Mon', val: 180 },
-    { day: 'Tue', val: 340 },
-    { day: 'Wed', val: 290 },
-    { day: 'Thu', val: 610 },
-    { day: 'Fri', val: 480 },
-    { day: 'Sat', val: 750 },
-    { day: 'Sun', val: Math.max(totalReach, 940) },
-  ];
-
-  const maxVal = Math.max(...dataPoints.map((d) => d.val), 1000);
-
-  const getX = (index: number) => {
-    const availableWidth = chartWidth - paddingLeft - paddingRight;
-    return paddingLeft + (index / (dataPoints.length - 1)) * availableWidth;
-  };
-
-  const getY = (val: number) => {
-    const availableHeight = chartHeight - paddingTop - paddingBottom;
-    return paddingTop + availableHeight - (val / maxVal) * availableHeight;
-  };
-
-  let pathD = `M ${getX(0)} ${getY(dataPoints[0].val)}`;
-  for (let i = 1; i < dataPoints.length; i++) {
-    const x0 = getX(i - 1);
-    const y0 = getY(dataPoints[i - 1].val);
-    const x1 = getX(i);
-    const y1 = getY(dataPoints[i].val);
-    const cx = (x0 + x1) / 2;
-    pathD += ` C ${cx} ${y0}, ${cx} ${y1}, ${x1} ${y1}`;
-  }
-
-  const areaD = `${pathD} L ${getX(dataPoints.length - 1)} ${chartHeight - paddingBottom} L ${getX(0)} ${chartHeight - paddingBottom} Z`;
-  const dates = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const peakIndex = dataPoints.length - 1;
-
-  return (
-    <View style={{ marginTop: 10, alignItems: 'center' }}>
-      <Svg width={chartWidth} height={chartHeight}>
-        <Defs>
-          <SvgLinearGradient id="reachGradient" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="#0b53f8" stopOpacity="0.3" />
-            <Stop offset="80%" stopColor="#0b53f8" stopOpacity="0.03" />
-            <Stop offset="100%" stopColor="#0b53f8" stopOpacity="0.0" />
-          </SvgLinearGradient>
-        </Defs>
-
-        {/* Dashed Grid Lines */}
-        {[0, 0.5, 1].map((ratio, idx) => {
-          const y = paddingTop + ratio * (chartHeight - paddingTop - paddingBottom);
-          return (
-            <Line
-              key={idx}
-              x1={paddingLeft}
-              y1={y}
-              x2={chartWidth - paddingRight}
-              y2={y}
-              stroke="#e2e8f0"
-              strokeWidth="1"
-              strokeDasharray="4,4"
-            />
-          );
-        })}
-
-        {/* Gradient Fill & Curved Line */}
-        <Path d={areaD} fill="url(#reachGradient)" />
-        <Path d={pathD} fill="none" stroke="#0b53f8" strokeWidth="3" strokeLinecap="round" />
-
-        {/* Data Point Circles */}
-        {dataPoints.map((pt, i) => {
-          const isPeak = i === peakIndex;
-          return (
-            <G key={i}>
-              {isPeak && (
-                <Circle cx={getX(i)} cy={getY(pt.val)} r="7" fill="#0b53f8" fillOpacity="0.2" />
-              )}
-              <Circle
-                cx={getX(i)}
-                cy={getY(pt.val)}
-                r={isPeak ? '4.5' : '3.5'}
-                fill={isPeak ? '#0b53f8' : '#ffffff'}
-                stroke="#0b53f8"
-                strokeWidth={isPeak ? '2.5' : '2'}
-              />
-            </G>
-          );
-        })}
-      </Svg>
-
-      {/* Days X-Axis Labels */}
-      <View
-        style={{
-          flexDirection: 'row',
-          width: chartWidth,
-          paddingLeft: paddingLeft - 4,
-          paddingRight: paddingRight - 4,
-          justifyContent: 'space-between',
-          marginTop: 4,
-        }}
-      >
-        {dates.map((d, i) => {
-          const isSun = d === 'Sun';
-          return (
-            <Text
-              key={i}
-              style={{
-                fontSize: 11,
-                color: isSun ? '#0b53f8' : '#94a3b8',
-                fontWeight: isSun ? '700' : '600',
-                textAlign: 'center',
-              }}
-            >
-              {d}
-            </Text>
-          );
-        })}
-      </View>
-    </View>
   );
 }
 
@@ -258,10 +122,13 @@ const formatDate = (dateStr: string) => {
 
 const renderPlatformIcons = (platform: string | string[]) => {
   const list = Array.isArray(platform) ? platform : platform ? [platform] : [];
+  if (list.length === 0) {
+    return <Feather name="share-2" size={13} color="#64748b" style={{ marginRight: 5 }} />;
+  }
   return (
     <HStack space="xs" style={{ alignItems: 'center' }}>
       {list.map((plat, idx) => {
-        const name = plat.trim().toLowerCase();
+        const name = (plat || '').trim().toLowerCase();
         if (name.includes('facebook') || name === 'fb') {
           return (
             <FontAwesome
@@ -325,38 +192,144 @@ const renderPlatformIcons = (platform: string | string[]) => {
   );
 };
 
+const getPlatformMeta = (platformKey: string) => {
+  const key = (platformKey || '').toLowerCase().trim();
+  if (key.includes('instagram') || key === 'ig') {
+    return {
+      name: 'Instagram',
+      icon: 'instagram',
+      iconType: 'antdesign',
+      color: '#E4405F',
+      bg: '#fce7f3',
+    };
+  }
+  if (key.includes('facebook') || key === 'fb') {
+    return {
+      name: 'Facebook',
+      icon: 'facebook-official',
+      iconType: 'fontawesome',
+      color: '#1877F2',
+      bg: '#eff6ff',
+    };
+  }
+  if (key.includes('whatsapp') || key === 'wa') {
+    return {
+      name: 'WhatsApp Business',
+      icon: 'whatsapp',
+      iconType: 'fontawesome',
+      color: '#25D366',
+      bg: '#dcfce7',
+    };
+  }
+  if (key.includes('twitter') || key === 'x') {
+    return {
+      name: 'Twitter / X',
+      icon: 'x-twitter',
+      iconType: 'fontawesome6',
+      color: '#0f172a',
+      bg: '#f1f5f9',
+    };
+  }
+  if (key.includes('linkedin') || key === 'in') {
+    return {
+      name: 'LinkedIn',
+      icon: 'linkedin',
+      iconType: 'fontawesome',
+      color: '#0A66C2',
+      bg: '#e0f2fe',
+    };
+  }
+  return {
+    name: platformKey || 'Social Platform',
+    icon: 'share-2',
+    iconType: 'feather',
+    color: '#0b53f8',
+    bg: '#eff6ff',
+  };
+};
+
 export default function CustomerDashboard() {
   const { user, signOut } = useAuth();
+  const userId = user?._id || user?.id || '';
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentPosts, setRecentPosts] = useState<RecentPost[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchCustomerData = useCallback(async () => {
+  const [dashboardData, setDashboardData] = useState<CustomerDashboardSummary | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<CustomerAnalytics | null>(null);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+
+  const fetchDashboardData = useCallback(async () => {
+    if (!userId) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    setError(null);
     try {
-      const params = 'loginType=customer';
-      const [s, posts] = await Promise.all([getDashboardStats(params), getRecentPosts(6, params)]);
-      setStats(s);
-      setRecentPosts(Array.isArray(posts) ? posts : []);
-    } catch (err) {
+      const [summaryRes, analyticsRes, activityRes] = await Promise.allSettled([
+        getCustomerDashboardSummary(userId),
+        getCustomerAnalytics(userId),
+        getCustomerRecentActivity(userId),
+      ]);
+
+      if (summaryRes.status === 'fulfilled') {
+        setDashboardData(summaryRes.value);
+      } else {
+        console.error('Customer summary fetch error:', summaryRes.reason);
+      }
+
+      if (analyticsRes.status === 'fulfilled') {
+        setAnalyticsData(analyticsRes.value);
+      } else {
+        console.error('Customer analytics fetch error:', analyticsRes.reason);
+      }
+
+      if (activityRes.status === 'fulfilled') {
+        setRecentActivity(Array.isArray(activityRes.value) ? activityRes.value : []);
+      } else {
+        console.error('Customer recent activity fetch error:', activityRes.reason);
+      }
+
+      // If summary failed, set error for visibility
+      if (summaryRes.status === 'rejected') {
+        setError(summaryRes.reason?.message || 'Failed to load customer dashboard data');
+      }
+    } catch (err: any) {
       console.error('Failed to load customer dashboard data:', err);
+      setError(err?.message || 'Failed to load customer dashboard data');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      void fetchCustomerData();
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
-  }, [fetchCustomerData]);
+    if (userId) {
+      void fetchDashboardData();
+    } else {
+      setLoading(false);
+    }
+  }, [userId, fetchDashboardData]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchCustomerData();
+    void fetchDashboardData();
+  };
+
+  const handleSignOut = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to sign out?')) {
+        signOut();
+      }
+    } else {
+      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
+      ]);
+    }
   };
 
   if (loading) {
@@ -372,72 +345,57 @@ export default function CustomerDashboard() {
     );
   }
 
+  if (error && !dashboardData) {
+    return (
+      <Box style={styles.loadingContainer}>
+        <View style={[styles.loadingPulseBox, { backgroundColor: '#fef2f2' }]}>
+          <Feather name="alert-circle" size={28} color="#dc2626" />
+        </View>
+        <Text style={{ marginTop: 14, color: '#1e293b', fontSize: 16, fontWeight: '700' }}>
+          Unable to load dashboard
+        </Text>
+        <Text
+          style={{
+            marginTop: 6,
+            color: '#64748b',
+            fontSize: 13,
+            textAlign: 'center',
+            paddingHorizontal: 32,
+          }}
+        >
+          {error}
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
+            setLoading(true);
+            void fetchDashboardData();
+          }}
+          style={styles.retryButton}
+          activeOpacity={0.8}
+        >
+          <Feather name="refresh-cw" size={14} color="#ffffff" style={{ marginRight: 6 }} />
+          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 13 }}>Retry</Text>
+        </TouchableOpacity>
+      </Box>
+    );
+  }
+
   const firstName = user?.first_name || '';
+  const fullName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-  const customerPlatforms = [
-    {
-      key: 'instagram',
-      name: 'Instagram Business',
-      handle: '@postbell_official',
-      status: 'Connected',
-      icon: 'instagram',
-      color: '#E4405F',
-      bg: '#fce7f3',
-    },
-    {
-      key: 'facebook',
-      name: 'Facebook Page',
-      handle: 'Postbell Official',
-      status: 'Connected',
-      icon: 'facebook-official',
-      color: '#1877F2',
-      bg: '#eff6ff',
-    },
-    {
-      key: 'whatsapp',
-      name: 'WhatsApp Business',
-      handle: '+1 (555) 019-2834',
-      status: 'Connected',
-      icon: 'whatsapp',
-      color: '#25D366',
-      bg: '#dcfce7',
-    },
-    {
-      key: 'linkedin',
-      name: 'LinkedIn Company',
-      handle: 'Postbell Corp',
-      status: 'Disconnected',
-      icon: 'linkedin',
-      color: '#0A66C2',
-      bg: '#f1f5f9',
-    },
-    {
-      key: 'twitter',
-      name: 'Twitter / X',
-      handle: '@postbell_app',
-      status: 'Disconnected',
-      icon: 'twitter',
-      color: '#1DA1F2',
-      bg: '#f1f5f9',
-    },
-  ];
+  const posts = dashboardData?.posts;
+  const social = dashboardData?.socialMedia;
 
-  const connectedCount = customerPlatforms.filter((p) => p.status === 'Connected').length;
+  // Compute total social accounts connected
+  const platformsList: SocialMediaPlatform[] = Array.isArray(social?.platforms)
+    ? social.platforms
+    : [];
 
-  const handleSignOut = () => {
-    if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to sign out?')) {
-        signOut();
-      }
-    } else {
-      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
-      ]);
-    }
-  };
+  const totalConnectedCount =
+    social?.totalConnections ??
+    platformsList.reduce((acc, p) => acc + (p.connectedAccounts || 0), 0);
 
   return (
     <Box style={styles.container}>
@@ -454,8 +412,11 @@ export default function CustomerDashboard() {
         <HStack style={styles.headerContent}>
           <HStack space="md" style={{ alignItems: 'center', flex: 1 }}>
             <View style={styles.avatarWrapper}>
-              {user?.image ? (
-                <Image source={{ uri: user.image }} style={styles.userAvatarHeader} />
+              {user?.image || user?.avatar ? (
+                <Image
+                  source={{ uri: getMediaUrl(user.image || user.avatar) }}
+                  style={styles.userAvatarHeader}
+                />
               ) : (
                 <Box style={styles.avatarPlaceholderHeader}>
                   <Text style={styles.avatarInitialHeader}>
@@ -471,17 +432,35 @@ export default function CustomerDashboard() {
                 <Text style={styles.greetingSub}>{timeGreeting}, 👋</Text>
               </HStack>
               <Heading style={styles.userName} numberOfLines={1}>
-                {firstName ? `${firstName} ${user?.last_name || ''}`.trim() : 'Customer Workspace'}
+                {fullName || firstName || 'Customer Workspace'}
               </Heading>
               <View style={styles.workspacePill}>
                 <View style={styles.workspacePillDot} />
-                <Text style={styles.workspacePillText}>Active Workspace</Text>
+                <Text style={styles.workspacePillText}>Customer Workspace</Text>
               </View>
             </VStack>
           </HStack>
-          <TouchableOpacity onPress={handleSignOut} style={styles.headerIconButton}>
-            <Feather name="log-out" size={18} color="white" />
-          </TouchableOpacity>
+
+          <HStack space="xs" style={{ alignItems: 'center' }}>
+            <TouchableOpacity
+              onPress={onRefresh}
+              style={[styles.headerIconButton, { marginRight: 6 }]}
+              activeOpacity={0.8}
+            >
+              {refreshing ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Feather name="refresh-cw" size={17} color="#ffffff" />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleSignOut}
+              style={styles.headerIconButton}
+              activeOpacity={0.8}
+            >
+              <Feather name="log-out" size={17} color="#ffffff" />
+            </TouchableOpacity>
+          </HStack>
         </HStack>
       </LinearGradient>
 
@@ -489,19 +468,19 @@ export default function CustomerDashboard() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0b53f8']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#193867']} />
         }
       >
-        {/* Quick Stats Grid - Total 7 Cards */}
-        <VStack space="sm" style={{ marginTop: 14 }}>
-          {/* Row 1: Total Posts & Posted & Scheduled & Draft */}
+        {/* Quick Stats Grid - Total 7 Cards matching Reference Panel */}
+        <VStack space="sm" style={{ marginBottom: 0 }}>
+          {/* Row 1: Total Posts, Posted, Scheduled, Draft */}
           <HStack space="sm" style={styles.statsRow}>
             <View style={{ flex: 1 }}>
               <StatCard
                 icon="send"
                 iconBg="#eff6ff"
                 iconColor="#0b53f8"
-                value={stats?.totalPosts ?? 0}
+                value={posts?.total ?? 0}
                 label="Total Posts"
               />
             </View>
@@ -510,7 +489,7 @@ export default function CustomerDashboard() {
                 icon="check-circle"
                 iconBg="#f0fdf4"
                 iconColor="#16a34a"
-                value={stats?.publishedPosts ?? 0}
+                value={posts?.published ?? 0}
                 label="Posted"
               />
             </View>
@@ -519,7 +498,7 @@ export default function CustomerDashboard() {
                 icon="clock"
                 iconBg="#fffbeb"
                 iconColor="#d97706"
-                value={stats?.scheduledPosts ?? 0}
+                value={posts?.scheduled ?? 0}
                 label="Scheduled"
               />
             </View>
@@ -528,20 +507,20 @@ export default function CustomerDashboard() {
                 icon="file-text"
                 iconBg="#faf5ff"
                 iconColor="#7c3aed"
-                value={stats?.draftPosts ?? 0}
+                value={posts?.draft ?? 0}
                 label="Draft"
               />
             </View>
           </HStack>
 
-          {/* Row 2: Failed & Partial & Connections */}
+          {/* Row 2: Failed, Partial, Connections */}
           <HStack space="sm" style={styles.statsRow}>
             <View style={{ flex: 1 }}>
               <StatCard
                 icon="alert-circle"
                 iconBg="#fef2f2"
                 iconColor="#dc2626"
-                value={stats?.failedPosts ?? 0}
+                value={posts?.failed ?? 0}
                 label="Failed"
               />
             </View>
@@ -550,7 +529,7 @@ export default function CustomerDashboard() {
                 icon="pie-chart"
                 iconBg="#ccfbf1"
                 iconColor="#0f766e"
-                value={stats?.partialPublishedPosts ?? 0}
+                value={posts?.partial ?? 0}
                 label="Partial"
               />
             </View>
@@ -559,36 +538,12 @@ export default function CustomerDashboard() {
                 icon="share-2"
                 iconBg="#e0f2fe"
                 iconColor="#0284c7"
-                value={connectedCount}
+                value={totalConnectedCount}
                 label="Connections"
               />
             </View>
           </HStack>
         </VStack>
-
-        {/* Analytics & Reach Chart Card */}
-        <Box style={[styles.card, styles.shadowCard, { marginTop: 18 }]}>
-          <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <VStack>
-              <HStack space="xs" style={{ alignItems: 'center' }}>
-                <Feather name="trending-up" size={14} color="#0b53f8" />
-                <Text
-                  style={{ fontSize: 11, fontWeight: '700', color: '#64748b', letterSpacing: 0.5 }}
-                >
-                  ENGAGEMENT & REACH
-                </Text>
-              </HStack>
-              <Heading style={{ fontSize: 20, fontWeight: '800', color: '#0f172a', marginTop: 2 }}>
-                {formatNumber(stats?.totalPosts ? stats.totalPosts * 165 : 1420)} Impressions
-              </Heading>
-            </VStack>
-            <View style={styles.growthBadge}>
-              <Text style={styles.growthBadgeText}>+22.5% 🚀</Text>
-            </View>
-          </HStack>
-
-          <ReachChart totalReach={stats?.totalPosts || 920} />
-        </Box>
 
         {/* Social Media Connections Section */}
         <VStack space="xs" style={{ marginTop: 22 }}>
@@ -600,79 +555,168 @@ export default function CustomerDashboard() {
               <VStack>
                 <Heading style={styles.sectionTitle}>Social Media Connections</Heading>
                 <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '500' }}>
-                  {connectedCount} of {customerPlatforms.length} accounts connected
+                  {totalConnectedCount} connected accounts
                 </Text>
               </VStack>
             </HStack>
-            <TouchableOpacity
-              onPress={() => router.push('/pages/generalSetting/general-settings')}
-              activeOpacity={0.7}
-              style={styles.manageBtn}
-            >
-              <Text style={styles.seeAllText}>Manage</Text>
-              <Feather name="chevron-right" size={14} color="#0b53f8" />
-            </TouchableOpacity>
           </HStack>
 
-          <VStack space="sm">
-            {customerPlatforms.map((plat) => {
-              const isConn = plat.status === 'Connected';
-              return (
-                <TouchableOpacity
-                  key={plat.key}
-                  style={[styles.card, styles.shadowCard, styles.platformCard]}
-                  activeOpacity={0.85}
-                  onPress={() => router.push('/pages/generalSetting/general-settings')}
-                >
-                  <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                    <HStack space="sm" style={{ alignItems: 'center' }}>
-                      <Box style={[styles.platformIconBox, { backgroundColor: plat.bg }]}>
-                        <FontAwesome name={plat.icon as any} size={18} color={plat.color} />
+          {platformsList.length > 0 ? (
+            <VStack space="sm">
+              {platformsList.map((plat, platIdx) => {
+                const meta = getPlatformMeta(plat.platform);
+                const hasAccounts = Array.isArray(plat.accounts) && plat.accounts.length > 0;
+                const isConnected = plat.connectedAccounts > 0;
+
+                return (
+                  <View
+                    key={plat.platform || platIdx}
+                    style={[styles.card, styles.shadowCard, { paddingVertical: 14 }]}
+                  >
+                    <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                      <HStack space="sm" style={{ alignItems: 'center' }}>
+                        <Box style={[styles.platformIconBox, { backgroundColor: meta.bg }]}>
+                          {meta.iconType === 'antdesign' && (
+                            <AntDesign name={meta.icon as any} size={18} color={meta.color} />
+                          )}
+                          {meta.iconType === 'fontawesome' && (
+                            <FontAwesome name={meta.icon as any} size={18} color={meta.color} />
+                          )}
+                          {meta.iconType === 'fontawesome6' && (
+                            <FontAwesome6 name={meta.icon as any} size={16} color={meta.color} />
+                          )}
+                          {meta.iconType === 'feather' && (
+                            <Feather name={meta.icon as any} size={18} color={meta.color} />
+                          )}
+                        </Box>
+                        <VStack>
+                          <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a' }}>
+                            {meta.name}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                            {plat.connectedAccounts} / {plat.totalAccounts || 1} connected
+                          </Text>
+                        </VStack>
+                      </HStack>
+
+                      <Box
+                        style={[
+                          styles.connPill,
+                          {
+                            backgroundColor: isConnected ? '#dcfce7' : '#f1f5f9',
+                            borderColor: isConnected ? '#bbf7d0' : '#e2e8f0',
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.connDot,
+                            { backgroundColor: isConnected ? '#16a34a' : '#94a3b8' },
+                          ]}
+                        />
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: isConnected ? '#15803d' : '#64748b',
+                          }}
+                        >
+                          {isConnected ? 'Connected' : 'Disconnected'}
+                        </Text>
                       </Box>
-                      <VStack>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
-                          {plat.name}
-                        </Text>
-                        <Text style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
-                          {isConn ? plat.handle : 'Not connected'}
-                        </Text>
-                      </VStack>
                     </HStack>
 
-                    <Box
-                      style={[
-                        styles.connPill,
-                        {
-                          backgroundColor: isConn ? '#dcfce7' : '#f1f5f9',
-                          borderColor: isConn ? '#bbf7d0' : '#e2e8f0',
-                        },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.connDot,
-                          { backgroundColor: isConn ? '#16a34a' : '#94a3b8' },
-                        ]}
-                      />
-                      <Text
+                    {/* Sub Accounts (if any) */}
+                    {hasAccounts && (
+                      <VStack
+                        space="xs"
                         style={{
-                          fontSize: 11,
-                          fontWeight: '700',
-                          color: isConn ? '#15803d' : '#64748b',
+                          marginTop: 12,
+                          borderTopWidth: 1,
+                          borderTopColor: '#f1f5f9',
+                          paddingTop: 10,
                         }}
                       >
-                        {plat.status}
-                      </Text>
-                    </Box>
-                  </HStack>
-                </TouchableOpacity>
-              );
-            })}
-          </VStack>
+                        {plat.accounts?.map((acc, accIdx) => {
+                          const accConnected =
+                            (acc.connectionStatus || '').toLowerCase() === 'connected';
+                          return (
+                            <Box
+                              key={acc.accountId || accIdx}
+                              style={[
+                                styles.subAccountRow,
+                                {
+                                  backgroundColor: accConnected ? '#f0fdf4' : '#f8fafc',
+                                  borderColor: accConnected ? '#bbf7d0' : '#e2e8f0',
+                                },
+                              ]}
+                            >
+                              <HStack
+                                style={{ justifyContent: 'space-between', alignItems: 'center' }}
+                              >
+                                <VStack style={{ flex: 1, paddingRight: 8 }}>
+                                  <Text
+                                    style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }}
+                                  >
+                                    {acc.accountName || 'Account'}
+                                  </Text>
+                                  <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                                    Last:{' '}
+                                    {acc.lastConnected ? formatDate(acc.lastConnected) : 'Never'}
+                                  </Text>
+                                </VStack>
+                                <View
+                                  style={[
+                                    styles.miniChip,
+                                    {
+                                      backgroundColor: accConnected ? '#dcfce7' : '#fee2e2',
+                                    },
+                                  ]}
+                                >
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: '700',
+                                      color: accConnected ? '#16a34a' : '#dc2626',
+                                    }}
+                                  >
+                                    {acc.connectionStatus ||
+                                      (accConnected ? 'connected' : 'disconnected')}
+                                  </Text>
+                                </View>
+                              </HStack>
+                            </Box>
+                          );
+                        })}
+                      </VStack>
+                    )}
+                  </View>
+                );
+              })}
+            </VStack>
+          ) : (
+            <Box style={[styles.card, styles.shadowCard, styles.emptyCard]}>
+              <Feather name="link" size={28} color="#94a3b8" />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b', marginTop: 10 }}>
+                No Social Connections
+              </Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: '#64748b',
+                  textAlign: 'center',
+                  marginTop: 4,
+                  paddingHorizontal: 20,
+                }}
+              >
+                Connect your social media accounts to start automating and publishing posts.
+              </Text>
+            </Box>
+          )}
         </VStack>
 
         {/* Activity Timeline / Recent Activity Section */}
-        <VStack space="xs" style={{ marginTop: 22 }}>
+        <VStack space="xs" style={{ marginTop: 22, marginBottom: 40 }}>
           <HStack style={styles.sectionHeader}>
             <HStack space="xs" style={{ alignItems: 'center' }}>
               <View style={[styles.sectionIconBg, { backgroundColor: '#f5f3ff' }]}>
@@ -680,91 +724,134 @@ export default function CustomerDashboard() {
               </View>
               <VStack>
                 <Heading style={styles.sectionTitle}>Activity Timeline</Heading>
-                <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '500' }}>
-                  Recent posts & stories
-                </Text>
               </VStack>
             </HStack>
           </HStack>
 
-          <VStack space="sm">
-            {recentPosts.length > 0
-              ? recentPosts.map((post) => (
-                  <View key={post.id} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
+          {recentActivity.length > 0 ? (
+            <VStack space="sm">
+              {recentActivity.map((item, idx) => {
+                const normStatus = (item.status || '').toLowerCase();
+                const previewImg = item.image_url ? getMediaUrl(item.image_url) : undefined;
+                return (
+                  <View
+                    key={item.id || idx}
+                    style={[styles.card, styles.shadowCard, styles.timelineCard]}
+                  >
                     <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <VStack style={{ flex: 1, paddingRight: 10 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
-                          {post.title || 'Untitled Post'}
-                        </Text>
-                        <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
-                          {renderPlatformIcons(post.platform || [])}
-                          <View style={styles.timeDivider} />
+                      <HStack space="sm" style={{ flex: 1, alignItems: 'flex-start' }}>
+                        {/* Timeline Status Icon Dot */}
+                        <View
+                          style={[
+                            styles.timelineDotIcon,
+                            {
+                              backgroundColor:
+                                normStatus === 'published'
+                                  ? '#16a34a'
+                                  : normStatus === 'scheduled'
+                                    ? '#d97706'
+                                    : '#64748b',
+                            },
+                          ]}
+                        >
                           <Feather
-                            name="clock"
-                            size={11}
-                            color="#94a3b8"
-                            style={{ marginRight: 3 }}
+                            name={
+                              normStatus === 'published'
+                                ? 'send'
+                                : normStatus === 'scheduled'
+                                  ? 'clock'
+                                  : 'file-text'
+                            }
+                            size={12}
+                            color="#ffffff"
                           />
-                          <Text style={{ fontSize: 11, color: '#64748b' }}>
-                            {formatDate(post.date || '')}
+                        </View>
+
+                        <VStack style={{ flex: 1, paddingRight: 6 }}>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
+                            {item.title || 'Untitled Post'}
                           </Text>
-                        </HStack>
-                      </VStack>
-                      <StatusBadge status={post.status || 'published'} />
+
+                          <HStack
+                            space="xs"
+                            style={{ alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}
+                          >
+                            {renderPlatformIcons(item.platform || [])}
+                            <View style={styles.timeDivider} />
+                            <Feather
+                              name="calendar"
+                              size={11}
+                              color="#94a3b8"
+                              style={{ marginRight: 3 }}
+                            />
+                            <Text style={{ fontSize: 11, color: '#64748b' }}>
+                              {formatDate(item.date || '')}
+                            </Text>
+                          </HStack>
+
+                          {/* Hashtags */}
+                          {Array.isArray(item.hashtags) && item.hashtags.length > 0 && (
+                            <HStack space="xs" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                              {item.hashtags.slice(0, 3).map((tag, tagIdx) => (
+                                <View key={tagIdx} style={styles.hashtagBadge}>
+                                  <Text style={styles.hashtagText}>
+                                    {tag.startsWith('#') ? tag : `#${tag}`}
+                                  </Text>
+                                </View>
+                              ))}
+                              {item.hashtags.length > 3 && (
+                                <Text
+                                  style={{
+                                    fontSize: 10,
+                                    color: '#94a3b8',
+                                    alignSelf: 'center',
+                                    marginLeft: 2,
+                                  }}
+                                >
+                                  +{item.hashtags.length - 3}
+                                </Text>
+                              )}
+                            </HStack>
+                          )}
+                        </VStack>
+                      </HStack>
+
+                      <StatusBadge status={item.status || 'published'} />
                     </HStack>
+
+                    {/* Image Preview if available */}
+                    {previewImg && (
+                      <View style={styles.postImageWrapper}>
+                        <Image
+                          source={{ uri: previewImg }}
+                          style={styles.postImage}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    )}
                   </View>
-                ))
-              : [
-                  {
-                    title: 'Diwali Special Offer Banner',
-                    platform: ['instagram', 'facebook'],
-                    date: new Date().toISOString(),
-                    status: 'published',
-                  },
-                  {
-                    title: 'New Product Teaser Story',
-                    platform: ['instagram'],
-                    date: new Date(Date.now() - 3600000 * 2).toISOString(),
-                    status: 'scheduled',
-                  },
-                  {
-                    title: 'Weekend Promotion Broadcast',
-                    platform: ['whatsapp'],
-                    date: new Date(Date.now() - 3600000 * 5).toISOString(),
-                    status: 'published',
-                  },
-                  {
-                    title: 'Customer Festival Wishes Post',
-                    platform: ['facebook', 'twitter'],
-                    date: new Date(Date.now() - 3600000 * 24).toISOString(),
-                    status: 'draft',
-                  },
-                ].map((item, idx) => (
-                  <View key={idx} style={[styles.card, styles.shadowCard, styles.timelineCard]}>
-                    <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <VStack style={{ flex: 1, paddingRight: 10 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
-                          {item.title}
-                        </Text>
-                        <HStack space="xs" style={{ alignItems: 'center', marginTop: 6 }}>
-                          {renderPlatformIcons(item.platform)}
-                          <View style={styles.timeDivider} />
-                          <Feather
-                            name="clock"
-                            size={11}
-                            color="#94a3b8"
-                            style={{ marginRight: 3 }}
-                          />
-                          <Text style={{ fontSize: 11, color: '#64748b' }}>
-                            {formatDate(item.date)}
-                          </Text>
-                        </HStack>
-                      </VStack>
-                      <StatusBadge status={item.status} />
-                    </HStack>
-                  </View>
-                ))}
-          </VStack>
+                );
+              })}
+            </VStack>
+          ) : (
+            <Box style={[styles.card, styles.shadowCard, styles.emptyCard]}>
+              <Feather name="inbox" size={28} color="#94a3b8" />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b', marginTop: 10 }}>
+                No Recent Activity
+              </Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: '#64748b',
+                  textAlign: 'center',
+                  marginTop: 4,
+                  paddingHorizontal: 20,
+                }}
+              >
+                Your recent posts and interactions will appear here once you create content.
+              </Text>
+            </Box>
+          )}
         </VStack>
       </ScrollView>
     </Box>
@@ -781,6 +868,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f8fafc',
+    padding: 24,
   },
   loadingPulseBox: {
     width: 60,
@@ -789,6 +877,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#eff6ff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#193867',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 10,
+    marginTop: 16,
+  },
+  connectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#193867',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 14,
   },
   header: {
     paddingHorizontal: 20,
@@ -855,7 +961,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#22c55e',
     borderWidth: 2,
-    borderColor: '#0b53f8',
+    borderColor: '#193867',
   },
   greetingSub: {
     fontSize: 12,
@@ -891,36 +997,18 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   headerIconButton: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
-  },
-
-  quickActionsContainer: {
-    marginTop: 2,
-  },
-  quickActionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  quickActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginLeft: 6,
   },
 
   statsRow: {
@@ -952,16 +1040,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statMiniBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  statMiniBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#475569',
-  },
   statValText: {
     fontSize: 18,
     fontWeight: '800',
@@ -988,6 +1066,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 28,
+  },
 
   growthBadge: {
     backgroundColor: '#dcfce7',
@@ -1001,6 +1084,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#15803d',
+  },
+
+  progressBarTrack: {
+    height: 6,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
   },
 
   sectionHeader: {
@@ -1035,10 +1129,6 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
 
-  platformCard: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
   platformIconBox: {
     width: 38,
     height: 38,
@@ -1061,9 +1151,30 @@ const styles = StyleSheet.create({
     marginRight: 5,
   },
 
+  subAccountRow: {
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  miniChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+
   timelineCard: {
     paddingVertical: 14,
     paddingHorizontal: 14,
+  },
+  timelineDotIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+    marginTop: 2,
   },
   timeDivider: {
     width: 3,
@@ -1071,6 +1182,33 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
     backgroundColor: '#cbd5e1',
     marginHorizontal: 4,
+  },
+  hashtagBadge: {
+    backgroundColor: 'rgba(11, 83, 248, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(11, 83, 248, 0.2)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginRight: 4,
+    marginBottom: 4,
+  },
+  hashtagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#0b53f8',
+  },
+  postImageWrapper: {
+    marginTop: 10,
+    borderRadius: 10,
+    overflow: 'hidden',
+    height: 140,
+    width: '100%',
+    backgroundColor: '#f1f5f9',
+  },
+  postImage: {
+    width: '100%',
+    height: '100%',
   },
 
   badge: {
