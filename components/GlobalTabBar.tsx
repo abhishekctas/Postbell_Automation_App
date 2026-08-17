@@ -74,8 +74,14 @@ const MENU_ITEMS: MenuItem[] = [
     customerAllowed: false,
   },
   {
-    label: 'Users & Access',
+    label: 'Users',
     path: '/pages/userList/user-access',
+    icon: 'users',
+    customerAllowed: false,
+  },
+  {
+    label: 'Roles',
+    path: '/pages/roleList/roles-management',
     icon: 'shield',
     customerAllowed: false,
   },
@@ -205,9 +211,19 @@ export default function GlobalTabBar() {
           (sName.includes(folderName) ||
             folderName.includes(sName) ||
             sName.includes(fileName) ||
-            fileName.includes(sName))) ||
+            fileName.includes(sName) ||
+            (sName.includes('user') &&
+              (folderName.includes('user') || labelName.includes('user'))) ||
+            (sName.includes('role') &&
+              (folderName.includes('role') || labelName.includes('role'))))) ||
         (sTitle &&
-          (sTitle.includes(folderName) || sTitle.includes(labelName) || labelName.includes(sTitle)))
+          (sTitle.includes(folderName) ||
+            sTitle.includes(labelName) ||
+            labelName.includes(sTitle) ||
+            (sTitle.includes('user') &&
+              (folderName.includes('user') || labelName.includes('user'))) ||
+            (sTitle.includes('role') &&
+              (folderName.includes('role') || labelName.includes('role')))))
       );
     };
 

@@ -61,8 +61,14 @@ export default function PagesLayout() {
             (sName.includes(folderName) ||
               folderName.includes(sName) ||
               sName.includes(fileName) ||
-              fileName.includes(sName))) ||
-          (sTitle && (sTitle.includes(folderName) || folderName.includes(sTitle)))
+              fileName.includes(sName) ||
+              (sName.includes('user') && folderName.includes('user')) ||
+              (sName.includes('role') && folderName.includes('role')))) ||
+          (sTitle &&
+            (sTitle.includes(folderName) ||
+              folderName.includes(sTitle) ||
+              (sTitle.includes('user') && folderName.includes('user')) ||
+              (sTitle.includes('role') && folderName.includes('role'))))
         );
       };
 

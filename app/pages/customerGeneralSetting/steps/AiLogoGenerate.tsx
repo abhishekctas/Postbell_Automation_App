@@ -17,6 +17,7 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { Feather } from '@expo/vector-icons';
 import { fetchWithAuth, API_BASE_URL } from '@/services/api';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export interface LogoVariation {
   id: string;
@@ -217,23 +218,29 @@ export default function AiLogoGeneratorModal({
     <Modal visible={open} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.modalContent}>
-          {/* Header */}
-          <HStack style={styles.header}>
-            <HStack space="sm" style={{ alignItems: 'center', flex: 1 }}>
-              <View style={styles.iconCircle}>
-                <Feather name="zap" size={20} color="#0b53f8" />
-              </View>
-              <VStack style={{ flex: 1 }}>
-                <Heading style={styles.title}>AI Logo Generator</Heading>
-                <Text style={styles.subtitle}>
-                  Describe your brand to generate tailored, multi-concept logos
-                </Text>
-              </VStack>
+          <LinearGradient
+            colors={['#193867', '#0b53f8', '#2563eb']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            {/* Header */}
+            <HStack style={styles.header}>
+              <HStack space="sm" style={{ alignItems: 'center', flex: 1 }}>
+                <View style={styles.iconCircle}>
+                  <Feather name="zap" size={20} color="#0b53f8" />
+                </View>
+                <VStack style={{ flex: 1 }}>
+                  <Heading style={styles.title}>AI Logo Generator</Heading>
+                  <Text style={styles.subtitle}>
+                    Describe your brand to generate tailored, multi-concept logos
+                  </Text>
+                </VStack>
+              </HStack>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                <Feather name="x" size={20} color="#64748b" />
+              </TouchableOpacity>
             </HStack>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Feather name="x" size={20} color="#64748b" />
-            </TouchableOpacity>
-          </HStack>
+          </LinearGradient>
 
           {/* Body */}
           <ScrollView
@@ -520,11 +527,10 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
   },
   iconCircle: {
     width: 40,
@@ -537,12 +543,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0f172a',
+    color: '#ffffff',
   },
   subtitle: {
     fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
+    color: '#d1d5db',
+    lineHeight: 19,
   },
   closeBtn: {
     padding: 6,
@@ -591,7 +597,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 18,
   },
   sectionHeader: {
     fontSize: 11,

@@ -12,9 +12,12 @@ import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Heading } from '@/components/ui/heading';
 import { getRoles, updateRole, deleteRole, Role } from './roles-management.api';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { Plus, SlidersHorizontal, X } from 'lucide-react-native';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
 
@@ -29,6 +32,7 @@ export default function RolesManagementScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'deactive'>('all');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   // Status confirm dialog state
@@ -254,39 +258,121 @@ export default function RolesManagementScreen() {
   };
 
   const filteredRoles = roles.filter((r) => {
-    if (!search.trim()) return true;
+    if (!r) return false;
     const q = search.toLowerCase().trim();
     const nameStr = (r.name || r.role_name || '').toLowerCase();
     const descStr = (r.description || '').toLowerCase();
-    return nameStr.includes(q) || descStr.includes(q);
+    const matchesSearch = !q ? true : nameStr.includes(q) || descStr.includes(q);
+
+    const isActive = r.status !== 0 && (r.status as any) !== '0';
+    const matchesStatus =
+      statusFilter === 'all' ? true : statusFilter === 'active' ? isActive : !isActive;
+
+    return matchesSearch && matchesStatus;
   });
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
-      {/* Top Search & Action Bar */}
+      <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
+        <Box className="px-5 pb-2 pt-12">
+          <HStack className="mb-3 items-center justify-between">
+            <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
+              <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
+              <Text style={styles.addBtnText}>Add Role</Text>
+            </TouchableOpacity>
+          </HStack>
+          <HStack className="items-start justify-between">
+            <VStack style={{ flex: 1 }}>
+              <Heading size="xl" style={{ color: '#fff' }}>
+                Roles
+              </Heading>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4 }}>
+                Manage permission roles, modules, and access privileges
+              </Text>
+            </VStack>
+            <Box style={styles.headerIconBox}>
+              <Feather name="shield" size={26} color="#fff" />
+            </Box>
+          </HStack>
+        </Box>
+      </LinearGradient>
+
+      {/* Top Search & Filter Bar */}
       <Box style={styles.filterSection}>
-        <HStack className="mb-2 items-center justify-between">
-          <Text style={styles.sectionHeaderTitle}>Role Management</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
-            <Text style={styles.addBtnText}>+ Add Role</Text>
+        <HStack space="sm" className="items-center">
+          <HStack style={[styles.searchBoxContainer, { flex: 1 }]}>
+            <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search roles by name..."
+              placeholderTextColor="#94a3b8"
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search ? (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Feather name="x" size={16} color="#94a3b8" />
+              </TouchableOpacity>
+            ) : null}
+          </HStack>
+          <TouchableOpacity
+            style={{
+              width: 40,
+              height: 40,
+              borderWidth: 1,
+              borderColor: statusFilter === 'all' ? '#e2e8f0' : '#2563eb',
+              borderRadius: 10,
+              backgroundColor: statusFilter === 'all' ? '#f8fafc' : '#eff6ff',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+            onPress={() => {
+              setStatusFilter((prev) => {
+                if (prev === 'all') return 'active';
+                if (prev === 'active') return 'deactive';
+                return 'all';
+              });
+            }}
+          >
+            <SlidersHorizontal size={16} color={statusFilter === 'all' ? '#475569' : '#2563eb'} />
+            {statusFilter !== 'all' && (
+              <Box
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  right: 2,
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: '#2563eb',
+                }}
+              />
+            )}
           </TouchableOpacity>
         </HStack>
 
-        <HStack style={styles.searchBoxContainer}>
-          <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search roles by name..."
-            placeholderTextColor="#94a3b8"
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search ? (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Feather name="x" size={16} color="#94a3b8" />
-            </TouchableOpacity>
-          ) : null}
-        </HStack>
+        {statusFilter !== 'all' && (
+          <Box className="mt-2.5 flex-row items-center">
+            <Box
+              style={{
+                backgroundColor: '#2563eb15',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#2563eb' }}>
+                Filter: {statusFilter === 'active' ? 'Active Roles' : 'Deactive Roles'}
+              </Text>
+              <TouchableOpacity onPress={() => setStatusFilter('all')} style={{ marginLeft: 6 }}>
+                <X size={12} color="#2563eb" />
+              </TouchableOpacity>
+            </Box>
+          </Box>
+        )}
       </Box>
 
       {loading ? (
@@ -301,54 +387,61 @@ export default function RolesManagementScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
           }
         >
-          <HtmlTable
-            columns={ROLE_TABLE_COLUMNS}
-            data={filteredRoles}
-            rowActions={ROLE_ROW_ACTIONS}
-            onRowAction={(action, rowId) => {
-              const role = filteredRoles.find(
-                (item: any) =>
-                  String(item._id || item.id) === String(rowId) ||
-                  String(rowId).startsWith(String(item._id || item.id))
-              );
-              if (!role) return;
-              if (action === 'edit') handleOpenEdit(role);
-              if (action === 'toggle-status' || action === 'status') handleOpenStatusConfirm(role);
-              if (action === 'delete') handleDelete(role);
-            }}
-            iconOnlyActions={true}
-            tableContainerStyle={{
-              borderWidth: 0,
-              shadowColor: 'transparent',
-              backgroundColor: 'transparent',
-              elevation: 0,
-              marginHorizontal: 0,
-              marginVertical: 0,
-            }}
-            headerRowStyle={{
-              backgroundColor: '#f8fafc',
-              borderBottomWidth: 1.5,
-              borderBottomColor: '#e2e8f0',
-              paddingVertical: 4,
-            }}
-            headerCellStyle={styles.tableHeaderCell}
-            headerCellTextStyle={{
-              color: '#1e3a8a',
-              fontWeight: '700',
-              fontSize: 11,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-            }}
-            rowStyle={{
-              borderBottomWidth: 1,
-              borderBottomColor: '#f1f5f9',
-              backgroundColor: '#ffffff',
-              paddingVertical: 0,
-            }}
-            rowEvenStyle={styles.tableRowEven}
-            rowOddStyle={styles.tableRowOdd}
-            cellStyle={styles.tableCell}
-          />
+          {filteredRoles.length === 0 ? (
+            <Box className="items-center justify-center py-20">
+              <Text style={{ color: '#64748b', fontSize: 14 }}>No roles found</Text>
+            </Box>
+          ) : (
+            <HtmlTable
+              columns={ROLE_TABLE_COLUMNS}
+              data={filteredRoles}
+              rowActions={ROLE_ROW_ACTIONS}
+              onRowAction={(action, rowId) => {
+                const role = filteredRoles.find(
+                  (item: any) =>
+                    String(item._id || item.id) === String(rowId) ||
+                    String(rowId).startsWith(String(item._id || item.id))
+                );
+                if (!role) return;
+                if (action === 'edit') handleOpenEdit(role);
+                if (action === 'toggle-status' || action === 'status')
+                  handleOpenStatusConfirm(role);
+                if (action === 'delete') handleDelete(role);
+              }}
+              iconOnlyActions={true}
+              tableContainerStyle={{
+                borderWidth: 0,
+                shadowColor: 'transparent',
+                backgroundColor: 'transparent',
+                elevation: 0,
+                marginHorizontal: 0,
+                marginVertical: 0,
+              }}
+              headerRowStyle={{
+                backgroundColor: '#f8fafc',
+                borderBottomWidth: 1.5,
+                borderBottomColor: '#e2e8f0',
+                paddingVertical: 4,
+              }}
+              headerCellStyle={styles.tableHeaderCell}
+              headerCellTextStyle={{
+                color: '#1e3a8a',
+                fontWeight: '700',
+                fontSize: 11,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+              rowStyle={{
+                borderBottomWidth: 1,
+                borderBottomColor: '#f1f5f9',
+                backgroundColor: '#ffffff',
+                paddingVertical: 0,
+              }}
+              rowEvenStyle={styles.tableRowEven}
+              rowOddStyle={styles.tableRowOdd}
+              cellStyle={styles.tableCell}
+            />
+          )}
         </ScrollView>
       )}
 
@@ -373,6 +466,7 @@ export default function RolesManagementScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: { paddingBottom: 4 },
   filterSection: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -382,12 +476,24 @@ const styles = StyleSheet.create({
   },
   sectionHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
   addBtn: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
   addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  headerIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   searchBoxContainer: {
     flexDirection: 'row',
     alignItems: 'center',

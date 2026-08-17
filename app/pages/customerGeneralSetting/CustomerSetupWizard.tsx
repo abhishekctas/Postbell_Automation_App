@@ -483,7 +483,14 @@ export default function CustomerSetupWizard() {
       </View>
 
       {/* Main Step Content */}
-      <View style={styles.stepContentBox}>{renderCurrentStep()}</View>
+      <ScrollView
+        style={styles.stepScrollView}
+        contentContainerStyle={styles.stepContentBox}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {renderCurrentStep()}
+      </ScrollView>
 
       {/* Sticky Bottom Actions Bar */}
       <View style={styles.bottomBar}>
@@ -547,7 +554,6 @@ export default function CustomerSetupWizard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingBottom: 24,
   },
   loadingContainer: {
     paddingVertical: 60,
@@ -561,12 +567,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   stepperContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
     overflow: 'hidden',
-    marginBottom: 8,
+    backgroundColor: '#f8fafc',
+    zIndex: 20,
   },
   stepperScroll: {
     paddingHorizontal: 8,
@@ -635,16 +638,16 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#0b53f8',
   },
-  stepContentBox: {
+  stepScrollView: {
     flex: 1,
   },
+  stepContentBox: {},
   bottomBar: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginTop: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
   },
   backBtn: {
     flexDirection: 'row',

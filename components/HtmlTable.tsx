@@ -144,8 +144,14 @@ export default function HtmlTable({
             </TableHeader>
             <TableBody>
               {data.length === 0 ? (
-                <TableRow>
-                  <TableData useRNView={true} style={[styles.noDataCell, { width: tableMinWidth }]}>
+                <TableRow style={{ backgroundColor: '#ffffff' }}>
+                  <TableData
+                    useRNView={true}
+                    style={[
+                      styles.noDataCell,
+                      { width: tableMinWidth, backgroundColor: '#ffffff' },
+                    ]}
+                  >
                     <View style={styles.noDataContainer}>
                       <Info size={28} color="#94a3b8" />
                       <Text style={styles.noDataText}>No records found</Text>
@@ -421,6 +427,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#ffffff',
   },
   noDataContainer: {
     alignItems: 'center',

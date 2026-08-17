@@ -8,6 +8,7 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
+  View,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -24,6 +25,7 @@ import {
 } from './contact-us.api';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import { Feather } from '@expo/vector-icons';
+import { Search } from 'lucide-react-native';
 
 function getPageNumbers(currentPage: number, lastPage: number) {
   const pages: number[] = [];
@@ -383,13 +385,16 @@ export default function ContactUsScreen() {
       </LinearGradient>
       <Box style={styles.mainCard}>
         <VStack space="sm" style={styles.filterSection}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="🔍 Search by name, email, or subject..."
-            placeholderTextColor="#94a3b8"
-            value={search}
-            onChangeText={setSearch}
-          />
+          <View style={styles.searchContainer}>
+            <Search size={18} color="#94a3b8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by name, email, or subject..."
+              placeholderTextColor="#94a3b8"
+              value={search}
+              onChangeText={setSearch}
+            />
+          </View>
         </VStack>
         {loading ? (
           <Box className="flex-1 items-center justify-center py-20">
@@ -698,16 +703,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomColor: '#e2e8f0',
   },
-  searchInput: {
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+  },
+  searchInput: {
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
     color: '#1e293b',
-    backgroundColor: '#f8fafc',
-    marginBottom: 2,
   },
   tabBtn: {
     flex: 1,
