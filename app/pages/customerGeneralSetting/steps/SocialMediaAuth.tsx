@@ -143,9 +143,9 @@ export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps
             <Feather name="shield" size={22} color="#ffffff" />
           </View>
           <VStack style={{ flex: 1 }}>
-            <Heading style={styles.bannerTitle}>Social Media Authorization</Heading>
+            <Heading style={styles.bannerTitle}>Social Media Connections</Heading>
             <Text style={styles.bannerSubtitle}>
-              Authorize your social platforms for direct 1-click automatic post publishing
+              Connect your social media accounts for publishing and automation.
             </Text>
           </VStack>
         </HStack>
@@ -251,7 +251,7 @@ export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps
                   ) : (
                     <HStack space="xs" style={{ alignItems: 'center' }}>
                       <Feather name="link" size={14} color="#ffffff" />
-                      <Text style={styles.connectBtnText}>Connect {platform.name}</Text>
+                      <Text style={styles.connectBtnText}>Connect Account</Text>
                     </HStack>
                   )}
                 </TouchableOpacity>
@@ -303,11 +303,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerHeader: {
-    backgroundColor: '#193867',
+    backgroundColor: '#0b53f8',
     borderRadius: 16,
     paddingHorizontal: 20,
-    paddingVertical: 18,
-    marginBottom: 8,
+    paddingVertical: 10,
   },
   bannerIconBox: {
     width: 44,
@@ -325,7 +324,7 @@ const styles = StyleSheet.create({
   bannerSubtitle: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.75)',
-    marginTop: 2,
+    lineHeight: 18,
   },
   card: {
     backgroundColor: '#ffffff',
@@ -333,7 +332,6 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 12,
   },
   platformIconCircle: {
     width: 44,

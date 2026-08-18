@@ -107,7 +107,7 @@ export default function SocialMediaLinks({ data, onChange, errors = {} }: Social
             <Feather name="link" size={22} color="#ffffff" />
           </View>
           <VStack style={{ flex: 1 }}>
-            <Heading style={styles.bannerTitle}>Social Media Profile Links</Heading>
+            <Heading style={styles.bannerTitle}>Social Media Links</Heading>
             <Text style={styles.bannerSubtitle}>
               Add public links to your profiles for footer embeds and flyers
             </Text>
@@ -118,10 +118,6 @@ export default function SocialMediaLinks({ data, onChange, errors = {} }: Social
       {/* Form Fields Card */}
       <View style={styles.card}>
         <Text style={styles.sectionHeading}>PROFILE URLS</Text>
-        <Text style={styles.sectionSubtitle}>
-          Links are automatically added to generated flyer footers and digital business cards.
-        </Text>
-
         <VStack space="md" style={{ marginTop: 8 }}>
           {SOCIAL_FIELDS.map((item) => {
             const val = links[item.id] || '';
@@ -171,11 +167,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerHeader: {
-    backgroundColor: '#193867',
+    backgroundColor: '#0b53f8',
     borderRadius: 16,
     paddingHorizontal: 20,
-    paddingVertical: 18,
-    marginBottom: 8,
+    paddingVertical: 10,
   },
   bannerIconBox: {
     width: 44,
@@ -193,7 +188,7 @@ const styles = StyleSheet.create({
   bannerSubtitle: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.75)',
-    marginTop: 2,
+    lineHeight: 18,
   },
   card: {
     backgroundColor: '#ffffff',
@@ -201,19 +196,12 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 12,
   },
   sectionHeading: {
     fontSize: 11,
     fontWeight: '800',
     color: '#64748b',
     letterSpacing: 0.8,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
-    marginBottom: 12,
   },
   linkCard: {
     backgroundColor: '#f8fafc',

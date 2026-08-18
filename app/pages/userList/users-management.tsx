@@ -17,7 +17,9 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { listUsers, createUser, updateUser, deleteUser, User } from './user-access.api';
 import { getRoles, Role } from '../roleList/roles-management.api';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import { Plus, SlidersHorizontal, X } from 'lucide-react-native';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import { API_BASE_URL } from '@/services/api';
 import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
@@ -83,6 +85,7 @@ export default function UsersManagementScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'deactive'>('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -334,8 +337,22 @@ export default function UsersManagementScreen() {
           queryParams.append('search', search.trim());
         }
 
+        const filterObj: Record<string, any> = {};
+        if (statusFilter === 'active') {
+          filterObj.status = 1;
+        } else if (statusFilter === 'deactive') {
+          filterObj.status = 0;
+        }
+        if (Object.keys(filterObj).length > 0) {
+          queryParams.append('columnFilters', JSON.stringify(filterObj));
+        }
+
         const res = (await listUsers(queryParams.toString())) as any;
-        const items = res?.results || res?.data || (Array.isArray(res) ? res : []);
+        let items = res?.results || res?.data || (Array.isArray(res) ? res : []);
+        if (statusFilter !== 'all') {
+          const targetStatus = statusFilter === 'active' ? 1 : 0;
+          items = items.filter((item: User) => Number(item.status) === targetStatus);
+        }
         const total =
           res?.totalPages ||
           res?.pagination?.totalPages ||
@@ -352,7 +369,7 @@ export default function UsersManagementScreen() {
         setRefreshing(false);
       }
     },
-    [search]
+    [search, statusFilter]
   );
 
   const loadInitialData = useCallback(async () => {
@@ -490,30 +507,106 @@ export default function UsersManagementScreen() {
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
+      <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
+        <Box className="px-5 pb-2 pt-12">
+          <HStack className="mb-3 items-center justify-between">
+            <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
+              <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
+              <Text style={styles.addBtnText}>Add User</Text>
+            </TouchableOpacity>
+          </HStack>
+          <HStack className="items-start justify-between">
+            <VStack style={{ flex: 1 }}>
+              <Heading size="xl" style={{ color: '#fff' }}>
+                Users
+              </Heading>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4 }}>
+                Manage accounts, assign roles, and system credentials
+              </Text>
+            </VStack>
+            <Box style={styles.headerIconBox}>
+              <Feather name="users" size={26} color="#fff" />
+            </Box>
+          </HStack>
+        </Box>
+      </LinearGradient>
+
       {/* Top Search & Filter Bar */}
       <Box style={styles.filterSection}>
-        <HStack className="mb-2 items-center justify-between">
-          <Text style={styles.sectionHeaderTitle}>Users Management</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
-            <Text style={styles.addBtnText}>+ Add User</Text>
+        <HStack space="sm" className="items-center">
+          <HStack style={[styles.searchBoxContainer, { flex: 1 }]}>
+            <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search staff users..."
+              placeholderTextColor="#94a3b8"
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search ? (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Feather name="x" size={16} color="#94a3b8" />
+              </TouchableOpacity>
+            ) : null}
+          </HStack>
+          <TouchableOpacity
+            style={{
+              width: 40,
+              height: 40,
+              borderWidth: 1,
+              borderColor: statusFilter === 'all' ? '#e2e8f0' : '#2563eb',
+              borderRadius: 10,
+              backgroundColor: statusFilter === 'all' ? '#f8fafc' : '#eff6ff',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+            onPress={() => {
+              setStatusFilter((prev) => {
+                if (prev === 'all') return 'active';
+                if (prev === 'active') return 'deactive';
+                return 'all';
+              });
+            }}
+          >
+            <SlidersHorizontal size={16} color={statusFilter === 'all' ? '#475569' : '#2563eb'} />
+            {statusFilter !== 'all' && (
+              <Box
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  right: 2,
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: '#2563eb',
+                }}
+              />
+            )}
           </TouchableOpacity>
         </HStack>
 
-        <HStack style={styles.searchBoxContainer}>
-          <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search staff users..."
-            placeholderTextColor="#94a3b8"
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search ? (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Feather name="x" size={16} color="#94a3b8" />
-            </TouchableOpacity>
-          ) : null}
-        </HStack>
+        {statusFilter !== 'all' && (
+          <Box className="mt-2.5 flex-row items-center">
+            <Box
+              style={{
+                backgroundColor: '#2563eb15',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#2563eb' }}>
+                Filter: {statusFilter === 'active' ? 'Active Users' : 'Deactive Users'}
+              </Text>
+              <TouchableOpacity onPress={() => setStatusFilter('all')} style={{ marginLeft: 6 }}>
+                <X size={12} color="#2563eb" />
+              </TouchableOpacity>
+            </Box>
+          </Box>
+        )}
       </Box>
 
       {loading ? (
@@ -528,101 +621,113 @@ export default function UsersManagementScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
           }
         >
-          <HtmlTable
-            columns={USER_TABLE_COLUMNS}
-            data={users}
-            rowActions={USER_ROW_ACTIONS}
-            onRowAction={(action, rowId) => {
-              const user = users.find(
-                (item: any) =>
-                  String(item._id || item.id) === String(rowId) ||
-                  String(rowId).startsWith(String(item._id || item.id))
-              );
-              if (!user) return;
-              if (action === 'edit') handleOpenEdit(user);
-              if (action === 'toggle-status' || action === 'status') handleOpenStatusConfirm(user);
-              if (action === 'delete') handleDelete(user);
-            }}
-            iconOnlyActions={true}
-            tableContainerStyle={{
-              borderWidth: 0,
-              shadowColor: 'transparent',
-              backgroundColor: 'transparent',
-              elevation: 0,
-              marginHorizontal: 0,
-              marginVertical: 0,
-            }}
-            headerRowStyle={{
-              backgroundColor: '#f8fafc',
-              borderBottomWidth: 1.5,
-              borderBottomColor: '#e2e8f0',
-              paddingVertical: 4,
-            }}
-            headerCellStyle={styles.tableHeaderCell}
-            headerCellTextStyle={{
-              color: '#1e3a8a',
-              fontWeight: '700',
-              fontSize: 11,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-            }}
-            rowStyle={{
-              borderBottomWidth: 1,
-              borderBottomColor: '#f1f5f9',
-              backgroundColor: '#ffffff',
-              paddingVertical: 0,
-            }}
-            rowEvenStyle={styles.tableRowEven}
-            rowOddStyle={styles.tableRowOdd}
-            cellStyle={styles.tableCell}
-          />
-          {totalPages > 0 && (
-            <Box style={styles.paginationWrapper}>
-              <HStack space="xs" className="items-center justify-center">
-                <TouchableOpacity
-                  style={[styles.pageNavBtn, page === 1 && styles.pageNavBtnDisabled]}
-                  disabled={page === 1}
-                  onPress={() => {
-                    if (page > 1) fetchUsersList(page - 1);
-                  }}
-                >
-                  <Text style={[styles.pageNavText, page === 1 && styles.pageNavTextDisabled]}>
-                    ‹
-                  </Text>
-                </TouchableOpacity>
-
-                {getPageNumbers(page, totalPages).map((p) => {
-                  const isActive = p === page;
-                  return (
+          {users.length === 0 ? (
+            <Box className="items-center justify-center py-20">
+              <Text style={{ color: '#64748b', fontSize: 14 }}>No staff users found</Text>
+            </Box>
+          ) : (
+            <React.Fragment>
+              <HtmlTable
+                columns={USER_TABLE_COLUMNS}
+                data={users}
+                rowActions={USER_ROW_ACTIONS}
+                onRowAction={(action, rowId) => {
+                  const user = users.find(
+                    (item: any) =>
+                      String(item._id || item.id) === String(rowId) ||
+                      String(rowId).startsWith(String(item._id || item.id))
+                  );
+                  if (!user) return;
+                  if (action === 'edit') handleOpenEdit(user);
+                  if (action === 'toggle-status' || action === 'status')
+                    handleOpenStatusConfirm(user);
+                  if (action === 'delete') handleDelete(user);
+                }}
+                iconOnlyActions={true}
+                tableContainerStyle={{
+                  borderWidth: 0,
+                  shadowColor: 'transparent',
+                  backgroundColor: 'transparent',
+                  elevation: 0,
+                  marginHorizontal: 0,
+                  marginVertical: 0,
+                }}
+                headerRowStyle={{
+                  backgroundColor: '#f8fafc',
+                  borderBottomWidth: 1.5,
+                  borderBottomColor: '#e2e8f0',
+                  paddingVertical: 4,
+                }}
+                headerCellStyle={styles.tableHeaderCell}
+                headerCellTextStyle={{
+                  color: '#1e3a8a',
+                  fontWeight: '700',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                }}
+                rowStyle={{
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#f1f5f9',
+                  backgroundColor: '#ffffff',
+                  paddingVertical: 0,
+                }}
+                rowEvenStyle={styles.tableRowEven}
+                rowOddStyle={styles.tableRowOdd}
+                cellStyle={styles.tableCell}
+              />
+              {totalPages > 0 && (
+                <Box style={styles.paginationWrapper}>
+                  <HStack space="xs" className="items-center justify-center">
                     <TouchableOpacity
-                      key={p}
-                      style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
-                      onPress={() => fetchUsersList(p)}
+                      style={[styles.pageNavBtn, page === 1 && styles.pageNavBtnDisabled]}
+                      disabled={page === 1}
+                      onPress={() => {
+                        if (page > 1) fetchUsersList(page - 1);
+                      }}
                     >
-                      <Text
-                        style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}
-                      >
-                        {p}
+                      <Text style={[styles.pageNavText, page === 1 && styles.pageNavTextDisabled]}>
+                        ‹
                       </Text>
                     </TouchableOpacity>
-                  );
-                })}
 
-                <TouchableOpacity
-                  style={[styles.pageNavBtn, page >= totalPages && styles.pageNavBtnDisabled]}
-                  disabled={page >= totalPages}
-                  onPress={() => {
-                    if (page < totalPages) fetchUsersList(page + 1);
-                  }}
-                >
-                  <Text
-                    style={[styles.pageNavText, page >= totalPages && styles.pageNavTextDisabled]}
-                  >
-                    ›
-                  </Text>
-                </TouchableOpacity>
-              </HStack>
-            </Box>
+                    {getPageNumbers(page, totalPages).map((p) => {
+                      const isActive = p === page;
+                      return (
+                        <TouchableOpacity
+                          key={p}
+                          style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
+                          onPress={() => fetchUsersList(p)}
+                        >
+                          <Text
+                            style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}
+                          >
+                            {p}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    <TouchableOpacity
+                      style={[styles.pageNavBtn, page >= totalPages && styles.pageNavBtnDisabled]}
+                      disabled={page >= totalPages}
+                      onPress={() => {
+                        if (page < totalPages) fetchUsersList(page + 1);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.pageNavText,
+                          page >= totalPages && styles.pageNavTextDisabled,
+                        ]}
+                      >
+                        ›
+                      </Text>
+                    </TouchableOpacity>
+                  </HStack>
+                </Box>
+              )}
+            </React.Fragment>
           )}
         </ScrollView>
       )}
@@ -852,6 +957,7 @@ export default function UsersManagementScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: { paddingBottom: 4 },
   filterSection: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -861,12 +967,24 @@ const styles = StyleSheet.create({
   },
   sectionHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
   addBtn: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
   },
   addBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  headerIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   searchBoxContainer: {
     flexDirection: 'row',
     alignItems: 'center',

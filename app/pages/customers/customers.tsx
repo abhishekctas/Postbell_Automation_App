@@ -31,7 +31,7 @@ import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
 import StatusConfirmDialog from '@/components/common/StatusConfirmDialog';
-import { Plus } from 'lucide-react-native';
+import { Plus, SlidersHorizontal, X } from 'lucide-react-native';
 
 const CUSTOMER_ROW_ACTIONS = [
   { label: 'Details', action: 'details' },
@@ -61,6 +61,7 @@ export default function CustomersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'deactive'>('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -348,8 +349,22 @@ export default function CustomersScreen() {
           queryParams.append('search', search.trim());
         }
 
+        const filterObj: Record<string, any> = {};
+        if (statusFilter === 'active') {
+          filterObj.status = 1;
+        } else if (statusFilter === 'deactive') {
+          filterObj.status = 0;
+        }
+        if (Object.keys(filterObj).length > 0) {
+          queryParams.append('columnFilters', JSON.stringify(filterObj));
+        }
+
         const res = (await listCustomers(queryParams.toString())) as any;
-        const items = res?.results || res?.data || (Array.isArray(res) ? res : []);
+        let items = res?.results || res?.data || (Array.isArray(res) ? res : []);
+        if (statusFilter !== 'all') {
+          const targetStatus = statusFilter === 'active' ? 1 : 0;
+          items = items.filter((item: Customer) => Number(item.status) === targetStatus);
+        }
         let total =
           res?.totalPages ||
           res?.pagination?.totalPages ||
@@ -375,7 +390,7 @@ export default function CustomersScreen() {
         setRefreshing(false);
       }
     },
-    [search]
+    [search, totalPages, statusFilter]
   );
 
   useEffect(() => {
@@ -571,7 +586,7 @@ export default function CustomersScreen() {
         </Box>
       </LinearGradient>
 
-      {/* Search Input */}
+      {/* Search Input & Status Filter */}
       <Box style={styles.filterSection}>
         <HStack space="sm" className="items-center">
           <Box style={{ flex: 1, position: 'relative', justifyContent: 'center' }}>
@@ -579,14 +594,79 @@ export default function CustomersScreen() {
               <Feather name="search" size={16} color="#94a3b8" />
             </View>
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, search ? { paddingRight: 36 } : {}]}
               placeholder="Search customers..."
               placeholderTextColor="#94a3b8"
               value={search}
               onChangeText={setSearch}
             />
+            {search ? (
+              <TouchableOpacity
+                onPress={() => setSearch('')}
+                style={{ position: 'absolute', right: 12, top: 12, zIndex: 10 }}
+              >
+                <Feather name="x" size={16} color="#94a3b8" />
+              </TouchableOpacity>
+            ) : null}
           </Box>
+          <TouchableOpacity
+            style={{
+              width: 40,
+              height: 40,
+              borderWidth: 1,
+              borderColor: statusFilter === 'all' ? '#e2e8f0' : '#2563eb',
+              borderRadius: 10,
+              backgroundColor: statusFilter === 'all' ? '#f8fafc' : '#eff6ff',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+            onPress={() => {
+              setStatusFilter((prev) => {
+                if (prev === 'all') return 'active';
+                if (prev === 'active') return 'deactive';
+                return 'all';
+              });
+            }}
+          >
+            <SlidersHorizontal size={16} color={statusFilter === 'all' ? '#475569' : '#2563eb'} />
+            {statusFilter !== 'all' && (
+              <Box
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  right: 2,
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: '#2563eb',
+                }}
+              />
+            )}
+          </TouchableOpacity>
         </HStack>
+
+        {statusFilter !== 'all' && (
+          <Box className="mt-2.5 flex-row items-center">
+            <Box
+              style={{
+                backgroundColor: '#2563eb15',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#2563eb' }}>
+                Filter: {statusFilter === 'active' ? 'Active Customers' : 'Deactive Customers'}
+              </Text>
+              <TouchableOpacity onPress={() => setStatusFilter('all')} style={{ marginLeft: 6 }}>
+                <X size={12} color="#2563eb" />
+              </TouchableOpacity>
+            </Box>
+          </Box>
+        )}
       </Box>
 
       {loading ? (

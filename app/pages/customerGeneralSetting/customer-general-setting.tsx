@@ -35,13 +35,7 @@ export default function CustomerGeneralSettingScreen() {
 
       {/* Main Content Card Container */}
       <Box style={styles.mainCard}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <CustomerSetupWizard />
-        </ScrollView>
+        <CustomerSetupWizard />
       </Box>
     </Box>
   );
@@ -53,8 +47,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
   },
   headerGradient: {
-    paddingTop: 36,
-    paddingBottom: 24,
+    paddingTop: 38,
+    paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
@@ -73,10 +67,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.82)',
-    marginTop: 4,
-    lineHeight: 16,
+    marginTop: 2,
+    lineHeight: 18,
   },
   iconContainer: {
     width: 48,
@@ -94,12 +88,12 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 12,
     marginTop: -12,
+    marginBottom: 76,
     backgroundColor: '#f8fafc',
     borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
     overflow: 'hidden',
-  },
-  scroll: {
-    padding: 12,
-    paddingBottom: 110,
+    paddingHorizontal: 8,
   },
 });

@@ -63,12 +63,7 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
       <View style={styles.card}>
         <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <VStack>
-            <Text style={styles.progressHeading}>Setup Completion Score</Text>
-            <Text style={styles.progressSubheading}>
-              {completionRate === 100
-                ? 'Your workspace is fully configured and ready to publish!'
-                : 'Complete all sections for best automation performance.'}
-            </Text>
+            <Text style={styles.progressHeading}>Setup Progress</Text>
           </VStack>
           <Text
             style={[styles.percentageText, { color: completionRate >= 80 ? '#16a34a' : '#0b53f8' }]}
@@ -89,39 +84,6 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
             ]}
           />
         </View>
-      </View>
-
-      {/* Section 0: AI Configuration Review Card */}
-      <View style={styles.card}>
-        <HStack style={styles.cardHeaderRow}>
-          <HStack space="xs" style={{ alignItems: 'center' }}>
-            <Feather name="cpu" size={16} color="#0b53f8" />
-            <Text style={styles.cardTitle}>AI Configuration</Text>
-          </HStack>
-          <TouchableOpacity onPress={() => onEdit(0)} style={styles.editBtn}>
-            <Feather name="edit-2" size={13} color="#0b53f8" style={{ marginRight: 4 }} />
-            <Text style={styles.editBtnText}>Edit</Text>
-          </TouchableOpacity>
-        </HStack>
-
-        <VStack space="xs" style={{ marginTop: 8 }}>
-          <HStack style={styles.reviewRow}>
-            <Text style={styles.reviewKey}>OpenAI API Key:</Text>
-            <Text style={styles.reviewVal}>
-              {aiConfig.openai_api_key
-                ? '••••••••••••••••' + aiConfig.openai_api_key.slice(-4)
-                : 'Not configured'}
-            </Text>
-          </HStack>
-          <HStack style={styles.reviewRow}>
-            <Text style={styles.reviewKey}>Gemini API Key:</Text>
-            <Text style={styles.reviewVal}>
-              {aiConfig.gemini_api_key
-                ? '••••••••••••••••' + aiConfig.gemini_api_key.slice(-4)
-                : 'Not configured'}
-            </Text>
-          </HStack>
-        </VStack>
       </View>
 
       {/* Section 1: Company Information Review Card */}
@@ -162,7 +124,7 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
         <HStack style={styles.cardHeaderRow}>
           <HStack space="xs" style={{ alignItems: 'center' }}>
             <Feather name="shield" size={16} color="#0b53f8" />
-            <Text style={styles.cardTitle}>Social Media Authorization</Text>
+            <Text style={styles.cardTitle}>Connected Platforms</Text>
           </HStack>
           <TouchableOpacity onPress={() => onEdit(2)} style={styles.editBtn}>
             <Feather name="edit-2" size={13} color="#0b53f8" style={{ marginRight: 4 }} />
@@ -174,7 +136,7 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
           <HStack style={styles.reviewRow}>
             <HStack space="xs" style={{ alignItems: 'center' }}>
               <FontAwesome name="instagram" size={14} color="#E4405F" />
-              <Text style={styles.reviewKey}>Instagram:</Text>
+              <Text style={styles.reviewKey}>Instagram</Text>
             </HStack>
             <Text
               style={[
@@ -309,11 +271,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerHeader: {
-    backgroundColor: '#193867',
+    backgroundColor: '#0b53f8',
     borderRadius: 16,
     paddingHorizontal: 20,
-    paddingVertical: 18,
-    marginBottom: 8,
+    paddingVertical: 10,
   },
   bannerIconBox: {
     width: 44,
@@ -331,7 +292,7 @@ const styles = StyleSheet.create({
   bannerSubtitle: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.75)',
-    marginTop: 2,
+    lineHeight: 18,
   },
   card: {
     backgroundColor: '#ffffff',
@@ -339,17 +300,11 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 12,
   },
   progressHeading: {
     fontSize: 14,
     fontWeight: '800',
     color: '#0f172a',
-  },
-  progressSubheading: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 2,
   },
   percentageText: {
     fontSize: 20,

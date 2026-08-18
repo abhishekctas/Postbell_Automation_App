@@ -249,11 +249,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerHeader: {
-    backgroundColor: '#193867',
+    backgroundColor: '#0b53f8',
     borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   bannerIconBox: {
     width: 44,
@@ -271,15 +270,14 @@ const styles = StyleSheet.create({
   bannerSubtitle: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.75)',
-    marginTop: 2,
+    lineHeight: 18,
   },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 12,
   },
   sectionHeading: {
     fontSize: 11,
@@ -300,11 +298,11 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: '#cbd5e1',
     borderRadius: 14,
-    padding: 16,
+    padding: 12,
   },
   avatarBox: {
-    width: 80,
-    height: 80,
+    width: 100,
+    height: 100,
     borderRadius: 14,
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
@@ -325,7 +323,7 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
     borderRadius: 9,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 4,
     marginBottom: 6,
   },
   uploadBtnText: {
@@ -336,11 +334,10 @@ const styles = StyleSheet.create({
   aiGenerateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#193867',
+    backgroundColor: '#0b53f8',
     borderRadius: 9,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginBottom: 6,
+    paddingVertical: 5,
   },
   aiGenerateBtnText: {
     fontSize: 12,
@@ -353,11 +350,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef2f2',
     borderWidth: 1,
     borderColor: '#fecaca',
-    marginBottom: 6,
   },
   logoTipText: {
     fontSize: 11,
     color: '#94a3b8',
+    lineHeight: 17,
   },
   label: {
     fontSize: 13,
