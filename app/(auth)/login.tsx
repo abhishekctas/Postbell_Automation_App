@@ -28,7 +28,8 @@ export default function LoginScreen() {
 
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
-  const [loginType, setLoginType] = useState<'user' | 'customer'>('user');
+  // const [loginType, setLoginType] = useState<'user' | 'customer'>('customer');
+  const loginType = 'customer';
   const [requestId, setRequestId] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -187,8 +188,8 @@ export default function LoginScreen() {
                 </Text>
               </VStack>
 
-              {/* Account Type Toggle */}
-              <VStack space="xs">
+              {/* Account Type Toggle (Only Customer login is supported) */}
+              {/* <VStack space="xs">
                 <Text style={styles.fieldLabel}>Account Type</Text>
                 <HStack style={styles.toggleContainer} className="w-full">
                   {(['customer', 'user'] as const).map((type) => {
@@ -219,7 +220,7 @@ export default function LoginScreen() {
                     );
                   })}
                 </HStack>
-              </VStack>
+              </VStack> */}
 
               {/* Email Field */}
               <VStack space="xs">

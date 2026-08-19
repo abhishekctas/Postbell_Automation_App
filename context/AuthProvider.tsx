@@ -61,6 +61,20 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
           if (response?.user) {
             const localUser = await getSecureUserData();
+            const resolvedLoginType = localUser?.loginType || response.user.loginType;
+
+            // Enforce customer-only login in mobile app
+            if (
+              response.user.isSuperAdmin ||
+              (resolvedLoginType && resolvedLoginType !== 'customer')
+            ) {
+              await AsyncStorage.removeItem('jwt_access_token');
+              await clearSecureUserData();
+              removeGlobalHeaders(['Authorization']);
+              setAuthState({ isAuthenticated: false, isLoading: false, user: null });
+              return;
+            }
+
             const userData: StoredUser = {
               _id: response.user.id || response.user._id || localUser?._id,
               id: response.user.id || response.user._id || localUser?.id,
@@ -74,7 +88,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
               avatar: response.user.avatar || localUser?.avatar,
               role_name: response.user.role_name || localUser?.role_name,
               sectionMatrix: response.user.sectionMatrix || localUser?.sectionMatrix,
-              loginType: localUser?.loginType || response.user.loginType || 'user',
+              loginType: 'customer',
               token: cleanedToken ?? undefined,
             };
             await storeUserAfterLogin(userData);
@@ -88,7 +102,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           } else if (response?.statusCode !== 401) {
             // Server down or offline: load cached session
             const localUser = await getSecureUserData();
-            if (localUser) {
+            if (localUser && localUser.loginType === 'customer' && !localUser.isSuperAdmin) {
               setAuthState({
                 isAuthenticated: true,
                 isLoading: false,
@@ -103,6 +117,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       }
       // Clear any stale tokens
       await AsyncStorage.removeItem('jwt_access_token');
+      await clearSecureUserData();
       removeGlobalHeaders(['Authorization']);
       setAuthState({ isAuthenticated: false, isLoading: false, user: null });
     };
@@ -111,25 +126,28 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   // ── Request OTP ───────────────────────────────────────────────────────────
-  const requestOtp = useCallback(async (email: string, loginType: 'user' | 'customer' = 'user') => {
-    const response = await fetchWithAuth(AUTH_ENDPOINTS.requestOtp, {
-      method: 'POST',
-      body: JSON.stringify({ email, loginType }),
-    });
+  const requestOtp = useCallback(
+    async (email: string, loginType: 'user' | 'customer' = 'customer') => {
+      const response = await fetchWithAuth(AUTH_ENDPOINTS.requestOtp, {
+        method: 'POST',
+        body: JSON.stringify({ email, loginType: 'customer' }),
+      });
 
-    const status = response?.status || response?.statusCode || response?.code;
-    if (status >= 400 || response?.success === false) {
-      throw { status: status || 500, message: response?.message || 'Failed to request OTP' };
-    }
-    return response;
-  }, []);
+      const status = response?.status || response?.statusCode || response?.code;
+      if (status >= 400 || response?.success === false) {
+        throw { status: status || 500, message: response?.message || 'Failed to request OTP' };
+      }
+      return response;
+    },
+    []
+  );
 
   // ── Resend OTP ────────────────────────────────────────────────────────────
   const resendOtp = useCallback(
     async (payload: { email: string; loginType: 'user' | 'customer'; requestId?: string }) => {
       const response = await fetchWithAuth(AUTH_ENDPOINTS.resendOtp, {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, loginType: 'customer' }),
       });
 
       const status = response?.status || response?.statusCode || response?.code;
@@ -151,7 +169,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     }) => {
       const data = await fetchWithAuth(AUTH_ENDPOINTS.verifyOtp, {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, loginType: 'customer' }),
       });
 
       const status = data?.status || data?.statusCode || data?.code;
@@ -160,6 +178,10 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       }
 
       if (data?.user && data?.tokens?.access?.token) {
+        if (data.user.isSuperAdmin || (data.user.loginType && data.user.loginType !== 'customer')) {
+          throw new Error('Access denied. Only customer accounts can log in to this app.');
+        }
+
         const accessToken = data.tokens.access.token;
 
         const userData: StoredUser = {
@@ -175,7 +197,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           avatar: data.user.avatar,
           role_name: data.user.role_name,
           sectionMatrix: data.user.sectionMatrix,
-          loginType: payload.loginType,
+          loginType: 'customer',
           token: accessToken,
         };
 
