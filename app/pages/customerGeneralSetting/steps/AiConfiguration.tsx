@@ -452,7 +452,7 @@ export default function AiConfiguration({ data, onChange, errors = {} }: AiConfi
             <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
               <HStack space="xs" style={{ alignItems: 'center' }}>
                 <Feather name="zap" size={14} color="#334155" />
-                <Text style={styles.inputLabel}>Gemini API Key *</Text>
+                <Text style={styles.inputLabel}>Gemini API Key</Text>
               </HStack>
               <TouchableOpacity
                 onPress={() => handleOpenLink('https://aistudio.google.com/app/apikey')}

@@ -368,6 +368,7 @@ export default function SystemLogsScreen() {
                   backgroundColor: '#f8fafc',
                   borderBottomWidth: 1.5,
                   borderBottomColor: '#e2e8f0',
+                  paddingVertical: 0,
                 }}
                 headerCellTextStyle={{
                   color: '#1e3a8a',
@@ -547,7 +548,7 @@ const styles = StyleSheet.create({
   header: { paddingBottom: 4 },
   filterSection: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',

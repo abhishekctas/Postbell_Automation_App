@@ -564,7 +564,7 @@ export default function CustomersScreen() {
     <Box className="flex-1 bg-[#fff]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
         <Box className="px-5 pb-2 pt-12">
-          <HStack className="mb-3 items-center justify-between">
+          <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
               <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
               <Text style={styles.addBtnText}>Add Customer</Text>
@@ -575,7 +575,7 @@ export default function CustomersScreen() {
               <Heading size="xl" style={{ color: '#fff' }}>
                 Customer
               </Heading>
-              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 18 }}>
                 Manage client accounts, registrations, and demographic records
               </Text>
             </VStack>
@@ -1089,7 +1089,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filterSection: {
-    padding: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',

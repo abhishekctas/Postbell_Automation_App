@@ -346,7 +346,7 @@ export default function PostsScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
       <Box style={styles.header} className="px-5 pb-4 pt-14">
-        <HStack className="items-center justify-between pb-1">
+        <HStack className="items-center justify-between pb-2">
           <Heading size="xl" style={{ color: '#fff', fontWeight: '700' }}>
             Posts
           </Heading>
@@ -359,7 +359,7 @@ export default function PostsScreen() {
 
         {/* Search Bar */}
         <Box style={styles.searchContainer}>
-          <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+          <Feather name="search" size={18} color="#94a3b8" style={{ marginRight: 6 }} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search posts..."
@@ -369,7 +369,7 @@ export default function PostsScreen() {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Feather name="x" size={16} color="#94a3b8" />
+              <Feather name="x" size={18} color="#94a3b8" />
             </TouchableOpacity>
           )}
         </Box>
@@ -657,12 +657,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 2,
     marginBottom: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     color: '#0f172a',
   },
   platformFilterRow: {

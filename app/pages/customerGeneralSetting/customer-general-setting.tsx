@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   },
   headerGradient: {
     paddingTop: 38,
-    paddingBottom: 20,
+    paddingBottom: 25,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
