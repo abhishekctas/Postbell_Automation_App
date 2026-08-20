@@ -713,8 +713,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    padding: 10,
     marginHorizontal: 15,
   },
   toolbarTitle: {

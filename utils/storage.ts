@@ -28,6 +28,7 @@ export interface StoredUser {
   token?: string;
   loginType?: string;
   preferred_language?: 'en' | 'hi' | 'gu';
+  setup_completed?: boolean;
 }
 
 /**

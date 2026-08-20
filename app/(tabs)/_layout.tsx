@@ -6,13 +6,20 @@ import { Box } from '@/components/ui/box';
 import GlobalTabBar from '@/components/GlobalTabBar';
 
 export default function TabsLayout() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/(auth)/login');
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace('/(auth)/login');
+      } else {
+        const isCustomer = user?.loginType === 'customer' || !user?.role_id;
+        if (isCustomer && !user?.setup_completed) {
+          router.replace('/pages/customerGeneralSetting/customer-general-setting');
+        }
+      }
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, user]);
 
   if (isLoading) {
     return (

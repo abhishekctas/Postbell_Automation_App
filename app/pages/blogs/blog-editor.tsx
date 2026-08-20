@@ -690,7 +690,7 @@ export default function BlogEditorScreen() {
           <Heading size="xl" style={{ color: '#fff' }}>
             {isEditMode ? 'Edit Blog Post' : 'Add Blog & Editor'}
           </Heading>
-          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 2 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 18 }}>
             Manage configuration, global tags & FAQs, and blog content
           </Text>
         </Box>
@@ -1849,7 +1849,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.18)',
     padding: 4,
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 6,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
@@ -1887,8 +1887,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#1e293b',
@@ -1901,7 +1900,7 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 14,
+    marginBottom: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     paddingBottom: 10,

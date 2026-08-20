@@ -28,7 +28,8 @@ import {
 } from './blogs.api';
 import { router } from 'expo-router';
 import HtmlTable, { HtmlTableColumn } from '@/components/HtmlTable';
-import { Plus } from 'lucide-react-native';
+import { Plus, SlidersHorizontal, X } from 'lucide-react-native';
+import { Feather } from '@expo/vector-icons';
 
 const BLOG_ROW_ACTIONS = [
   { label: 'Edit', action: 'edit' },
@@ -57,6 +58,7 @@ export default function BlogsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [viewingImage, setViewingImage] = useState<{ url: string; title: string } | null>(null);
@@ -81,14 +83,32 @@ export default function BlogsScreen() {
         const queryParams = new URLSearchParams({
           page: pg.toString(),
           limit: '10',
+          sortBy: 'createdAt:desc',
         });
 
         if (search.trim()) {
           queryParams.append('search', search.trim());
         }
 
+        const filterObj: Record<string, any> = {};
+        if (statusFilter === 'published') {
+          filterObj.status = 1;
+        } else if (statusFilter === 'draft') {
+          filterObj.status = 0;
+        }
+
+        if (Object.keys(filterObj).length > 0) {
+          queryParams.append('columnFilters', JSON.stringify(filterObj));
+        }
+
         const res = (await listBlogs(queryParams.toString())) as any;
-        const items = res?.data || res?.results || (Array.isArray(res) ? res : []);
+        let items = res?.data || res?.results || (Array.isArray(res) ? res : []);
+
+        if (statusFilter !== 'all') {
+          const targetStatus = statusFilter === 'published' ? 1 : 0;
+          items = items.filter((item: BlogPost) => Number(item.status) === targetStatus);
+        }
+
         let total =
           res?.totalPages ||
           res?.pagination?.totalPages ||
@@ -114,7 +134,7 @@ export default function BlogsScreen() {
         setRefreshing(false);
       }
     },
-    [search]
+    [search, totalPages, statusFilter]
   );
 
   useEffect(() => {
@@ -442,7 +462,7 @@ export default function BlogsScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-4 pt-12">
+        <Box className="px-5 pb-8 pt-12">
           <HStack className="mb-2 items-center">
             <HStack space="xs">
               <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
@@ -456,7 +476,7 @@ export default function BlogsScreen() {
               <Heading size="xl" style={{ color: '#fff' }}>
                 Blog Management
               </Heading>
-              <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, lineHeight: 18 }}>
                 Create and edit articles, guidelines, and content pages
               </Text>
             </VStack>
@@ -470,135 +490,210 @@ export default function BlogsScreen() {
         </Box>
       </LinearGradient>
 
-      {/* Search Input */}
-      <Box style={styles.filterSection}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search articles..."
-          placeholderTextColor="#94a3b8"
-          value={search}
-          onChangeText={setSearch}
-        />
-      </Box>
-
-      {loading ? (
-        <Box className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#193867" />
-        </Box>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#193867" />
-          }
-        >
-          {blogs.length === 0 ? (
-            <Box className="items-center justify-center py-20">
-              <Text className="text-base text-typography-400">No blog articles found</Text>
-            </Box>
-          ) : (
-            <React.Fragment>
-              <HtmlTable
-                columns={blogTableColumns}
-                data={blogs}
-                rowActions={BLOG_ROW_ACTIONS}
-                onRowAction={(action, rowId) => {
-                  const b = blogs.find(
-                    (x: any) =>
-                      String(x._id || x.id) === String(rowId) ||
-                      String(rowId).startsWith(String(x._id || x.id))
-                  );
-                  if (!b) return;
-                  if (action === 'edit') {
-                    handleOpenEdit(b);
-                  } else if (action === 'delete') {
-                    handleDelete(b);
-                  }
-                }}
-                iconOnlyActions={true}
-                tableContainerStyle={{
-                  borderWidth: 0,
-                  shadowColor: 'transparent',
-                  backgroundColor: 'transparent',
-                  elevation: 0,
-                  marginHorizontal: 0,
-                  marginVertical: 0,
-                }}
-                headerRowStyle={{
-                  backgroundColor: '#f8fafc',
-                  borderBottomWidth: 1.5,
-                  borderBottomColor: '#e2e8f0',
-                }}
-                headerCellTextStyle={{
-                  color: '#1e3a8a',
-                  fontWeight: '700',
-                  fontSize: 11,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                }}
-                rowStyle={{
-                  borderBottomWidth: 1,
-                  borderBottomColor: '#f1f5f9',
-                  backgroundColor: '#ffffff',
-                }}
+      {/* Main Container Card */}
+      <Box style={styles.mainCard}>
+        {/* Search Input & Status Filter */}
+        <Box style={styles.filterSection}>
+          <HStack space="sm" className="items-center">
+            <HStack style={[styles.searchBoxContainer, { flex: 1 }]}>
+              <Feather name="search" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search articles..."
+                placeholderTextColor="#94a3b8"
+                value={search}
+                onChangeText={setSearch}
               />
-
-              {totalPages > 0 && (
-                <Box style={styles.paginationWrapper}>
-                  <HStack space="xs" className="items-center justify-center">
-                    <TouchableOpacity
-                      style={[styles.pageNavBtn, page === 1 && styles.pageNavBtnDisabled]}
-                      disabled={page === 1}
-                      onPress={() => {
-                        if (page > 1) fetchBlogsList(page - 1);
-                      }}
-                    >
-                      <Text style={[styles.pageNavText, page === 1 && styles.pageNavTextDisabled]}>
-                        ‹
-                      </Text>
-                    </TouchableOpacity>
-
-                    {getPageNumbers(page, totalPages).map((p) => {
-                      const isActive = p === page;
-                      return (
-                        <TouchableOpacity
-                          key={p}
-                          style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
-                          onPress={() => fetchBlogsList(p)}
-                        >
-                          <Text
-                            style={[styles.pageNumberText, isActive && styles.pageNumberTextActive]}
-                          >
-                            {p}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-
-                    <TouchableOpacity
-                      style={[styles.pageNavBtn, page >= totalPages && styles.pageNavBtnDisabled]}
-                      disabled={page >= totalPages}
-                      onPress={() => {
-                        if (page < totalPages) fetchBlogsList(page + 1);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.pageNavText,
-                          page >= totalPages && styles.pageNavTextDisabled,
-                        ]}
-                      >
-                        ›
-                      </Text>
-                    </TouchableOpacity>
-                  </HStack>
-                </Box>
+              {search ? (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Feather name="x" size={16} color="#94a3b8" />
+                </TouchableOpacity>
+              ) : null}
+            </HStack>
+            <TouchableOpacity
+              style={{
+                width: 40,
+                height: 40,
+                borderWidth: 1,
+                borderColor: statusFilter === 'all' ? '#e2e8f0' : '#2563eb',
+                borderRadius: 10,
+                backgroundColor: statusFilter === 'all' ? '#f8fafc' : '#eff6ff',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+              }}
+              onPress={() => {
+                setStatusFilter((prev) => {
+                  if (prev === 'all') return 'published';
+                  if (prev === 'published') return 'draft';
+                  return 'all';
+                });
+              }}
+            >
+              <SlidersHorizontal size={16} color={statusFilter === 'all' ? '#475569' : '#2563eb'} />
+              {statusFilter !== 'all' && (
+                <Box
+                  style={{
+                    position: 'absolute',
+                    top: 2,
+                    right: 2,
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: '#2563eb',
+                  }}
+                />
               )}
-            </React.Fragment>
+            </TouchableOpacity>
+          </HStack>
+
+          {statusFilter !== 'all' && (
+            <Box className="mt-2.5 flex-row items-center">
+              <Box
+                style={{
+                  backgroundColor: '#2563eb15',
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 6,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '600', color: '#2563eb' }}>
+                  Filter: {statusFilter === 'published' ? 'Published Blogs' : 'Draft Blogs'}
+                </Text>
+                <TouchableOpacity onPress={() => setStatusFilter('all')} style={{ marginLeft: 6 }}>
+                  <X size={12} color="#2563eb" />
+                </TouchableOpacity>
+              </Box>
+            </Box>
           )}
-        </ScrollView>
-      )}
+        </Box>
+
+        {loading ? (
+          <Box className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color="#193867" />
+          </Box>
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#193867" />
+            }
+          >
+            {blogs.length === 0 ? (
+              <Box className="items-center justify-center py-20">
+                <Text className="text-base text-typography-400">No blog articles found</Text>
+              </Box>
+            ) : (
+              <React.Fragment>
+                <HtmlTable
+                  columns={blogTableColumns}
+                  data={blogs}
+                  rowActions={BLOG_ROW_ACTIONS}
+                  onRowAction={(action, rowId) => {
+                    const b = blogs.find(
+                      (x: any) =>
+                        String(x._id || x.id) === String(rowId) ||
+                        String(rowId).startsWith(String(x._id || x.id))
+                    );
+                    if (!b) return;
+                    if (action === 'edit') {
+                      handleOpenEdit(b);
+                    } else if (action === 'delete') {
+                      handleDelete(b);
+                    }
+                  }}
+                  iconOnlyActions={true}
+                  tableContainerStyle={{
+                    borderWidth: 0,
+                    shadowColor: 'transparent',
+                    backgroundColor: 'transparent',
+                    elevation: 0,
+                    marginHorizontal: 0,
+                    marginVertical: 0,
+                  }}
+                  headerRowStyle={{
+                    backgroundColor: '#f8fafc',
+                    borderBottomWidth: 1.5,
+                    borderBottomColor: '#e2e8f0',
+                  }}
+                  headerCellTextStyle={{
+                    color: '#1e3a8a',
+                    fontWeight: '700',
+                    fontSize: 11,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                  }}
+                  rowStyle={{
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#f1f5f9',
+                    backgroundColor: '#ffffff',
+                  }}
+                />
+
+                {totalPages > 0 && (
+                  <Box style={styles.paginationWrapper}>
+                    <HStack space="xs" className="items-center justify-center">
+                      <TouchableOpacity
+                        style={[styles.pageNavBtn, page === 1 && styles.pageNavBtnDisabled]}
+                        disabled={page === 1}
+                        onPress={() => {
+                          if (page > 1) fetchBlogsList(page - 1);
+                        }}
+                      >
+                        <Text
+                          style={[styles.pageNavText, page === 1 && styles.pageNavTextDisabled]}
+                        >
+                          ‹
+                        </Text>
+                      </TouchableOpacity>
+
+                      {getPageNumbers(page, totalPages).map((p) => {
+                        const isActive = p === page;
+                        return (
+                          <TouchableOpacity
+                            key={p}
+                            style={[styles.pageNumberBtn, isActive && styles.pageNumberBtnActive]}
+                            onPress={() => fetchBlogsList(p)}
+                          >
+                            <Text
+                              style={[
+                                styles.pageNumberText,
+                                isActive && styles.pageNumberTextActive,
+                              ]}
+                            >
+                              {p}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+
+                      <TouchableOpacity
+                        style={[styles.pageNavBtn, page >= totalPages && styles.pageNavBtnDisabled]}
+                        disabled={page >= totalPages}
+                        onPress={() => {
+                          if (page < totalPages) fetchBlogsList(page + 1);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.pageNavText,
+                            page >= totalPages && styles.pageNavTextDisabled,
+                          ]}
+                        >
+                          ›
+                        </Text>
+                      </TouchableOpacity>
+                    </HStack>
+                  </Box>
+                )}
+              </React.Fragment>
+            )}
+          </ScrollView>
+        )}
+      </Box>
 
       {/* Category / Tag Selection Modal */}
       <Modal
@@ -675,7 +770,25 @@ export default function BlogsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingBottom: 0 },
+  header: {
+    paddingBottom: 0,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  mainCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    marginTop: -20,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
   addBtn: {
     backgroundColor: 'rgba(255,255,255,0.22)',
     borderWidth: 1,
@@ -719,32 +832,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   filterSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingBottom: 10,
     backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    shadowColor: '#1e293b',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
-  searchInput: {
+  searchBoxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#0f172a',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: '#f8fafc',
   },
-  listContent: { padding: 16, paddingBottom: 90 },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0f172a',
+    padding: 0,
+  },
+  listContent: {
+    paddingBottom: 70,
+  },
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#b2b8c1ff',
     marginBottom: 12,
     shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 2 },
@@ -922,7 +1037,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
   },
   pageNavBtn: {
     width: 36,

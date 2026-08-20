@@ -1,14 +1,33 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet, TouchableOpacity, Alert, Platform, View } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
+import { useAuth } from '@/context/AuthContext';
 import CustomerSetupWizard from './CustomerSetupWizard';
 
 export default function CustomerGeneralSettingScreen() {
+  const { user, signOut } = useAuth();
+  const isSetupIncomplete =
+    user?.loginType === 'customer' && !user?.setup_completed;
+
+  const handleSignOut = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to sign out?')) {
+        signOut();
+      }
+    } else {
+      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
+      ]);
+    }
+  };
+
   return (
     <Box style={styles.container}>
       {/* Premium Header Banner */}
@@ -21,20 +40,36 @@ export default function CustomerGeneralSettingScreen() {
         <Box style={styles.headerContent}>
           <HStack style={styles.headerRow}>
             <VStack style={{ flex: 1 }}>
-              <Heading style={styles.headerTitle}>Customer General Settings</Heading>
+              <Heading style={styles.headerTitle}>
+                {isSetupIncomplete ? 'Setup Configuration' : 'Customer General Settings'}
+              </Heading>
               <Text style={styles.headerSubtitle}>
-                Configure AI engine credentials, company profile, logo, social accounts & branding
+                {isSetupIncomplete
+                  ? 'Complete your workspace setup to start automating posts'
+                  : 'Configure AI engine credentials, company profile, logo, social accounts & branding'}
               </Text>
             </VStack>
-            <Box style={styles.iconContainer}>
-              <Text style={styles.headerEmoji}>⚙️</Text>
-            </Box>
+            <HStack space="sm" style={{ alignItems: 'center' }}>
+              {isSetupIncomplete ? (
+                <TouchableOpacity
+                  onPress={handleSignOut}
+                  style={styles.signOutButton}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="log-out" size={18} color="#ffffff" />
+                </TouchableOpacity>
+              ) : (
+                <Box style={styles.iconContainer}>
+                  <Text style={styles.headerEmoji}>⚙️</Text>
+                </Box>
+              )}
+            </HStack>
           </HStack>
         </Box>
       </LinearGradient>
 
       {/* Main Content Card Container */}
-      <Box style={styles.mainCard}>
+      <Box style={[styles.mainCard, isSetupIncomplete && styles.mainCardNoTabBar]}>
         <CustomerSetupWizard />
       </Box>
     </Box>
@@ -81,6 +116,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 12,
   },
+  signOutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
   headerEmoji: {
     fontSize: 22,
   },
@@ -95,5 +139,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     overflow: 'hidden',
     paddingHorizontal: 8,
+  },
+  mainCardNoTabBar: {
+    marginBottom: 16,
   },
 });
