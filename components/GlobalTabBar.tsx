@@ -258,6 +258,11 @@ export default function GlobalTabBar() {
     return true;
   });
 
+  // If customer setup is incomplete, do not render global tab bar
+  if (isCustomer && !user?.setup_completed && !user?.setupCompleted) {
+    return null;
+  }
+
   return (
     <>
       {/* Floating Bottom Tab Bar */}

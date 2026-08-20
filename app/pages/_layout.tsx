@@ -23,8 +23,24 @@ export default function PagesLayout() {
     return <Redirect href="/(tabs)" />;
   }
 
-  // Restricted page access based on user role/type
+  // Customer setup completion protection
   if (user?.loginType === 'customer') {
+    if (!user?.setup_completed && !user?.setupCompleted) {
+      const isSetupPage =
+        pathname === '/pages/customerGeneralSetting' ||
+        pathname === '/pages/customerGeneralSetting/customer-general-setting' ||
+        pathname.startsWith('/pages/customerGeneralSetting');
+      if (!isSetupPage) {
+        return <Redirect href="/pages/customerGeneralSetting/customer-general-setting" />;
+      }
+      return (
+        <>
+          <Stack screenOptions={{ headerShown: false }} />
+          <GlobalTabBar />
+        </>
+      );
+    }
+
     const customerAllowedPages = [
       '/pages/festivalAutoPost',
       '/pages/generalSetting',

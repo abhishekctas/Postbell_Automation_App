@@ -5,7 +5,7 @@ import { Box } from '@/components/ui/box';
 import { ActivityIndicator } from 'react-native';
 
 export default function Index() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -16,6 +16,10 @@ export default function Index() {
   }
 
   if (isAuthenticated) {
+    const isCustomer = user?.loginType === 'customer' || !user?.role_id;
+    if (isCustomer && !user?.setup_completed && !user?.setupCompleted) {
+      return <Redirect href="/pages/customerGeneralSetting/customer-general-setting" />;
+    }
     return <Redirect href="/(tabs)" />;
   }
 

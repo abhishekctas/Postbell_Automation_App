@@ -24,7 +24,7 @@ import { Feather } from '@expo/vector-icons';
 type Step = 'email' | 'otp';
 
 export default function LoginScreen() {
-  const { requestOtp, verifyOtp, resendOtp, isAuthenticated, isLoading } = useAuth();
+  const { requestOtp, verifyOtp, resendOtp, isAuthenticated, isLoading, user } = useAuth();
 
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
@@ -38,12 +38,17 @@ export default function LoginScreen() {
 
   const otpRefs = useRef<(RNTextInput | null)[]>([]);
 
-  // Redirect to dashboard if already authenticated
+  // Redirect to dashboard or setup if already authenticated
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace('/(tabs)');
+      const isCustomer = user?.loginType === 'customer' || !user?.role_id;
+      if (isCustomer && !user?.setup_completed && !user?.setupCompleted) {
+        router.replace('/pages/customerGeneralSetting/customer-general-setting');
+      } else {
+        router.replace('/(tabs)');
+      }
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, user]);
 
   // Countdown timer for resend button
   useEffect(() => {
@@ -83,8 +88,19 @@ export default function LoginScreen() {
     }
     setIsSubmitting(true);
     try {
-      await verifyOtp({ email, otp: otpCode, requestId, loginType });
-      router.replace('/(tabs)');
+      const res = await verifyOtp({ email, otp: otpCode, requestId, loginType });
+      const isSetupCompleted =
+        res?.user?.setup_completed ??
+        res?.user?.setupCompleted ??
+        res?.data?.user?.setup_completed ??
+        res?.data?.user?.setupCompleted ??
+        false;
+
+      if (isSetupCompleted) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/pages/customerGeneralSetting/customer-general-setting');
+      }
     } catch (err: any) {
       Alert.alert('Invalid OTP', err?.message || 'OTP verification failed.');
     } finally {
@@ -161,12 +177,12 @@ export default function LoginScreen() {
         <VStack space="xs" style={styles.headerContainer}>
           <Box style={styles.logoBox}>
             <Image
-              source={require('../../assets/images/logo.png')}
+              source={require('../../assets/images/Generated_Image_logo.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
           </Box>
-          <Heading style={styles.headerTitle}>Postbell</Heading>
+          {/* <Heading style={styles.headerTitle}>Postbell</Heading> */}
           <View style={styles.badgeContainer}>
             <Text style={styles.badgeText}>AUTOMATION PANEL</Text>
           </View>
@@ -432,12 +448,11 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 32,
-    marginTop: 40,
+    marginBottom: 20,
   },
   logoBox: {
-    width: 72,
-    height: 72,
+    width: 90,
+    height: 90,
     borderRadius: 20,
     backgroundColor: 'white',
     // backgroundColor: "rgba(255,255,255,0.15)",
@@ -450,10 +465,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 12,
+    overflow: 'hidden',
   },
   logoImage: {
-    width: 70,
-    height: 70,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain',
   },
   headerTitle: {
     fontSize: 30,

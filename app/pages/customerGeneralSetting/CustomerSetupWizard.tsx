@@ -12,6 +12,8 @@ import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 import { getCustomerConfig, saveCurrentStep, activeWorkspace } from './customer-setup.api';
 
 // Step components
@@ -131,6 +133,7 @@ const WIZARD_STEPS = [
 ];
 
 export default function CustomerSetupWizard() {
+  const { updateUser } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [setupData, setSetupData] = useState<SetupWizardData>(initialSetupData);
   const [loading, setLoading] = useState(true);
@@ -348,10 +351,12 @@ export default function CustomerSetupWizard() {
       const res = await activeWorkspace(setupData);
       if (res?.success) {
         await AsyncStorage.removeItem('customerSetupDraft');
+        await updateUser({ setup_completed: true, setupCompleted: true });
         Alert.alert(
           '🎉 Setup Completed',
           'Your workspace configuration has been activated successfully!'
         );
+        router.replace('/(tabs)');
       } else {
         throw new Error(res?.message || 'Failed to complete workspace setup');
       }

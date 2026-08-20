@@ -75,6 +75,13 @@ export default function AuthProvider({ children }: AuthProviderProps) {
               return;
             }
 
+            const isSetupCompleted =
+              response.user.setup_completed ??
+              response.user.setupCompleted ??
+              localUser?.setup_completed ??
+              localUser?.setupCompleted ??
+              false;
+
             const userData: StoredUser = {
               _id: response.user.id || response.user._id || localUser?._id,
               id: response.user.id || response.user._id || localUser?.id,
@@ -90,6 +97,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
               sectionMatrix: response.user.sectionMatrix || localUser?.sectionMatrix,
               loginType: 'customer',
               token: cleanedToken ?? undefined,
+              setup_completed: isSetupCompleted,
+              setupCompleted: isSetupCompleted,
             };
             await storeUserAfterLogin(userData);
 
@@ -183,6 +192,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         }
 
         const accessToken = data.tokens.access.token;
+        const isSetupCompleted = data.user.setup_completed ?? data.user.setupCompleted ?? false;
 
         const userData: StoredUser = {
           _id: data.user.id || data.user._id,
@@ -199,6 +209,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           sectionMatrix: data.user.sectionMatrix,
           loginType: 'customer',
           token: accessToken,
+          setup_completed: isSetupCompleted,
+          setupCompleted: isSetupCompleted,
         };
 
         await storeUserAfterLogin(userData);
@@ -227,6 +239,12 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const updateUser = useCallback(async (updates: Partial<StoredUser>) => {
     const current = await getSecureUserData();
     const updated = { ...current, ...updates };
+    if (updates.setup_completed !== undefined && updates.setupCompleted === undefined) {
+      updated.setupCompleted = updates.setup_completed;
+    }
+    if (updates.setupCompleted !== undefined && updates.setup_completed === undefined) {
+      updated.setup_completed = updates.setupCompleted;
+    }
     await storeUserAfterLogin(updated as StoredUser);
     setAuthState((prev) => ({ ...prev, user: updated as StoredUser }));
   }, []);
