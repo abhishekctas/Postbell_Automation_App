@@ -29,7 +29,6 @@ export interface StoredUser {
   loginType?: string;
   preferred_language?: 'en' | 'hi' | 'gu';
   setup_completed?: boolean;
-  setupCompleted?: boolean;
 }
 
 /**

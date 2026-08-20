@@ -79,7 +79,6 @@ export default function AuthProvider({ children }: AuthProviderProps) {
               response.user.setup_completed ??
               response.user.setupCompleted ??
               localUser?.setup_completed ??
-              localUser?.setupCompleted ??
               false;
 
             const userData: StoredUser = {
@@ -98,7 +97,6 @@ export default function AuthProvider({ children }: AuthProviderProps) {
               loginType: 'customer',
               token: cleanedToken ?? undefined,
               setup_completed: isSetupCompleted,
-              setupCompleted: isSetupCompleted,
             };
             await storeUserAfterLogin(userData);
 
@@ -210,7 +208,6 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           loginType: 'customer',
           token: accessToken,
           setup_completed: isSetupCompleted,
-          setupCompleted: isSetupCompleted,
         };
 
         await storeUserAfterLogin(userData);
@@ -239,12 +236,6 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const updateUser = useCallback(async (updates: Partial<StoredUser>) => {
     const current = await getSecureUserData();
     const updated = { ...current, ...updates };
-    if (updates.setup_completed !== undefined && updates.setupCompleted === undefined) {
-      updated.setupCompleted = updates.setup_completed;
-    }
-    if (updates.setupCompleted !== undefined && updates.setup_completed === undefined) {
-      updated.setup_completed = updates.setupCompleted;
-    }
     await storeUserAfterLogin(updated as StoredUser);
     setAuthState((prev) => ({ ...prev, user: updated as StoredUser }));
   }, []);

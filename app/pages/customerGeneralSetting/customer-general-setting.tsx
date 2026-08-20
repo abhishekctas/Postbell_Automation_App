@@ -13,7 +13,7 @@ import CustomerSetupWizard from './CustomerSetupWizard';
 export default function CustomerGeneralSettingScreen() {
   const { user, signOut } = useAuth();
   const isSetupIncomplete =
-    user?.loginType === 'customer' && !user?.setup_completed && !user?.setupCompleted;
+    user?.loginType === 'customer' && !user?.setup_completed;
 
   const handleSignOut = () => {
     if (Platform.OS === 'web') {

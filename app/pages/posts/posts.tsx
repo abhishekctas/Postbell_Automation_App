@@ -222,7 +222,7 @@ function PostCard({
                     iconColor = '#eab308';
                   } else if (name.includes('google_business')) {
                     iconName = 'google';
-                    iconColor = '#4285f4';
+                    iconColor = '#313641ff';
                   } else if (name.includes('pinterest')) {
                     iconName = 'pinterest';
                     iconColor = '#e60023';

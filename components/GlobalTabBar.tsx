@@ -259,7 +259,7 @@ export default function GlobalTabBar() {
   });
 
   // If customer setup is incomplete, do not render global tab bar
-  if (isCustomer && !user?.setup_completed && !user?.setupCompleted) {
+  if (isCustomer && !user?.setup_completed) {
     return null;
   }
 

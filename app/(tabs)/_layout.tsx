@@ -14,7 +14,7 @@ export default function TabsLayout() {
         router.replace('/(auth)/login');
       } else {
         const isCustomer = user?.loginType === 'customer' || !user?.role_id;
-        if (isCustomer && !user?.setup_completed && !user?.setupCompleted) {
+        if (isCustomer && !user?.setup_completed) {
           router.replace('/pages/customerGeneralSetting/customer-general-setting');
         }
       }

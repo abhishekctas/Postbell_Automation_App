@@ -351,7 +351,7 @@ export default function CustomerSetupWizard() {
       const res = await activeWorkspace(setupData);
       if (res?.success) {
         await AsyncStorage.removeItem('customerSetupDraft');
-        await updateUser({ setup_completed: true, setupCompleted: true });
+        await updateUser({ setup_completed: true });
         Alert.alert(
           '🎉 Setup Completed',
           'Your workspace configuration has been activated successfully!'

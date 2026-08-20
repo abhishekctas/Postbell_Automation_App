@@ -25,7 +25,7 @@ export default function PagesLayout() {
 
   // Customer setup completion protection
   if (user?.loginType === 'customer') {
-    if (!user?.setup_completed && !user?.setupCompleted) {
+    if (!user?.setup_completed) {
       const isSetupPage =
         pathname === '/pages/customerGeneralSetting' ||
         pathname === '/pages/customerGeneralSetting/customer-general-setting' ||

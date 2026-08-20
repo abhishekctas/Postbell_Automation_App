@@ -17,7 +17,7 @@ export default function Index() {
 
   if (isAuthenticated) {
     const isCustomer = user?.loginType === 'customer' || !user?.role_id;
-    if (isCustomer && !user?.setup_completed && !user?.setupCompleted) {
+    if (isCustomer && !user?.setup_completed) {
       return <Redirect href="/pages/customerGeneralSetting/customer-general-setting" />;
     }
     return <Redirect href="/(tabs)" />;

@@ -42,7 +42,7 @@ export default function LoginScreen() {
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       const isCustomer = user?.loginType === 'customer' || !user?.role_id;
-      if (isCustomer && !user?.setup_completed && !user?.setupCompleted) {
+      if (isCustomer && !user?.setup_completed) {
         router.replace('/pages/customerGeneralSetting/customer-general-setting');
       } else {
         router.replace('/(tabs)');
