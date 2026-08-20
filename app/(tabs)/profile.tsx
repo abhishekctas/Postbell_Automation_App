@@ -8,6 +8,7 @@ import {
   TextInput,
   Image,
   Platform,
+  View,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -20,6 +21,7 @@ import { fetchWithAuth, API_ENDPOINTS, API_BASE_URL } from '@/services/api';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 
 function InfoRow({
   label,
@@ -212,21 +214,40 @@ export default function ProfileScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
-      <Box style={styles.header}>
-        <HStack className="items-center justify-between px-5 pb-2 pt-14">
-          <Box>
-            <Heading size="xl" style={{ color: '#fff', fontWeight: '700', paddingTop: 12 }}>
-              Profile
-            </Heading>
-          </Box>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <HStack className="items-center gap-0.5">
-              <Feather name="arrow-left" size={16} color="#fff" />
-              <Text style={styles.backBtnText}>Back</Text>
-            </HStack>
-          </TouchableOpacity>
-        </HStack>
-      </Box>
+      <LinearGradient
+        colors={['#1e3a8a', '#2563eb', '#3b82f6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerGlowCircle1} />
+        <View style={styles.headerGlowCircle2} />
+
+        <Box className="px-5 pb-4 pt-12">
+          <HStack className="items-center justify-between">
+            <VStack style={{ flex: 1, paddingRight: 10 }}>
+              <Heading size="xl" style={styles.headerTitle}>
+                Profile
+              </Heading>
+              <Text style={styles.headerSubtitle}>Manage your personal details & preferences</Text>
+            </VStack>
+
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backBtn}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.12)']}
+                style={styles.backBtnGradient}
+              >
+                <Feather name="arrow-left" size={16} color="#fff" style={{ marginRight: 4 }} />
+                <Text style={styles.backBtnText}>Back</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </HStack>
+        </Box>
+      </LinearGradient>
 
       {loading ? (
         <Box className="flex-1 items-center justify-center">
@@ -342,19 +363,61 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    backgroundColor: '#0052d4',
-    paddingBottom: 0,
+  headerGradient: {
+    paddingBottom: 4,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerGlowCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -30,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerGlowCircle2: {
+    position: 'absolute',
+    bottom: -20,
+    left: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  headerTitle: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 24,
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: '400',
   },
   backBtn: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  backBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
-  backBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  backBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   scroll: {
     padding: 16,
     paddingBottom: 40,

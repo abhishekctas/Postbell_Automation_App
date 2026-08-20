@@ -772,295 +772,317 @@ export default function FestivalAutoPostScreen() {
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
-      {/* Top Header matching customer page */}
-      <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-0 pt-14">
+      {/* Top Header */}
+      <LinearGradient
+        colors={['#1e3a8a', '#2563eb', '#3b82f6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerGlowCircle1} />
+        <View style={styles.headerGlowCircle2} />
+
+        <Box className="px-5 pb-1 pt-12">
           <HStack className="items-center justify-between">
-            <VStack style={{ flex: 1 }}>
-              <Heading size="xl" style={{ color: '#fff' }}>
+            <VStack style={{ flex: 1, paddingRight: 10 }}>
+              <Heading size="xl" style={styles.headerTitle}>
                 Festival Auto Posts
               </Heading>
-              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 0 }}>
-                Your festival auto posts for this month
+              <Text style={styles.headerSubtitle}>
+                Automate & schedule festival wishes and campaigns
               </Text>
             </VStack>
-            <TouchableOpacity style={styles.addBtn} onPress={() => handleOpenAdd()}>
-              <Plus size={23} color="#ffffff" />
+            <TouchableOpacity
+              style={styles.addBtn}
+              onPress={() => handleOpenAdd()}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.12)']}
+                style={styles.addBtnGradient}
+              >
+                <Plus size={16} color="#ffffff" style={{ marginRight: 4 }} />
+                <Text style={styles.addBtnText}>Add Event</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </HStack>
         </Box>
       </LinearGradient>
 
-      {/* Filter & View Mode Controls Section matching customer page */}
-      <Box style={styles.filterSection}>
-        <HStack space="sm" className="items-center">
-          {/* Search Input */}
-          <Box style={{ flex: 1, position: 'relative', justifyContent: 'center' }}>
-            <View pointerEvents="none" style={styles.searchIcon}>
-              <Feather name="search" size={16} color="#94a3b8" />
-            </View>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search..."
-              placeholderTextColor="#94a3b8"
-              value={search}
-              onChangeText={(text) => {
-                setSearch(text);
-                setPage(1);
-              }}
-            />
-            {search.length > 0 && (
+      {/* Main Container Card */}
+      <Box style={styles.mainCard}>
+        {/* Filter & View Mode Controls Section matching customer page */}
+        <Box style={styles.filterSection}>
+          <HStack space="sm" className="items-center">
+            {/* Search Input */}
+            <Box style={{ flex: 1, position: 'relative', justifyContent: 'center' }}>
+              <View pointerEvents="none" style={styles.searchIcon}>
+                <Feather name="search" size={16} color="#94a3b8" />
+              </View>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search..."
+                placeholderTextColor="#94a3b8"
+                value={search}
+                onChangeText={(text) => {
+                  setSearch(text);
+                  setPage(1);
+                }}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearch('')}
+                  style={{ position: 'absolute', right: 12, zIndex: 1 }}
+                >
+                  <Feather name="x" size={16} color="#94a3b8" />
+                </TouchableOpacity>
+              )}
+            </Box>
+
+            {/* View Mode Toggle: Feed vs Calendar */}
+            <HStack style={styles.viewModeToggle}>
               <TouchableOpacity
-                onPress={() => setSearch('')}
-                style={{ position: 'absolute', right: 12, zIndex: 1 }}
+                activeOpacity={0.8}
+                onPress={() => setViewMode('feed')}
+                style={[styles.viewModeBtn, viewMode === 'feed' && styles.viewModeBtnActive]}
               >
-                <Feather name="x" size={16} color="#94a3b8" />
+                <Ionicons
+                  name="grid-outline"
+                  size={15}
+                  color={viewMode === 'feed' ? '#ffffff' : '#334155'}
+                />
+                <Text
+                  style={[
+                    styles.viewModeBtnText,
+                    viewMode === 'feed' && styles.viewModeBtnTextActive,
+                  ]}
+                >
+                  Feed
+                </Text>
               </TouchableOpacity>
-            )}
-          </Box>
 
-          {/* View Mode Toggle: Feed vs Calendar */}
-          <HStack style={styles.viewModeToggle}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setViewMode('feed')}
-              style={[styles.viewModeBtn, viewMode === 'feed' && styles.viewModeBtnActive]}
-            >
-              <Ionicons
-                name="grid-outline"
-                size={15}
-                color={viewMode === 'feed' ? '#ffffff' : '#334155'}
-              />
-              <Text
-                style={[
-                  styles.viewModeBtnText,
-                  viewMode === 'feed' && styles.viewModeBtnTextActive,
-                ]}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setViewMode('calendar')}
+                style={[styles.viewModeBtn, viewMode === 'calendar' && styles.viewModeBtnActive]}
               >
-                Feed
-              </Text>
-            </TouchableOpacity>
+                <Ionicons
+                  name="calendar-outline"
+                  size={15}
+                  color={viewMode === 'calendar' ? '#ffffff' : '#334155'}
+                />
+                <Text
+                  style={[
+                    styles.viewModeBtnText,
+                    viewMode === 'calendar' && styles.viewModeBtnTextActive,
+                  ]}
+                >
+                  Calendar
+                </Text>
+              </TouchableOpacity>
+            </HStack>
 
+            {/* Refresh button */}
             <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setViewMode('calendar')}
-              style={[styles.viewModeBtn, viewMode === 'calendar' && styles.viewModeBtnActive]}
+              style={styles.refreshBtn}
+              onPress={() => {
+                setPage(1);
+                setSearch('');
+                fetchFestivalPostsList();
+              }}
+              disabled={loading}
             >
-              <Ionicons
-                name="calendar-outline"
-                size={15}
-                color={viewMode === 'calendar' ? '#ffffff' : '#334155'}
-              />
-              <Text
-                style={[
-                  styles.viewModeBtnText,
-                  viewMode === 'calendar' && styles.viewModeBtnTextActive,
-                ]}
-              >
-                Calendar
-              </Text>
+              <Feather name="rotate-cw" size={16} color="#2563EB" />
             </TouchableOpacity>
           </HStack>
+        </Box>
 
-          {/* Refresh button */}
-          <TouchableOpacity
-            style={styles.refreshBtn}
-            onPress={() => {
-              setPage(1);
-              setSearch('');
-              fetchFestivalPostsList();
-            }}
-            disabled={loading}
-          >
-            <Feather name="rotate-cw" size={16} color="#2563EB" />
-          </TouchableOpacity>
-        </HStack>
-      </Box>
-
-      {/* Main Content Area */}
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
-        }
-      >
-        {/* Loading Spinner */}
-        {loading ? (
-          <Box className="items-center justify-center py-20">
-            <ActivityIndicator size="large" color="#2563EB" />
-          </Box>
-        ) : viewMode === 'calendar' ? (
-          /* Calendar View */
-          <FestivalCalendarView
-            posts={posts}
-            onEditPost={handleOpenEdit}
-            onCreateAtDate={handleOpenAdd}
-          />
-        ) : (
-          /* Feed View */
-          <VStack space="md">
-            {posts.length === 0 ? (
-              /* Empty State */
-              <Box style={styles.emptyStateCard}>
-                <Box style={styles.emptyStateIconWrap}>
-                  <Feather name="calendar" size={32} color="#2563EB" />
+        {/* Main Content Area */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
+          }
+        >
+          {/* Loading Spinner */}
+          {loading ? (
+            <Box className="items-center justify-center py-20">
+              <ActivityIndicator size="large" color="#2563EB" />
+            </Box>
+          ) : viewMode === 'calendar' ? (
+            /* Calendar View */
+            <FestivalCalendarView
+              posts={posts}
+              onEditPost={handleOpenEdit}
+              onCreateAtDate={handleOpenAdd}
+            />
+          ) : (
+            /* Feed View */
+            <VStack space="md">
+              {posts.length === 0 ? (
+                /* Empty State */
+                <Box style={styles.emptyStateCard}>
+                  <Box style={styles.emptyStateIconWrap}>
+                    <Feather name="calendar" size={32} color="#2563EB" />
+                  </Box>
+                  <Text style={styles.emptyStateTitle}>No festival posts yet</Text>
+                  <Text style={styles.emptyStateText}>
+                    Create festival events with captions, hashtags, and images. Mark your favorites
+                    as active to send notifications.
+                  </Text>
+                  <TouchableOpacity style={styles.emptyStateBtn} onPress={() => handleOpenAdd()}>
+                    <Feather name="plus" size={16} color="#ffffff" />
+                    <Text style={styles.emptyStateBtnText}>Create your first event</Text>
+                  </TouchableOpacity>
                 </Box>
-                <Text style={styles.emptyStateTitle}>No festival posts yet</Text>
-                <Text style={styles.emptyStateText}>
-                  Create festival events with captions, hashtags, and images. Mark your favorites as
-                  active to send notifications.
-                </Text>
-                <TouchableOpacity style={styles.emptyStateBtn} onPress={() => handleOpenAdd()}>
-                  <Feather name="plus" size={16} color="#ffffff" />
-                  <Text style={styles.emptyStateBtnText}>Create your first event</Text>
-                </TouchableOpacity>
-              </Box>
-            ) : (
-              /* Feed Cards List */
-              <>
-                {posts.map((post) => {
-                  const postId = getPostId(post);
-                  return (
-                    <FestivalPostCard
-                      key={postId}
-                      post={post}
-                      isSelected={Boolean(selectedPosts[postId] ?? post.selectedFestival)}
-                      expandedCaption={expandedCaptions[postId] || false}
-                      expandedHashtag={expandedHashtags[postId] || false}
-                      notificationLoading={notificationLoadingId === post.name}
-                      onToggleCaption={(expanded) =>
-                        setExpandedCaptions((prev) => ({ ...prev, [postId]: expanded }))
-                      }
-                      onToggleHashtag={(expanded) =>
-                        setExpandedHashtags((prev) => ({ ...prev, [postId]: expanded }))
-                      }
-                      onSelectPost={(checked) => handleOpenStatusConfirm(post, checked)}
-                      onEditPost={() => handleOpenEdit(post)}
-                      onSendNotification={() => handleSendNotification(post)}
-                      onViewImage={() =>
-                        setImageViewer({
-                          open: true,
-                          src: getFestivalImageUrl(post.image || post.image_url) || '',
-                          alt: post.name || 'Festival Image',
-                        })
-                      }
-                    />
-                  );
-                })}
+              ) : (
+                /* Feed Cards List */
+                <>
+                  {posts.map((post) => {
+                    const postId = getPostId(post);
+                    return (
+                      <FestivalPostCard
+                        key={postId}
+                        post={post}
+                        isSelected={Boolean(selectedPosts[postId] ?? post.selectedFestival)}
+                        expandedCaption={expandedCaptions[postId] || false}
+                        expandedHashtag={expandedHashtags[postId] || false}
+                        notificationLoading={notificationLoadingId === post.name}
+                        onToggleCaption={(expanded) =>
+                          setExpandedCaptions((prev) => ({ ...prev, [postId]: expanded }))
+                        }
+                        onToggleHashtag={(expanded) =>
+                          setExpandedHashtags((prev) => ({ ...prev, [postId]: expanded }))
+                        }
+                        onSelectPost={(checked) => handleOpenStatusConfirm(post, checked)}
+                        onEditPost={() => handleOpenEdit(post)}
+                        onSendNotification={() => handleSendNotification(post)}
+                        onViewImage={() =>
+                          setImageViewer({
+                            open: true,
+                            src: getFestivalImageUrl(post.image || post.image_url) || '',
+                            alt: post.name || 'Festival Image',
+                          })
+                        }
+                      />
+                    );
+                  })}
 
-                {/* Pagination Controls matching customer page */}
-                <Box style={styles.paginationCard}>
-                  <HStack className="items-center justify-between " style={{ gap: 8 }}>
-                    <Text style={styles.paginationInfo}>
-                      {' '}
-                      <Text style={{ fontWeight: '700', color: '#0f172a' }}>
-                        {(page - 1) * limit + 1}–{Math.min(page * limit, total)}
-                      </Text>{' '}
-                      of <Text style={{ fontWeight: '700', color: '#0f172a' }}>{total}</Text> posts
-                    </Text>
+                  {/* Pagination Controls matching customer page */}
+                  <Box style={styles.paginationCard}>
+                    <HStack className="items-center justify-between " style={{ gap: 8 }}>
+                      <Text style={styles.paginationInfo}>
+                        {' '}
+                        <Text style={{ fontWeight: '700', color: '#0f172a' }}>
+                          {(page - 1) * limit + 1}–{Math.min(page * limit, total)}
+                        </Text>{' '}
+                        of <Text style={{ fontWeight: '700', color: '#0f172a' }}>{total}</Text>{' '}
+                        posts
+                      </Text>
 
-                    <HStack className="flex-wrap items-center" space="sm" style={{ gap: 6 }}>
-                      {/* Limit Selector Dropdown */}
-                      <TouchableOpacity
-                        style={styles.limitDropdownTrigger}
-                        onPress={() => setLimitDropdownOpen(true)}
-                      >
-                        <Text style={styles.limitDropdownText}>{limit}</Text>
-                        <Feather
-                          name="chevron-down"
-                          size={13}
-                          color="#2563EB"
-                          style={{ marginLeft: 3 }}
-                        />
-                      </TouchableOpacity>
-
-                      {/* Numbered Pagination Buttons */}
-                      <HStack className="flex-wrap items-center" space="xs" style={{ gap: 3 }}>
-                        {/* First Page */}
+                      <HStack className="flex-wrap items-center" space="sm" style={{ gap: 6 }}>
+                        {/* Limit Selector Dropdown */}
                         <TouchableOpacity
-                          onPress={() => setPage(1)}
-                          disabled={page <= 1}
-                          style={[styles.pageNavBtn, page <= 1 && styles.pageNavBtnDisabled]}
+                          style={styles.limitDropdownTrigger}
+                          onPress={() => setLimitDropdownOpen(true)}
                         >
+                          <Text style={styles.limitDropdownText}>{limit}</Text>
                           <Feather
-                            name="chevrons-left"
-                            size={14}
-                            color={page <= 1 ? '#94a3b8' : '#2563EB'}
+                            name="chevron-down"
+                            size={13}
+                            color="#2563EB"
+                            style={{ marginLeft: 3 }}
                           />
                         </TouchableOpacity>
 
-                        {/* Prev Page */}
-                        <TouchableOpacity
-                          onPress={() => setPage((p) => Math.max(1, p - 1))}
-                          disabled={page <= 1}
-                          style={[styles.pageNavBtn, page <= 1 && styles.pageNavBtnDisabled]}
-                        >
-                          <Feather
-                            name="chevron-left"
-                            size={14}
-                            color={page <= 1 ? '#94a3b8' : '#2563EB'}
-                          />
-                        </TouchableOpacity>
+                        {/* Numbered Pagination Buttons */}
+                        <HStack className="flex-wrap items-center" space="xs" style={{ gap: 3 }}>
+                          {/* First Page */}
+                          <TouchableOpacity
+                            onPress={() => setPage(1)}
+                            disabled={page <= 1}
+                            style={[styles.pageNavBtn, page <= 1 && styles.pageNavBtnDisabled]}
+                          >
+                            <Feather
+                              name="chevrons-left"
+                              size={14}
+                              color={page <= 1 ? '#94a3b8' : '#2563EB'}
+                            />
+                          </TouchableOpacity>
 
-                        {/* Page Numbers */}
-                        {getPageNumbers(page, totalPages).map((p) => {
-                          const isActive = p === page;
-                          return (
-                            <TouchableOpacity
-                              key={p}
-                              onPress={() => setPage(p)}
-                              style={[styles.pageNumBtn, isActive && styles.pageNumBtnActive]}
-                            >
-                              <Text
-                                style={[styles.pageNumText, isActive && styles.pageNumTextActive]}
+                          {/* Prev Page */}
+                          <TouchableOpacity
+                            onPress={() => setPage((p) => Math.max(1, p - 1))}
+                            disabled={page <= 1}
+                            style={[styles.pageNavBtn, page <= 1 && styles.pageNavBtnDisabled]}
+                          >
+                            <Feather
+                              name="chevron-left"
+                              size={14}
+                              color={page <= 1 ? '#94a3b8' : '#2563EB'}
+                            />
+                          </TouchableOpacity>
+
+                          {/* Page Numbers */}
+                          {getPageNumbers(page, totalPages).map((p) => {
+                            const isActive = p === page;
+                            return (
+                              <TouchableOpacity
+                                key={p}
+                                onPress={() => setPage(p)}
+                                style={[styles.pageNumBtn, isActive && styles.pageNumBtnActive]}
                               >
-                                {p}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
+                                <Text
+                                  style={[styles.pageNumText, isActive && styles.pageNumTextActive]}
+                                >
+                                  {p}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
 
-                        {/* Next Page */}
-                        <TouchableOpacity
-                          onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-                          disabled={page >= totalPages}
-                          style={[
-                            styles.pageNavBtn,
-                            page >= totalPages && styles.pageNavBtnDisabled,
-                          ]}
-                        >
-                          <Feather
-                            name="chevron-right"
-                            size={14}
-                            color={page >= totalPages ? '#94a3b8' : '#2563EB'}
-                          />
-                        </TouchableOpacity>
+                          {/* Next Page */}
+                          <TouchableOpacity
+                            onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={page >= totalPages}
+                            style={[
+                              styles.pageNavBtn,
+                              page >= totalPages && styles.pageNavBtnDisabled,
+                            ]}
+                          >
+                            <Feather
+                              name="chevron-right"
+                              size={14}
+                              color={page >= totalPages ? '#94a3b8' : '#2563EB'}
+                            />
+                          </TouchableOpacity>
 
-                        {/* Last Page */}
-                        <TouchableOpacity
-                          onPress={() => setPage(totalPages)}
-                          disabled={page >= totalPages}
-                          style={[
-                            styles.pageNavBtn,
-                            page >= totalPages && styles.pageNavBtnDisabled,
-                          ]}
-                        >
-                          <Feather
-                            name="chevrons-right"
-                            size={14}
-                            color={page >= totalPages ? '#94a3b8' : '#2563EB'}
-                          />
-                        </TouchableOpacity>
+                          {/* Last Page */}
+                          <TouchableOpacity
+                            onPress={() => setPage(totalPages)}
+                            disabled={page >= totalPages}
+                            style={[
+                              styles.pageNavBtn,
+                              page >= totalPages && styles.pageNavBtnDisabled,
+                            ]}
+                          >
+                            <Feather
+                              name="chevrons-right"
+                              size={14}
+                              color={page >= totalPages ? '#94a3b8' : '#2563EB'}
+                            />
+                          </TouchableOpacity>
+                        </HStack>
                       </HStack>
                     </HStack>
-                  </HStack>
-                </Box>
-              </>
-            )}
-          </VStack>
-        )}
-      </ScrollView>
+                  </Box>
+                </>
+              )}
+            </VStack>
+          )}
+        </ScrollView>
+      </Box>
 
       {/* Rows per page Limit Dropdown Modal */}
       <Modal
@@ -1352,20 +1374,6 @@ export default function FestivalAutoPostScreen() {
                     </TouchableOpacity>
                   </HStack>
 
-                  <VStack space="xs" style={{ marginTop: 10 }}>
-                    <Text style={styles.label}>Image URL</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      value={imageUrl}
-                      onChangeText={(val) => {
-                        setImageUrl(val);
-                        setTouched((p) => ({ ...p, image: true }));
-                      }}
-                      autoCapitalize="none"
-                      placeholder="https://example.com/diwali.jpg"
-                    />
-                  </VStack>
-
                   {imageError && <Text style={styles.errorText}>{imageError}</Text>}
                   {touched.image && !hasImage && !imageError && (
                     <Text style={styles.errorText}>An operational image asset is required.</Text>
@@ -1491,60 +1499,18 @@ export default function FestivalAutoPostScreen() {
                   </VStack>
                   <Switch value={autoGenerate} onValueChange={setAutoGenerate} />
                 </Box>
-
-                {/* Trigger test notification (when editing) */}
-                {editingPost && (
-                  <TouchableOpacity
-                    style={styles.modalNotifyBtn}
-                    onPress={() => handleSendNotification(editingPost)}
-                  >
-                    <Text style={styles.modalNotifyBtnText}>🔔 Trigger Immediate Test Post</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Status Toggle */}
-                <VStack space="xs">
-                  <Text style={styles.label}>Status *</Text>
-                  <HStack space="sm">
-                    <TouchableOpacity
-                      style={[
-                        styles.statusToggleBtn,
-                        status === 'active' && styles.statusToggleBtnActive,
-                      ]}
-                      onPress={() => setStatus('active')}
-                    >
-                      <Text
-                        style={[
-                          styles.statusToggleText,
-                          status === 'active' && styles.statusToggleTextActive,
-                        ]}
-                      >
-                        Active
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.statusToggleBtn,
-                        status === 'deactive' && styles.statusToggleBtnActiveDanger,
-                      ]}
-                      onPress={() => setStatus('deactive')}
-                    >
-                      <Text
-                        style={[
-                          styles.statusToggleText,
-                          status === 'deactive' && styles.statusToggleTextActiveDanger,
-                        ]}
-                      >
-                        Deactive
-                      </Text>
-                    </TouchableOpacity>
-                  </HStack>
-                </VStack>
               </VStack>
             </ScrollView>
 
             {/* Modal Footer */}
             <HStack space="sm" style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => !saving && setModalVisible(false)}
+                disabled={saving}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
               <Button
                 style={{ flex: 1, backgroundColor: '#2563EB', borderRadius: 12 }}
                 onPress={handleSave}
@@ -1558,13 +1524,6 @@ export default function FestivalAutoPostScreen() {
                   </ButtonText>
                 )}
               </Button>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => !saving && setModalVisible(false)}
-                disabled={saving}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
             </HStack>
           </Box>
         </Box>
@@ -1575,22 +1534,80 @@ export default function FestivalAutoPostScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingBottom: 16,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerGlowCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -30,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerGlowCircle2: {
+    position: 'absolute',
+    bottom: -20,
+    left: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  headerTitle: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 22,
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12.5,
+    marginTop: 2,
+    fontWeight: '400',
+  },
+  mainCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    // paddingHorizontal: 14,
+    paddingTop: 12,
+    marginTop: -20,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
   },
   addBtn: {
-    fontWeight: '600',
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    padding: 8,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  addBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  addBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   filterSection: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    paddingHorizontal: 14,
   },
   searchIcon: {
     position: 'absolute',
@@ -1649,14 +1666,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   refreshBtn: {
-    width: 38,
-    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#eff6ff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#bfdbfe',
+    paddingHorizontal: 9,
+    paddingVertical: 12,
   },
   scrollContainer: {
     paddingTop: 14,
@@ -2211,20 +2228,6 @@ const styles = StyleSheet.create({
   },
   noChipText: {
     color: '#64748b',
-  },
-  modalNotifyBtn: {
-    backgroundColor: '#fffbeb',
-    borderColor: '#fde68a',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-    marginVertical: 4,
-  },
-  modalNotifyBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#d97706',
   },
   statusToggleBtn: {
     flex: 1,

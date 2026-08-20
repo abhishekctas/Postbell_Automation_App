@@ -222,27 +222,38 @@ export default function MySubscriptionScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header Banner */}
       <LinearGradient
-        colors={['#0b53f8', '#023eb9']}
+        colors={['#1e3a8a', '#2563eb', '#3b82f6']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
-        <Box style={styles.headerGlow} />
+        <View style={styles.headerGlowCircle1} />
+        <View style={styles.headerGlowCircle2} />
+
         <Box style={styles.headerContent}>
-          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+          <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
             <VStack style={{ flex: 1, paddingRight: 15 }}>
-              <Heading style={styles.headerTitle}>My Subscriptions</Heading>
+              <Heading style={styles.headerTitle}>My Subscription</Heading>
               <Text style={styles.headerSubtitle}>
                 Manage active plans, billing cycle, usage & history
               </Text>
             </VStack>
 
-            <TouchableOpacity onPress={onRefresh} style={styles.refreshIconBtn} activeOpacity={0.8}>
-              {refreshing ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Feather name="refresh-cw" size={18} color="#ffffff" />
-              )}
+            <TouchableOpacity
+              onPress={onRefresh}
+              style={styles.refreshIconBtn}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.12)']}
+                style={styles.refreshBtnGradient}
+              >
+                {refreshing ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Feather name="refresh-cw" size={17} color="#ffffff" />
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </HStack>
         </Box>
@@ -1195,33 +1206,56 @@ export default function MySubscriptionScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 54,
+    paddingTop: 46,
     paddingBottom: 32,
     paddingHorizontal: 20,
     position: 'relative',
     overflow: 'hidden',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  headerGlow: {
+  headerGlowCircle1: {
     position: 'absolute',
+    top: -40,
     right: -30,
-    top: -30,
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerGlowCircle2: {
+    position: 'absolute',
+    bottom: -20,
+    left: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   headerContent: {
     zIndex: 2,
   },
-  headerTitle: { color: '#ffffff', fontSize: 24, fontWeight: '800', marginBottom: 4 },
-  headerSubtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 13, lineHeight: 18 },
+  headerTitle: { color: '#ffffff', fontSize: 24, fontWeight: '800', letterSpacing: -0.3 },
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    marginTop: 2,
+    fontWeight: '400',
+  },
   refreshIconBtn: {
-    width: 40,
-    height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  refreshBtnGradient: {
+    width: 38,
+    height: 38,
     justifyContent: 'center',
     alignItems: 'center',
   },

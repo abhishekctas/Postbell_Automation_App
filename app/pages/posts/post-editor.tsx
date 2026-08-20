@@ -19,6 +19,7 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
@@ -45,9 +46,11 @@ const SOCIAL_PLATFORMS = [
   { id: 'facebook', label: 'Facebook', icon: 'facebook-square', color: '#1877f2' },
   { id: 'instagram', label: 'Instagram', icon: 'instagram', color: '#e1306c' },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp', color: '#25d366' },
-  // { id: 'twitter', label: 'Twitter', icon: 'twitter', color: '#1da1f2' },
-  // { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', color: '#0a66c2' },
-  // { id: 'youtube', label: 'YouTube', icon: 'youtube-play', color: '#ff0000' },
+  { id: 'twitter', label: 'Twitter', icon: 'twitter', color: '#1da1f2' },
+  { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', color: '#0a66c2' },
+  { id: 'snapchat', label: 'Snapchat', icon: 'snapchat', color: '#e2de07ff' },
+  { id: 'google_business', label: 'Google Business', icon: 'google', color: '#313641ff' },
+  { id: 'pinterest', label: 'Pinterest', icon: 'pinterest', color: '#bd081c' },
 ];
 
 const getInitialScheduledDate = () => {
@@ -334,6 +337,116 @@ export default function PostEditorScreen() {
     } catch {
       Alert.alert('Error', `Failed to pick image for ${platformKey}.`);
     }
+  };
+
+  // Camera Image Capture for General Content
+  const takeImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Camera permission is needed to take photos. Please enable it in settings.'
+        );
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setUploadingImage(true);
+        try {
+          const uploadRes = await uploadPostImage(
+            uri,
+            result.assets[0].fileName || undefined,
+            result.assets[0].mimeType || undefined
+          );
+          const serverUrl = uploadRes?.imageUrl || uploadRes?.url || uploadRes?.picture || uri;
+          const serverPath = uploadRes?.imagePath || uploadRes?.url || uploadRes?.picture || uri;
+          setImageUrl(serverUrl);
+          setImagePath(serverPath);
+          setErrors((prev) => ({ ...prev, imageUrl: '' }));
+        } catch {
+          setImageUrl(uri);
+          setErrors((prev) => ({ ...prev, imageUrl: '' }));
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to capture image from camera.');
+    }
+  };
+
+  // Camera Image Capture for Platform-Specific
+  const takePlatformImage = async (platformKey: string) => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Camera permission is needed to take photos. Please enable it in settings.'
+        );
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: true }));
+        try {
+          const uploadRes = await uploadPostImage(
+            uri,
+            result.assets[0].fileName || undefined,
+            result.assets[0].mimeType || undefined
+          );
+          const serverUrl = uploadRes?.imageUrl || uploadRes?.url || uploadRes?.picture || uri;
+          setPlatformOverrides((prev) => ({
+            ...prev,
+            [platformKey]: {
+              ...prev[platformKey],
+              image_url: serverUrl,
+            },
+          }));
+        } catch {
+          setPlatformOverrides((prev) => ({
+            ...prev,
+            [platformKey]: {
+              ...prev[platformKey],
+              image_url: uri,
+            },
+          }));
+        } finally {
+          setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: false }));
+        }
+      }
+    } catch {
+      Alert.alert('Error', `Failed to capture image for ${platformKey}.`);
+    }
+  };
+
+  // Image Source Picker for General Content
+  const showGeneralImagePicker = () => {
+    Alert.alert('Select Image Source', 'Choose an option', [
+      { text: 'Gallery', onPress: () => pickImage() },
+      { text: 'Camera', onPress: () => takeImage() },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  // Image Source Picker for Platform-Specific
+  const showPlatformImagePicker = (platformKey: string) => {
+    Alert.alert('Select Image Source', 'Choose an option', [
+      { text: 'Gallery', onPress: () => pickPlatformImage(platformKey) },
+      { text: 'Camera', onPress: () => takePlatformImage(platformKey) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   // AI Generation Handler
@@ -661,62 +774,97 @@ export default function PostEditorScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
-      <Box style={styles.header} className="px-5 pb-4 pt-14">
-        <HStack className="items-center justify-between">
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={22} color="#fff" />
-          </TouchableOpacity>
-          <Heading size="lg" style={{ color: '#fff', fontWeight: '700' }}>
-            {isEditing ? 'Edit Post' : 'Add New Post'}
-          </Heading>
-          <TouchableOpacity
-            style={styles.headerSaveBtn}
-            onPress={() => handleSavePost('published')}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.headerSaveText}>Publish</Text>
-            )}
-          </TouchableOpacity>
-        </HStack>
+      <LinearGradient
+        colors={['#1e3a8a', '#2563eb', '#3b82f6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerGlowCircle1} />
+        <View style={styles.headerGlowCircle2} />
 
-        {/* Main Tab Bar (AI Auto Post vs Manual Posting) */}
-        <HStack style={styles.mainTabBar} className="mt-4">
-          <TouchableOpacity
-            style={[styles.mainTabBtn, activeTab === 'ai' && styles.mainTabBtnActive]}
-            onPress={() => setActiveTab('ai')}
-          >
-            <Feather
-              name="cpu"
-              size={16}
-              color={activeTab === 'ai' ? '#0052d4' : '#fff'}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={[styles.mainTabLabel, activeTab === 'ai' && styles.mainTabLabelActive]}>
-              AI Auto Post
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.mainTabBtn, activeTab === 'manual' && styles.mainTabBtnActive]}
-            onPress={() => setActiveTab('manual')}
-          >
-            <Feather
-              name="edit-3"
-              size={16}
-              color={activeTab === 'manual' ? '#0052d4' : '#fff'}
-              style={{ marginRight: 6 }}
-            />
-            <Text
-              style={[styles.mainTabLabel, activeTab === 'manual' && styles.mainTabLabelActive]}
+        <Box className="px-5 pb-3 pt-12">
+          <HStack className="mb-2 items-center justify-between">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backBtn}
+              activeOpacity={0.85}
             >
-              Manual Posting
-            </Text>
-          </TouchableOpacity>
-        </HStack>
-      </Box>
+              <HStack className="items-center space-x-1">
+                <Feather name="arrow-left" size={16} color="#fff" style={{ marginRight: 4 }} />
+                <Text style={styles.backBtnText}>Back</Text>
+              </HStack>
+            </TouchableOpacity>
+
+            <VStack style={{ alignItems: 'center' }}>
+              <Heading size="lg" style={styles.headerTitle}>
+                {isEditing ? 'Edit Post' : 'Create Post'}
+              </Heading>
+              <Text style={styles.headerSubtitle}>
+                {isEditing ? 'Update content & schedule' : 'Craft AI or manual social posts'}
+              </Text>
+            </VStack>
+
+            <TouchableOpacity
+              style={styles.headerSaveBtn}
+              onPress={() => handleSavePost('published')}
+              disabled={saving}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
+                style={styles.headerSaveBtnGradient}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Feather name="send" size={13} color="#fff" style={{ marginRight: 4 }} />
+                    <Text style={styles.headerSaveText}>Publish</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </HStack>
+
+          {/* Main Tab Bar (AI Auto Post vs Manual Posting) */}
+          <HStack style={styles.mainTabBar} className="mt-3">
+            <TouchableOpacity
+              style={[styles.mainTabBtn, activeTab === 'ai' && styles.mainTabBtnActive]}
+              onPress={() => setActiveTab('ai')}
+              activeOpacity={0.85}
+            >
+              <Feather
+                name="cpu"
+                size={15}
+                color={activeTab === 'ai' ? '#2563eb' : 'rgba(255,255,255,0.85)'}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.mainTabLabel, activeTab === 'ai' && styles.mainTabLabelActive]}>
+                AI Auto Post
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.mainTabBtn, activeTab === 'manual' && styles.mainTabBtnActive]}
+              onPress={() => setActiveTab('manual')}
+              activeOpacity={0.85}
+            >
+              <Feather
+                name="edit-3"
+                size={15}
+                color={activeTab === 'manual' ? '#2563eb' : 'rgba(255,255,255,0.85)'}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[styles.mainTabLabel, activeTab === 'manual' && styles.mainTabLabelActive]}
+              >
+                Manual Posting
+              </Text>
+            </TouchableOpacity>
+          </HStack>
+        </Box>
+      </LinearGradient>
 
       <ScrollView
         ref={scrollViewRef}
@@ -1248,7 +1396,10 @@ export default function PostEditorScreen() {
                       resizeMode="cover"
                     />
                     <HStack space="xs" style={styles.imageActionOverlay}>
-                      <TouchableOpacity style={styles.imgActionBtn} onPress={pickImage}>
+                      <TouchableOpacity
+                        style={styles.imgActionBtn}
+                        onPress={showGeneralImagePicker}
+                      >
                         <Feather name="refresh-cw" size={14} color="#fff" />
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -1263,13 +1414,11 @@ export default function PostEditorScreen() {
                   <VStack space="xs" style={{ marginTop: 6 }}>
                     <TouchableOpacity
                       style={[styles.uploadBox, errors.imageUrl ? styles.inputError : null]}
-                      onPress={pickImage}
+                      onPress={showGeneralImagePicker}
                     >
                       <Feather name="upload-cloud" size={28} color="#0052d4" />
-                      <Text style={styles.uploadText}>Choose Image from Gallery</Text>
-                      <Text style={{ fontSize: 11, color: '#94a3b8' }}>
-                        Supports JPG, PNG, WEBP
-                      </Text>
+                      <Text style={styles.uploadText}>Choose Image</Text>
+                      <Text style={{ fontSize: 11, color: '#94a3b8' }}>Gallery or Camera</Text>
                     </TouchableOpacity>
                   </VStack>
                 )}
@@ -1655,7 +1804,7 @@ export default function PostEditorScreen() {
                                 <HStack space="xs" style={styles.imageActionOverlay}>
                                   <TouchableOpacity
                                     style={styles.imgActionBtn}
-                                    onPress={() => pickPlatformImage(targetPlatform)}
+                                    onPress={() => showPlatformImagePicker(targetPlatform)}
                                     disabled={isUploading}
                                   >
                                     {isUploading ? (
@@ -1686,7 +1835,7 @@ export default function PostEditorScreen() {
                           return (
                             <TouchableOpacity
                               style={[styles.uploadBox, { paddingVertical: 12 }]}
-                              onPress={() => pickPlatformImage(targetPlatform)}
+                              onPress={() => showPlatformImagePicker(targetPlatform)}
                               disabled={isUploading}
                             >
                               {isUploading ? (
@@ -1696,6 +1845,9 @@ export default function PostEditorScreen() {
                                   <Feather name="image" size={20} color="#0052d4" />
                                   <Text style={[styles.uploadText, { fontSize: 12 }]}>
                                     Upload Image for {targetPlatform.toUpperCase()}
+                                  </Text>
+                                  <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                                    Gallery or Camera
                                   </Text>
                                 </>
                               )}
@@ -2288,7 +2440,7 @@ export default function PostEditorScreen() {
           onPress={() => setNetworksModalOpen(false)}
         >
           <TouchableOpacity activeOpacity={1} style={styles.optionsModalCard}>
-            <HStack className="mb-4 items-center justify-between">
+            <HStack className="mb-2 items-center justify-between">
               <HStack space="xs" className="items-center gap-2">
                 <Feather name="share-2" size={18} color="#2563eb" />
                 <Heading size="md" style={{ color: '#0f172a', fontWeight: '700' }}>
@@ -2296,7 +2448,7 @@ export default function PostEditorScreen() {
                 </Heading>
               </HStack>
               <TouchableOpacity onPress={() => setNetworksModalOpen(false)}>
-                <Feather name="x" size={20} color="#64748b" />
+                <Feather name="x" size={22} color="#64748b" />
               </TouchableOpacity>
             </HStack>
 
@@ -2309,8 +2461,8 @@ export default function PostEditorScreen() {
                   <Box
                     key={plat.id}
                     style={{
-                      marginBottom: 14,
-                      paddingBottom: 10,
+                      marginBottom: 10,
+                      paddingBottom: 6,
                       borderBottomWidth: 1,
                       borderBottomColor: '#f1f5f9',
                     }}
@@ -2392,19 +2544,65 @@ export default function PostEditorScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    backgroundColor: '#0052d4',
+  headerGradient: {
+    paddingBottom: 4,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerGlowCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -30,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerGlowCircle2: {
+    position: 'absolute',
+    bottom: -20,
+    left: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  headerTitle: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 20,
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    fontWeight: '400',
   },
   backBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
-  headerSaveBtn: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
+  },
+  backBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  headerSaveBtn: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  headerSaveBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   headerSaveText: {
     color: '#fff',
@@ -2412,9 +2610,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   mainTabBar: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 14,
     padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   mainTabBtn: {
     flex: 1,
@@ -2422,18 +2622,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   mainTabBtnActive: {
     backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   mainTabLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.85)',
   },
   mainTabLabelActive: {
-    color: '#0052d4',
+    color: '#2563eb',
     fontWeight: '700',
   },
   scrollContent: {
@@ -2567,7 +2772,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: '#0052d4',
-    paddingVertical: 13,
+    paddingVertical: 10,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2576,7 +2781,7 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 15,
   },
   aiResultCard: {
     backgroundColor: '#f0f7ff',

@@ -9,6 +9,7 @@ import {
   Linking,
   Modal,
   Platform,
+  View,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -17,6 +18,7 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   getPost,
   getPostDetails,
@@ -71,6 +73,41 @@ const PLATFORM_REGISTRY: Record<
     color: '#25D366',
     icon: (size = 18, color = '#25D366') => (
       <FontAwesome name="whatsapp" size={size} color={color} />
+    ),
+  },
+  twitter: {
+    label: 'Twitter',
+    color: '#1DA1F2',
+    icon: (size = 18, color = '#1DA1F2') => (
+      <FontAwesome name="twitter" size={size} color={color} />
+    ),
+  },
+  linkedin: {
+    label: 'LinkedIn',
+    color: '#0a66c2',
+    icon: (size = 18, color = '#0a66c2') => (
+      <FontAwesome name="linkedin" size={size} color={color} />
+    ),
+  },
+  snapchat: {
+    label: 'Snapchat',
+    color: '#e2de07ff',
+    icon: (size = 18, color = '#e2de07ff') => (
+      <FontAwesome name="snapchat" size={size} color={color} />
+    ),
+  },
+  google_business: {
+    label: 'Google Business',
+    color: '#313641ff',
+    icon: (size = 18, color = '#313641ff') => (
+      <FontAwesome name="google" size={size} color={color} />
+    ),
+  },
+  pinterest: {
+    label: 'Pinterest',
+    color: '#bd081c',
+    icon: (size = 18, color = '#bd081c') => (
+      <FontAwesome name="pinterest" size={size} color={color} />
     ),
   },
 };
@@ -764,19 +801,52 @@ export default function PostDetailsScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
-      <Box style={styles.header} className="px-5 pb-4 pt-14">
-        <HStack className="items-center justify-between">
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="arrow-left" size={20} color="#fff" />
-          </TouchableOpacity>
-          <Heading size="lg" style={{ color: '#fff', fontWeight: '700' }}>
-            Post Details
-          </Heading>
-          <TouchableOpacity onPress={fetchPostDetails} style={styles.backBtn}>
-            <Feather name="refresh-cw" size={18} color="#fff" />
-          </TouchableOpacity>
-        </HStack>
-      </Box>
+      <LinearGradient
+        colors={['#1e3a8a', '#2563eb', '#3b82f6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerGlowCircle1} />
+        <View style={styles.headerGlowCircle2} />
+
+        <Box className="px-5 pb-4 pt-12">
+          <HStack className="items-center justify-between">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.headerBtn}
+              activeOpacity={0.85}
+            >
+              <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn}>
+                <HStack className="items-center gap-1">
+                  <Feather name="arrow-left" size={16} color="#fff" />
+                  <Text style={styles.headerBackText}>Back</Text>
+                </HStack>
+              </TouchableOpacity>
+            </TouchableOpacity>
+
+            <VStack style={{ alignItems: 'center' }}>
+              <Heading size="lg" style={styles.headerTitle}>
+                Post Details
+              </Heading>
+              <Text style={styles.headerSubtitle}>Metrics, insights & platform status</Text>
+            </VStack>
+
+            <TouchableOpacity
+              onPress={fetchPostDetails}
+              style={styles.headerBtn}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.12)']}
+                style={styles.headerBtnGradient}
+              >
+                <Feather name="refresh-cw" size={17} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </HStack>
+        </Box>
+      </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ── Top Summary Card ── */}
@@ -899,7 +969,7 @@ export default function PostDetailsScreen() {
 
         {/* ── Platforms Section ── */}
         <VStack style={{ marginTop: 8, marginBottom: 14 }}>
-          <Text style={styles.platformsSectionTitle}>PLATFORMS aBHI</Text>
+          <Text style={styles.platformsSectionTitle}>PLATFORMS</Text>
 
           {/* Platform Pills / Tab Selector */}
           {groupedPlatforms.length > 0 && (
@@ -1047,13 +1117,66 @@ export default function PostDetailsScreen() {
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  header: {
-    backgroundColor: '#0052d4',
+  headerGradient: {
+    paddingBottom: 4,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  backBtn: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+  headerGlowCircle1: {
+    position: 'absolute',
+    top: -40,
+    right: -30,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerGlowCircle2: {
+    position: 'absolute',
+    bottom: -20,
+    left: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  headerTitle: {
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: 22,
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    marginTop: 1,
+    fontWeight: '400',
+  },
+  headerBtn: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  headerBackBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  headerBackText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  headerBtnGradient: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollContent: {
     padding: 16,
