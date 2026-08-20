@@ -180,7 +180,7 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
         <HStack style={styles.cardHeaderRow}>
           <HStack space="xs" style={{ alignItems: 'center' }}>
             <Feather name="link" size={16} color="#0b53f8" />
-            <Text style={styles.cardTitle}>Social Media Profile Links</Text>
+            <Text style={styles.cardTitle}>Social Media Links</Text>
           </HStack>
           <TouchableOpacity onPress={() => onEdit(3)} style={styles.editBtn}>
             <Feather name="edit-2" size={13} color="#0b53f8" style={{ marginRight: 4 }} />

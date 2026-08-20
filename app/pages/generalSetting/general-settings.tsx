@@ -24,11 +24,9 @@ import {
   deleteLogo,
   GeneralSettings,
 } from './general-settings.api';
-import { useAuth } from '@/context/AuthContext';
 import { useFocusEffect } from 'expo-router';
 
 export default function GeneralAccessScreen() {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [companyName, setCompanyName] = useState('');
@@ -290,7 +288,7 @@ export default function GeneralAccessScreen() {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.tabScrollContent}
-              style={{ marginBottom: 20, maxHeight: 46 }}
+              style={{ marginBottom: 15, maxHeight: 46 }}
             >
               {steps.map((tab) => {
                 const isActive = activeTab === tab.key;
@@ -908,8 +906,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    height: 36,
-    borderRadius: 18,
+    height: 40,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     backgroundColor: '#f8fafc',
@@ -930,7 +928,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 20,
-    padding: 20,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#0f172a',
@@ -964,9 +962,7 @@ const styles = StyleSheet.create({
   cardSubtitle: {
     fontSize: 12,
     color: '#64748b',
-    marginTop: 2,
   },
-
   formStack: {
     gap: 16,
   },

@@ -103,7 +103,7 @@ export default function FeatureDetailsScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-5 pt-14">
+        <Box className="px-5 pb-2 pt-12">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn}>
               <HStack className="items-center space-x-1">
@@ -121,7 +121,7 @@ export default function FeatureDetailsScreen() {
                 })
               }
             >
-              <HStack className="items-center space-x-1">
+              <HStack className="items-center gap-1">
                 <Feather name="edit-2" size={13} color="#1D4ED8" />
                 <Text style={styles.headerEditText}>Edit</Text>
               </HStack>
@@ -131,7 +131,7 @@ export default function FeatureDetailsScreen() {
           <Heading size="xl" style={{ color: '#fff' }}>
             Feature Details
           </Heading>
-          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 18 }}>
             View feature preview, status & configurations
           </Text>
         </Box>
@@ -140,7 +140,7 @@ export default function FeatureDetailsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Card 1: Website Feature Section Preview */}
         <Box style={styles.card}>
-          <HStack className="mb-3 items-center space-x-2">
+          <HStack className="mb-3 items-center gap-2">
             <Feather name="layout" size={16} color="#2563EB" />
             <Text style={styles.cardTitle}>Website Feature Section Preview</Text>
           </HStack>
@@ -220,7 +220,7 @@ export default function FeatureDetailsScreen() {
 
         {/* Card 2: Publishing Info */}
         <Box style={styles.card}>
-          <HStack className="mb-4 items-center space-x-2">
+          <HStack className="mb-4 items-center gap-2">
             <Feather name="globe" size={16} color="#2563EB" />
             <Text style={styles.cardTitle}>Publishing Info</Text>
           </HStack>
@@ -264,7 +264,7 @@ export default function FeatureDetailsScreen() {
 
         {/* Card 3: Settings Info */}
         <Box style={styles.card}>
-          <HStack className="mb-4 items-center space-x-2">
+          <HStack className="mb-4 items-center gap-2">
             <Feather name="sliders" size={16} color="#2563EB" />
             <Text style={styles.cardTitle}>Settings & Overview</Text>
           </HStack>
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

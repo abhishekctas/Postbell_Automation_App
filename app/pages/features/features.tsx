@@ -395,8 +395,8 @@ export default function FeaturesScreen() {
   return (
     <Box className="flex-1 bg-[#fff]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-2 pt-12">
-          <HStack className="mb-3 items-center justify-between">
+        <Box className="px-5 pb-1 pt-11">
+          <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
               <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
               <Text style={styles.addBtnText}>Add Feature</Text>
@@ -407,7 +407,7 @@ export default function FeaturesScreen() {
               <Heading size="xl" style={{ color: '#fff' }}>
                 Features
               </Heading>
-              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 18 }}>
                 Manage features and highlights displayed on frontend portals
               </Text>
             </VStack>
@@ -696,7 +696,11 @@ export default function FeaturesScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingBottom: 4 },
+  header: {
+    paddingBottom: 4,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
   addBtn: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 14,
@@ -717,10 +721,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filterSection: {
-    padding: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   searchBoxContainer: {
     flexDirection: 'row',

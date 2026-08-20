@@ -582,11 +582,11 @@ export default function CustomerSubscriptionsScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-4 pt-14">
+        <Box className="px-5 pb-2 pt-12">
           <Heading size="xl" style={{ color: '#fff' }}>
             Customer Subscriptions
           </Heading>
-          <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, lineHeight: 18 }}>
             Monitor billing states and cancel active subscription plans
           </Text>
         </Box>

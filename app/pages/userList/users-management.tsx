@@ -509,7 +509,7 @@ export default function UsersManagementScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
         <Box className="px-5 pb-2 pt-12">
-          <HStack className="mb-3 items-center justify-between">
+          <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
               <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
               <Text style={styles.addBtnText}>Add User</Text>
@@ -520,7 +520,7 @@ export default function UsersManagementScreen() {
               <Heading size="xl" style={{ color: '#fff' }}>
                 Users
               </Heading>
-              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 18 }}>
                 Manage accounts, assign roles, and system credentials
               </Text>
             </VStack>

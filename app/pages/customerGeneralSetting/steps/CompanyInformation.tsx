@@ -275,15 +275,14 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
   sectionHeading: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#64748b',
-    letterSpacing: 0.8,
+    color: 'black',
   },
   sectionSubtitle: {
     fontSize: 12,
@@ -336,7 +335,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#0b53f8',
     borderRadius: 9,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 5,
   },
   aiGenerateBtnText: {

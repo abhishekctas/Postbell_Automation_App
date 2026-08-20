@@ -170,7 +170,7 @@ export default function CustomerDetailsScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-5 pt-14">
+        <Box className="px-5 pb-2 pt-12">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn}>
               <HStack className="items-center space-x-1">
@@ -183,7 +183,7 @@ export default function CustomerDetailsScreen() {
           <Heading size="xl" style={{ color: '#fff' }}>
             Customer Details
           </Heading>
-          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 16 }}>
             View customer profile, social accounts & usage
           </Text>
         </Box>
@@ -251,7 +251,7 @@ export default function CustomerDetailsScreen() {
 
         {/* Card 2: Social Accounts */}
         <Box style={styles.card}>
-          <HStack className="mb-4 items-center space-x-2">
+          <HStack className="mb-4 items-center gap-2">
             <Feather name="share-2" size={18} color="#2563EB" />
             <Text style={styles.cardTitle}>Social Accounts</Text>
           </HStack>
@@ -340,7 +340,7 @@ export default function CustomerDetailsScreen() {
 
         {/* Card 3: Subscription Usage */}
         <Box style={styles.card}>
-          <HStack className="mb-4 items-center space-x-2">
+          <HStack className="mb-4 items-center gap-2">
             <Feather name="pie-chart" size={18} color="#2563EB" />
             <Text style={styles.cardTitle}>Subscription Usage</Text>
           </HStack>
@@ -354,7 +354,7 @@ export default function CustomerDetailsScreen() {
             <VStack space="sm">
               {/* Metric 1: Plan */}
               <Box style={styles.metricCard}>
-                <HStack className="items-center space-x-3">
+                <HStack className="items-center gap-3">
                   <Box style={[styles.metricIconBox, { backgroundColor: '#e0e7ff' }]}>
                     <Feather name="credit-card" size={18} color="#4338ca" />
                   </Box>
@@ -369,7 +369,7 @@ export default function CustomerDetailsScreen() {
 
               {/* Metric 2: Posts Today */}
               <Box style={styles.metricCard}>
-                <HStack className="items-center space-x-3">
+                <HStack className="items-center gap-3">
                   <Box style={[styles.metricIconBox, { backgroundColor: '#dcfce7' }]}>
                     <Feather name="calendar" size={18} color="#15803d" />
                   </Box>
@@ -385,7 +385,7 @@ export default function CustomerDetailsScreen() {
 
               {/* Metric 3: Posts This Month */}
               <Box style={styles.metricCard}>
-                <HStack className="items-center space-x-3">
+                <HStack className="items-center gap-3">
                   <Box style={[styles.metricIconBox, { backgroundColor: '#fef3c7' }]}>
                     <Feather name="clock" size={18} color="#b45309" />
                   </Box>
@@ -401,7 +401,7 @@ export default function CustomerDetailsScreen() {
 
               {/* Metric 4: AI Usage Today */}
               <Box style={styles.metricCard}>
-                <HStack className="items-center space-x-3">
+                <HStack className="items-center gap-3">
                   <Box style={[styles.metricIconBox, { backgroundColor: '#fce7f3' }]}>
                     <Feather name="zap" size={18} color="#be185d" />
                   </Box>
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 16,
+    padding: 12,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

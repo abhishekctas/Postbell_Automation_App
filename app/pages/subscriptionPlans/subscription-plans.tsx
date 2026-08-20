@@ -43,8 +43,6 @@ import {
   AlignLeft,
   X,
   SlidersHorizontal,
-  ChevronLeft,
-  ChevronRight,
   FileClock,
   ChevronDown,
   Check,
@@ -789,7 +787,7 @@ export default function SubscriptionPlansScreen() {
   return (
     <Box className="flex-1 bg-[#f8fafc]">
       <LinearGradient colors={['#0d53fc', '#1d68f6']} style={styles.header}>
-        <Box className="px-5 pb-3 pt-6">
+        <Box className="px-5 pb-2 pt-6">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity style={styles.addBtn} onPress={handleOpenAdd}>
               <Plus size={14} color="#ffffff" style={{ marginRight: 4 }} />
@@ -804,7 +802,7 @@ export default function SubscriptionPlansScreen() {
               >
                 Subscription Plans
               </Heading>
-              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, lineHeight: 18 }}>
                 Manage service packages, pricing structures, and utility caps
               </Text>
             </VStack>
@@ -1006,7 +1004,7 @@ export default function SubscriptionPlansScreen() {
                   >
                     {editingPlan ? 'Edit Plan' : 'Add Plan'}
                   </Heading>
-                  <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+                  <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, lineHeight: 18 }}>
                     {editingPlan
                       ? 'Update your subscription plan details and preferences'
                       : 'Create a new subscription plan with specific rules'}
@@ -1686,7 +1684,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingTop: 12,
     marginTop: -20,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: -4 },
@@ -1725,7 +1723,7 @@ const styles = StyleSheet.create({
     maxHeight: '85%',
     backgroundColor: '#ffffff',
     borderRadius: 20,
-    padding: 20,
+    padding: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,

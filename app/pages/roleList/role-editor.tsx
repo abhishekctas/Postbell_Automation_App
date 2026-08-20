@@ -268,7 +268,7 @@ export default function RoleEditorScreen() {
           <Heading size="xl" style={{ color: '#fff' }}>
             {isEditMode ? 'Edit Role' : 'Create Role'}
           </Heading>
-          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 18 }}>
             Configure role details and module section permissions
           </Text>
         </Box>
@@ -281,7 +281,7 @@ export default function RoleEditorScreen() {
       >
         {/* Card 1: Role Basic Details */}
         <Box style={styles.card}>
-          <HStack className="mb-4 items-center space-x-2">
+          <HStack className="mb-4 items-center gap-2">
             <Feather name="shield" size={18} color="#2563EB" />
             <Text style={styles.cardTitle}>Role Details</Text>
           </HStack>
@@ -337,7 +337,7 @@ export default function RoleEditorScreen() {
         {/* Card 2: Section Permissions Matrix */}
         <Box style={styles.card}>
           <HStack className="mb-4 items-center justify-between">
-            <HStack className="items-center space-x-2">
+            <HStack className="items-center gap-2">
               <Feather name="lock" size={18} color="#2563EB" />
               <Text style={styles.cardTitle}>Section Permissions</Text>
             </HStack>
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

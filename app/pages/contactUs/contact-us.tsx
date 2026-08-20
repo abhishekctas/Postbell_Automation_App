@@ -660,8 +660,8 @@ export default function ContactUsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { height: 200, overflow: 'hidden', paddingBottom: 4 },
-  headerContent: { flex: 1, paddingHorizontal: 22, paddingTop: 58 },
+  header: { height: 185, overflow: 'hidden', paddingBottom: 0 },
+  headerContent: { flex: 1, paddingHorizontal: 22, paddingTop: 48, paddingBottom: 0 },
   headerGlow: {
     position: 'absolute',
     right: -50,
@@ -670,11 +670,12 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 110,
     backgroundColor: 'rgba(255,255,255,0.08)',
+    padding: 0,
   },
   backIcon: { color: '#fff', fontSize: 20, marginRight: 8, fontWeight: '600' },
   backBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  headerTitle: { color: '#fff', fontSize: 28, fontWeight: '700', marginBottom: 10 },
-  headerSubtitle: { color: 'rgba(255,255,255,0.88)', fontSize: 17, lineHeight: 24 },
+  headerTitle: { color: '#fff', fontSize: 28, fontWeight: '700', marginBottom: 9 },
+  headerSubtitle: { color: 'rgba(255,255,255,0.88)', fontSize: 16, lineHeight: 22 },
   iconContainer: {
     width: 100,
     height: 100,

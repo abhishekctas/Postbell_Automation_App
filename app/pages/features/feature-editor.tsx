@@ -417,7 +417,7 @@ export default function FeatureEditorScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header */}
       <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.header}>
-        <Box className="px-5 pb-5 pt-14">
+        <Box className="px-5 pb-2 pt-12">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
               <HStack className="items-center space-x-1">
@@ -437,7 +437,7 @@ export default function FeatureEditorScreen() {
           <Heading size="xl" style={{ color: '#fff' }}>
             {isEditMode ? 'Edit Feature' : 'Create Feature'}
           </Heading>
-          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, lineHeight: 18 }}>
             Manage feature content, media & publications
           </Text>
         </Box>
@@ -451,7 +451,7 @@ export default function FeatureEditorScreen() {
       >
         {/* Section 1: Basic Info */}
         <Box style={styles.sectionCard}>
-          <HStack className="mb-4 items-center space-x-2">
+          <HStack className="mb-4 items-center gap-2">
             <Feather name="info" size={18} color="#2563EB" />
             <Text style={styles.sectionTitle}>Basic Info</Text>
           </HStack>
@@ -525,7 +525,7 @@ export default function FeatureEditorScreen() {
 
         {/* Section 2: Media */}
         <Box style={styles.sectionCard}>
-          <HStack className="mb-4 items-center space-x-2">
+          <HStack className="mb-4 items-center gap-2">
             <Feather name="image" size={18} color="#2563EB" />
             <Text style={styles.sectionTitle}>Media Content *</Text>
           </HStack>
@@ -643,7 +643,7 @@ export default function FeatureEditorScreen() {
 
         {/* Section 3: Publish Settings */}
         <Box style={styles.sectionCard}>
-          <HStack className="mb-4 items-center space-x-2">
+          <HStack className="mb-4 items-center gap-2">
             <Feather name="settings" size={18} color="#2563EB" />
             <Text style={styles.sectionTitle}>Publish Settings</Text>
           </HStack>
@@ -699,7 +699,7 @@ export default function FeatureEditorScreen() {
         {/* Section 4: Feature Points */}
         <Box style={styles.sectionCard}>
           <HStack className="mb-4 items-center justify-between">
-            <HStack className="items-center space-x-2">
+            <HStack className="items-center gap-2">
               <Feather name="list" size={18} color="#2563EB" />
               <Text style={styles.sectionTitle}>Feature Points</Text>
               <Box style={styles.countBadge}>
@@ -719,7 +719,7 @@ export default function FeatureEditorScreen() {
             {featurePoints.map((point, index) => (
               <Box key={index} style={styles.pointCard}>
                 <HStack className="mb-3 items-center justify-between">
-                  <HStack className="items-center space-x-2">
+                  <HStack className="items-center gap-2">
                     <Box style={styles.pointIndexCircle}>
                       <Text style={styles.pointIndexText}>{index + 1}</Text>
                     </Box>
@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
   sectionCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -869,7 +869,7 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 9,
     fontSize: 14,
     color: '#0f172a',
     backgroundColor: '#f8fafc',
@@ -913,12 +913,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   noticeTitle: { fontSize: 12, fontWeight: '700', color: '#b45309', marginBottom: 4 },
-  noticeItem: { fontSize: 11, color: '#92400e', marginTop: 2 },
+  noticeItem: { fontSize: 11, color: '#92400e' },
   statusToggle: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 6,
     borderRadius: 10,
     backgroundColor: '#f1f5f9',
     borderWidth: 1.5,
@@ -947,7 +947,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#eff6ff',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#bfdbfe',
