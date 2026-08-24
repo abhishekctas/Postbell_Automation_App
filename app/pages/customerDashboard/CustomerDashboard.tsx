@@ -89,6 +89,30 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function TimelineImage({ imageUrl }: { imageUrl?: string }) {
+  const [imageError, setImageError] = useState(false);
+
+  if (!imageUrl || imageError) {
+    return (
+      <View style={[styles.postImageWrapper, styles.noImageWrapper]}>
+        <Feather name="image" size={24} color="#94a3b8" />
+        <Text style={styles.noImageText}>No Image</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.postImageWrapper}>
+      <Image
+        source={{ uri: imageUrl }}
+        style={styles.postImage}
+        resizeMode="cover"
+        onError={() => setImageError(true)}
+      />
+    </View>
+  );
+}
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
@@ -259,6 +283,7 @@ export default function CustomerDashboard() {
   const [dashboardData, setDashboardData] = useState<CustomerDashboardSummary | null>(null);
   const [analyticsData, setAnalyticsData] = useState<CustomerAnalytics | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [expandedHashtags, setExpandedHashtags] = useState<Record<string, boolean>>({});
 
   const fetchDashboardData = useCallback(async () => {
     if (!userId) {
@@ -554,9 +579,6 @@ export default function CustomerDashboard() {
               </View>
               <VStack>
                 <Heading style={styles.sectionTitle}>Social Media Connections</Heading>
-                <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '500' }}>
-                  {totalConnectedCount} connected accounts
-                </Text>
               </VStack>
             </HStack>
           </HStack>
@@ -594,36 +616,10 @@ export default function CustomerDashboard() {
                             {meta.name}
                           </Text>
                           <Text style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
-                            {plat.connectedAccounts} / {plat.totalAccounts || 1} connected
+                            {plat.connectedAccounts} / {plat.totalAccounts} connected
                           </Text>
                         </VStack>
                       </HStack>
-
-                      <Box
-                        style={[
-                          styles.connPill,
-                          {
-                            backgroundColor: isConnected ? '#dcfce7' : '#f1f5f9',
-                            borderColor: isConnected ? '#bbf7d0' : '#e2e8f0',
-                          },
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.connDot,
-                            { backgroundColor: isConnected ? '#16a34a' : '#94a3b8' },
-                          ]}
-                        />
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: '700',
-                            color: isConnected ? '#15803d' : '#64748b',
-                          }}
-                        >
-                          {isConnected ? 'Connected' : 'Disconnected'}
-                        </Text>
-                      </Box>
                     </HStack>
 
                     {/* Sub Accounts (if any) */}
@@ -646,7 +642,7 @@ export default function CustomerDashboard() {
                               style={[
                                 styles.subAccountRow,
                                 {
-                                  backgroundColor: accConnected ? '#f0fdf4' : '#f8fafc',
+                                  // backgroundColor: accConnected ? '#f0fdf4' : '#f8fafc',
                                   borderColor: accConnected ? '#bbf7d0' : '#e2e8f0',
                                 },
                               ]}
@@ -790,45 +786,58 @@ export default function CustomerDashboard() {
                           </HStack>
 
                           {/* Hashtags */}
-                          {Array.isArray(item.hashtags) && item.hashtags.length > 0 && (
-                            <HStack space="xs" style={{ marginTop: 8, flexWrap: 'wrap' }}>
-                              {item.hashtags.slice(0, 3).map((tag, tagIdx) => (
-                                <View key={tagIdx} style={styles.hashtagBadge}>
-                                  <Text style={styles.hashtagText}>
-                                    {tag.startsWith('#') ? tag : `#${tag}`}
-                                  </Text>
-                                </View>
-                              ))}
-                              {item.hashtags.length > 3 && (
-                                <Text
-                                  style={{
-                                    fontSize: 10,
-                                    color: '#94a3b8',
-                                    alignSelf: 'center',
-                                    marginLeft: 2,
-                                  }}
-                                >
-                                  +{item.hashtags.length - 3}
-                                </Text>
-                              )}
-                            </HStack>
-                          )}
+                          {Array.isArray(item.hashtags) &&
+                            item.hashtags.length > 0 &&
+                            (() => {
+                              const itemId = item.id || `activity-${idx}`;
+                              const isExpanded = !!expandedHashtags[itemId];
+                              const displayedHashtags = isExpanded
+                                ? item.hashtags
+                                : item.hashtags.slice(0, 3);
+                              const remainingCount = item.hashtags.length - 3;
+
+                              return (
+                                <HStack space="xs" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                                  {displayedHashtags.map((tag, tagIdx) => (
+                                    <View key={tagIdx} style={styles.hashtagBadge}>
+                                      <Text style={styles.hashtagText}>
+                                        {tag.startsWith('#') ? tag : `#${tag}`}
+                                      </Text>
+                                    </View>
+                                  ))}
+                                  {item.hashtags.length > 3 && (
+                                    <TouchableOpacity
+                                      onPress={() =>
+                                        setExpandedHashtags((prev) => ({
+                                          ...prev,
+                                          [itemId]: !prev[itemId],
+                                        }))
+                                      }
+                                      activeOpacity={0.7}
+                                      style={{ alignSelf: 'center', marginLeft: 2 }}
+                                    >
+                                      <Text
+                                        style={{
+                                          fontSize: 13,
+                                          color: '#94a3b8',
+                                          fontWeight: '600',
+                                        }}
+                                      >
+                                        {isExpanded ? 'Less' : `+${remainingCount} more`}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  )}
+                                </HStack>
+                              );
+                            })()}
                         </VStack>
                       </HStack>
 
                       <StatusBadge status={item.status || 'published'} />
                     </HStack>
 
-                    {/* Image Preview if available */}
-                    {previewImg && (
-                      <View style={styles.postImageWrapper}>
-                        <Image
-                          source={{ uri: previewImg }}
-                          style={styles.postImage}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    )}
+                    {/* Image Preview / No Image fallback */}
+                    <TimelineImage imageUrl={previewImg} />
                   </View>
                 );
               })}
@@ -1209,6 +1218,19 @@ const styles = StyleSheet.create({
   postImage: {
     width: '100%',
     height: '100%',
+  },
+  noImageWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+  },
+  noImageText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94a3b8',
+    marginTop: 4,
   },
 
   badge: {

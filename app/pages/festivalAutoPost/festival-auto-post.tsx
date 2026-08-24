@@ -86,6 +86,7 @@ function FestivalPostCard({
   onViewImage: () => void;
 }) {
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const catToken = getCategoryToken(post.category, post.name);
   const catColors = tokenColor(catToken);
   const eventColors = getEventColor(post.category, post.name);
@@ -137,13 +138,19 @@ function FestivalPostCard({
       {/* Post Image — 4:5 ratio */}
       <TouchableOpacity activeOpacity={0.95} onPress={onViewImage}>
         <Box style={styles.igImageWrap}>
-          {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.igImage} resizeMode="cover" />
+          {imageUrl && !imageError ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.igImage}
+              resizeMode="cover"
+              onError={() => setImageError(true)}
+            />
           ) : (
-            <Box style={styles.igImagePlaceholder}>
-              <Feather name="image" size={36} color="#94a3b8" />
-              <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>No Image</Text>
-            </Box>
+            <Image
+              source={require('@/assets/images/360_image.jpg')}
+              style={styles.igImage}
+              resizeMode="cover"
+            />
           )}
         </Box>
       </TouchableOpacity>
@@ -185,19 +192,6 @@ function FestivalPostCard({
 
       {/* Chips row: Status + Category + Scheduled/AI Auto + Date */}
       <HStack style={styles.igChipRow} className="flex-wrap items-center">
-        <Box
-          style={[
-            styles.statusChip,
-            {
-              backgroundColor: isSelected ? 'rgba(22, 163, 74, 0.1)' : '#f1f5f9',
-            },
-          ]}
-        >
-          <Text style={[styles.statusChipText, { color: isSelected ? '#16a34a' : '#94a3b8' }]}>
-            {isSelected ? 'Active' : 'Deactive'}
-          </Text>
-        </Box>
-
         <Box style={[styles.statusChip, { backgroundColor: catColors.bg }]}>
           <Text style={[styles.statusChipText, { color: catColors.main }]}>
             {post.category || 'General'}
@@ -226,7 +220,6 @@ function FestivalPostCard({
         {post.caption ? (
           <Box style={{ marginBottom: 4 }}>
             <Text style={styles.igCaption} numberOfLines={expandedCaption ? undefined : 2}>
-              <Text style={styles.igCaptionName}>{post.name} </Text>
               {post.caption}
             </Text>
             {!expandedCaption && (post.caption.length || 0) > 80 && (
@@ -616,6 +609,12 @@ export default function FestivalAutoPostScreen() {
     setTouched((prev) => ({ ...prev, hashtags: true }));
   };
 
+  const handleRemoveImage = () => {
+    setLocalImageUri(null);
+    setImageUrl('');
+    setTouched((prev) => ({ ...prev, image: true }));
+  };
+
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -640,30 +639,70 @@ export default function FestivalAutoPostScreen() {
 
   const handleGenerateAI = async (provider: 'gemini' | 'openai') => {
     if (!name.trim() || !category.trim()) {
-      Alert.alert('Validation Error', 'Festival name and category are required for AI generation.');
+      Alert.alert(
+        'Validation Required',
+        'Please fill in both Festival Name and Category before generating AI content.'
+      );
       return;
     }
+
     setGeneratingType(provider);
     try {
       const prompt = `Generate a festival post for ${name.trim()} (${category.trim()})`;
+      const referenceImage = localImageUri || imageUrl || undefined;
+
       const res = await generateFestivalPostAI(provider, {
         prompt,
-        referenceImageUri: localImageUri || undefined,
+        referenceImageUri: referenceImage,
       });
-      const aiPost = res?.data?.posts?.[0];
-      if (aiPost) {
-        if (aiPost.caption) setCaption(aiPost.caption);
-        if (aiPost.hashtags) {
-          setHashtags((aiPost.hashtags || []).map((tag: string) => tag.replace(/^#/, '').trim()));
+
+      const posts = res?.data?.posts;
+      const aiPost =
+        Array.isArray(posts) && posts.length > 0
+          ? posts[0]
+          : Array.isArray(res?.data)
+            ? res.data[0]
+            : res?.data;
+
+      if (res?.success && aiPost) {
+        if (aiPost.caption) {
+          setCaption(aiPost.caption.trim());
         }
-        const aiImage = aiPost.image_url || aiPost.image;
+
+        if (aiPost.hashtags) {
+          const rawTags = Array.isArray(aiPost.hashtags)
+            ? aiPost.hashtags
+            : typeof aiPost.hashtags === 'string'
+              ? aiPost.hashtags.split(',')
+              : [];
+          setHashtags(rawTags.map((tag: string) => tag.replace(/^#/, '').trim()).filter(Boolean));
+        }
+
+        const aiImage = aiPost.image_url || aiPost.image || aiPost.imageUrl;
         if (aiImage) {
           setImageUrl(aiImage);
           setLocalImageUri(null);
         }
+
+        setTouched((prev) => ({
+          ...prev,
+          caption: true,
+          hashtags: true,
+          image: true,
+        }));
+      } else {
+        Alert.alert(
+          'AI Generation',
+          res?.message || 'No post content was returned by AI. Please try again.'
+        );
       }
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'AI generation failed.');
+      console.error('AI Generation Error:', e);
+      Alert.alert(
+        'AI Generation Failed',
+        e?.message ||
+          'Failed to generate festival post content via AI. Please check your network or try again.'
+      );
     } finally {
       setGeneratingType(null);
     }
@@ -774,7 +813,7 @@ export default function FestivalAutoPostScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Top Header */}
       <LinearGradient
-        colors={['#1e3a8a', '#2563eb', '#3b82f6']}
+        colors={['#0b53f8', '#084ad3', '#063bb3']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
@@ -1155,13 +1194,22 @@ export default function FestivalAutoPostScreen() {
           activeOpacity={1}
           onPress={() => setImageViewer({ open: false, src: '', alt: '' })}
         >
-          {imageViewer.src ? (
-            <Image
-              source={{ uri: imageViewer.src }}
-              style={styles.imageViewerImg}
-              resizeMode="contain"
-            />
-          ) : null}
+          <Box style={styles.imageViewerContentBox}>
+            <TouchableOpacity
+              style={styles.imageViewerCloseBtn}
+              onPress={() => setImageViewer({ open: false, src: '', alt: '' })}
+              activeOpacity={0.7}
+            >
+              <Feather name="x" size={20} color="#ffffff" />
+            </TouchableOpacity>
+            {imageViewer.src ? (
+              <Image
+                source={{ uri: imageViewer.src }}
+                style={styles.imageViewerImg}
+                resizeMode="contain"
+              />
+            ) : null}
+          </Box>
         </TouchableOpacity>
       </Modal>
 
@@ -1380,22 +1428,33 @@ export default function FestivalAutoPostScreen() {
                   )}
 
                   {previewImageUri && (
-                    <TouchableOpacity
-                      style={styles.imagePreviewWrap}
-                      onPress={() =>
-                        setImageViewer({
-                          open: true,
-                          src: previewImageUri,
-                          alt: name || 'Preview',
-                        })
-                      }
-                    >
-                      <Image
-                        source={{ uri: previewImageUri }}
-                        style={styles.imagePreview}
-                        resizeMode="contain"
-                      />
-                    </TouchableOpacity>
+                    <Box style={styles.imagePreviewWrap}>
+                      <TouchableOpacity
+                        style={styles.removeImageBtn}
+                        onPress={handleRemoveImage}
+                        activeOpacity={0.8}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Feather name="trash-2" size={15} color="#ffffff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        style={{ width: '100%' }}
+                        onPress={() =>
+                          setImageViewer({
+                            open: true,
+                            src: previewImageUri,
+                            alt: name || 'Preview',
+                          })
+                        }
+                      >
+                        <Image
+                          source={{ uri: previewImageUri }}
+                          style={styles.imagePreview}
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+                    </Box>
                   )}
                 </Box>
 
@@ -1497,7 +1556,6 @@ export default function FestivalAutoPostScreen() {
                       </Text>
                     </Box>
                   </VStack>
-                  <Switch value={autoGenerate} onValueChange={setAutoGenerate} />
                 </Box>
               </VStack>
             </ScrollView>
@@ -1779,9 +1837,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: '#0f172a',
   },
-  igCaptionName: {
-    fontWeight: '700',
-  },
   igMoreText: {
     fontSize: 12,
     color: '#64748b',
@@ -1956,14 +2011,45 @@ const styles = StyleSheet.create({
   },
   imageViewerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: 16,
+  },
+  imageViewerContentBox: {
+    position: 'relative',
+    width: '100%',
+    maxHeight: '100%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  imageViewerCloseBtn: {
+    position: 'absolute',
+    top: -12,
+    right: -12,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
   },
   imageViewerImg: {
     width: '100%',
-    height: '80%',
+    height: '100%',
+    borderRadius: 8,
   },
   modalOverlay: {
     flex: 1,
@@ -2096,7 +2182,7 @@ const styles = StyleSheet.create({
   imageSection: {
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#e2e8f0',
+    borderColor: '#d2dce8ff',
     borderRadius: 12,
     padding: 12,
   },
@@ -2144,6 +2230,24 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 8,
     alignItems: 'center',
+    position: 'relative',
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#dc2626',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   imagePreview: {
     width: '100%',

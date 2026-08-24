@@ -107,6 +107,7 @@ export default function PostEditorScreen() {
 
   // Platforms & Accounts Selection Modal State
   const [networksModalOpen, setNetworksModalOpen] = useState(false);
+  const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
 
   // AI Marketing Image & Reference Media Analysis State
   const [aiMarketingGenerating, setAiMarketingGenerating] = useState(false);
@@ -142,6 +143,8 @@ export default function PostEditorScreen() {
 
   // Validation Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [previewImgErrors, setPreviewImgErrors] = useState<Record<string, boolean>>({});
+  const [genImgError, setGenImgError] = useState(false);
 
   // Fetch Post Details for Edit Mode & Fetch Social Accounts
   useEffect(() => {
@@ -257,11 +260,11 @@ export default function PostEditorScreen() {
   }, [id]);
 
   // Image Picker for General Content
-  const pickImage = async () => {
+  const pickImage = async (withCrop: boolean = false) => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: withCrop,
         quality: 0.8,
       });
 
@@ -297,11 +300,11 @@ export default function PostEditorScreen() {
   };
 
   // Platform-Specific Image Picker
-  const pickPlatformImage = async (platformKey: string) => {
+  const pickPlatformImage = async (platformKey: string, withCrop: boolean = false) => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: withCrop,
         quality: 0.8,
       });
 
@@ -340,7 +343,7 @@ export default function PostEditorScreen() {
   };
 
   // Camera Image Capture for General Content
-  const takeImage = async () => {
+  const takeImage = async (withCrop: boolean = false) => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
@@ -352,7 +355,7 @@ export default function PostEditorScreen() {
       }
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: withCrop,
         quality: 0.8,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -382,7 +385,7 @@ export default function PostEditorScreen() {
   };
 
   // Camera Image Capture for Platform-Specific
-  const takePlatformImage = async (platformKey: string) => {
+  const takePlatformImage = async (platformKey: string, withCrop: boolean = false) => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
@@ -394,7 +397,7 @@ export default function PostEditorScreen() {
       }
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: withCrop,
         quality: 0.8,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -434,8 +437,8 @@ export default function PostEditorScreen() {
   // Image Source Picker for General Content
   const showGeneralImagePicker = () => {
     Alert.alert('Select Image Source', 'Choose an option', [
-      { text: 'Gallery', onPress: () => pickImage() },
-      { text: 'Camera', onPress: () => takeImage() },
+      { text: 'Gallery', onPress: () => pickImage(false) },
+      { text: 'Camera', onPress: () => takeImage(false) },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -443,8 +446,8 @@ export default function PostEditorScreen() {
   // Image Source Picker for Platform-Specific
   const showPlatformImagePicker = (platformKey: string) => {
     Alert.alert('Select Image Source', 'Choose an option', [
-      { text: 'Gallery', onPress: () => pickPlatformImage(platformKey) },
-      { text: 'Camera', onPress: () => takePlatformImage(platformKey) },
+      { text: 'Gallery', onPress: () => pickPlatformImage(platformKey, false) },
+      { text: 'Camera', onPress: () => takePlatformImage(platformKey, false) },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -509,6 +512,42 @@ export default function PostEditorScreen() {
     } catch {
       Alert.alert('Error', 'Failed to pick reference image from gallery.');
     }
+  };
+
+  // Reference Image Camera Capture Handler
+  const takeReferenceImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Camera permission is needed to take photos. Please enable it in settings.'
+        );
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setReferenceImageUri(uri);
+        setAiRefImage(uri);
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to capture reference image from camera.');
+    }
+  };
+
+  // Image Source Picker for Reference Image (Gallery / Camera)
+  const showReferenceImagePicker = () => {
+    Alert.alert('Select Reference Image Source', 'Choose an option', [
+      { text: 'Gallery', onPress: () => pickReferenceImage() },
+      { text: 'Camera', onPress: () => takeReferenceImage() },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   // AI Marketing Image from Reference Handler
@@ -969,7 +1008,7 @@ export default function PostEditorScreen() {
                     </TouchableOpacity>
                   </Box>
                 ) : (
-                  <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
+                  <TouchableOpacity style={styles.uploadBox} onPress={showReferenceImagePicker}>
                     <Feather name="image" size={24} color="#0052d4" />
                     <Text style={styles.uploadText}>Attach Reference Image</Text>
                   </TouchableOpacity>
@@ -1143,14 +1182,22 @@ export default function PostEditorScreen() {
                     styles.uploadBox,
                     { borderStyle: 'dashed', marginTop: 12, backgroundColor: '#f8fafc' },
                   ]}
-                  onPress={pickReferenceImage}
+                  onPress={showReferenceImagePicker}
                 >
-                  <Feather name="upload" size={24} color="#2563eb" />
-                  <Text style={[styles.uploadText, { color: '#2563eb', fontWeight: '700' }]}>
-                    Upload Reference Image
+                  <HStack space="xs" className="items-center justify-center">
+                    <Feather name="upload" size={22} color="#2563eb" />
+                    <Feather name="camera" size={22} color="#2563eb" style={{ marginLeft: 8 }} />
+                  </HStack>
+                  <Text
+                    style={[
+                      styles.uploadText,
+                      { color: '#2563eb', fontWeight: '700', marginTop: 4 },
+                    ]}
+                  >
+                    Upload or Take Reference Image
                   </Text>
                   <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                    Select image to generate AI marketing poster
+                    Select image from Gallery or capture with Camera
                   </Text>
                 </TouchableOpacity>
               ) : (
@@ -1390,21 +1437,35 @@ export default function PostEditorScreen() {
                 <Text style={styles.inputLabel}>Image Uploader *</Text>
                 {imageUrl ? (
                   <Box style={styles.imagePreviewBox}>
-                    <Image
-                      source={{ uri: imageUrl }}
-                      style={styles.uploadedImage}
-                      resizeMode="cover"
-                    />
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={() => setModalImageUrl(imageUrl)}
+                    >
+                      <Image
+                        source={
+                          genImgError ? require('@/assets/images/360_image.jpg') : { uri: imageUrl }
+                        }
+                        style={styles.uploadedImage}
+                        resizeMode="cover"
+                        onError={() => setGenImgError(true)}
+                      />
+                    </TouchableOpacity>
                     <HStack space="xs" style={styles.imageActionOverlay}>
                       <TouchableOpacity
                         style={styles.imgActionBtn}
-                        onPress={showGeneralImagePicker}
+                        onPress={() => pickImage(true)}
+                        disabled={uploadingImage}
                       >
-                        <Feather name="refresh-cw" size={14} color="#fff" />
+                        {uploadingImage ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Feather name="crop" size={14} color="#fff" />
+                        )}
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.imgActionBtn, { backgroundColor: '#dc2626' }]}
                         onPress={() => setImageUrl('')}
+                        disabled={uploadingImage}
                       >
                         <Feather name="trash-2" size={14} color="#fff" />
                       </TouchableOpacity>
@@ -1567,7 +1628,7 @@ export default function PostEditorScreen() {
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.subTabList}
-                  style={{ marginTop: 10 }}
+                  style={{ marginTop: 6 }}
                 >
                   {selectedPlatforms.map((p) => (
                     <TouchableOpacity
@@ -1607,7 +1668,7 @@ export default function PostEditorScreen() {
                     currentOverride.contentType || contentTypeOverrides[targetPlatform] || 'media';
 
                   return (
-                    <VStack space="sm" style={{ marginTop: 12 }}>
+                    <VStack space="sm" style={{ marginTop: 6 }}>
                       {/* Content Type Selector */}
                       <VStack space="xs">
                         <Text style={styles.inputLabel}>
@@ -1793,24 +1854,30 @@ export default function PostEditorScreen() {
                               : imageUrl;
                           const isUploading = Boolean(uploadingPlatformImage[targetPlatform]);
 
+                          // Show actual image if available, otherwise show 360 fallback image
+                          const imageSource = displayPlatformImg
+                            ? { uri: displayPlatformImg }
+                            : require('@/assets/images/360_image.jpg');
+
                           if (displayPlatformImg) {
                             return (
                               <Box style={styles.imagePreviewBox}>
                                 <Image
-                                  source={{ uri: displayPlatformImg }}
+                                  source={imageSource}
                                   style={styles.uploadedImage}
                                   resizeMode="cover"
                                 />
+
                                 <HStack space="xs" style={styles.imageActionOverlay}>
                                   <TouchableOpacity
                                     style={styles.imgActionBtn}
-                                    onPress={() => showPlatformImagePicker(targetPlatform)}
+                                    onPress={() => pickPlatformImage(targetPlatform, true)}
                                     disabled={isUploading}
                                   >
                                     {isUploading ? (
                                       <ActivityIndicator size="small" color="#fff" />
                                     ) : (
-                                      <Feather name="refresh-cw" size={14} color="#fff" />
+                                      <Feather name="crop" size={14} color="#fff" />
                                     )}
                                   </TouchableOpacity>
                                   <TouchableOpacity
@@ -1824,6 +1891,7 @@ export default function PostEditorScreen() {
                                         },
                                       }));
                                     }}
+                                    disabled={isUploading}
                                   >
                                     <Feather name="trash-2" size={14} color="#fff" />
                                   </TouchableOpacity>
@@ -2244,7 +2312,7 @@ export default function PostEditorScreen() {
                             ) : null}
 
                             {/* Media Image (Panel lines 5618-5642) */}
-                            {acctMediaUrl ? (
+                            {acctMediaUrl && !previewImgErrors[accountId] ? (
                               <Box
                                 style={{
                                   borderRadius: 8,
@@ -2257,26 +2325,25 @@ export default function PostEditorScreen() {
                                   source={{ uri: acctMediaUrl }}
                                   style={styles.mockPostImage}
                                   resizeMode="cover"
+                                  onError={() =>
+                                    setPreviewImgErrors((prev) => ({ ...prev, [accountId]: true }))
+                                  }
                                 />
                               </Box>
                             ) : (
                               <Box
                                 style={{
-                                  height: 120,
                                   borderRadius: 8,
-                                  backgroundColor: '#f8fafc',
-                                  borderWidth: 1,
-                                  borderColor: '#e2e8f0',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
+                                  overflow: 'hidden',
                                   marginBottom: 8,
                                   marginTop: 2,
                                 }}
                               >
-                                <Feather name="image" size={26} color="#cbd5e1" />
-                                <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                                  No image attached
-                                </Text>
+                                <Image
+                                  source={require('@/assets/images/360_image.jpg')}
+                                  style={styles.mockPostImage}
+                                  resizeMode="cover"
+                                />
                               </Box>
                             )}
 
@@ -2539,6 +2606,37 @@ export default function PostEditorScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Image Viewer Modal */}
+      <Modal
+        visible={!!modalImageUrl}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalImageUrl(null)}
+      >
+        <TouchableOpacity
+          style={styles.imageViewerOverlay}
+          activeOpacity={1}
+          onPress={() => setModalImageUrl(null)}
+        >
+          <Box style={styles.imageViewerContentBox}>
+            <TouchableOpacity
+              style={styles.imageViewerCloseBtn}
+              onPress={() => setModalImageUrl(null)}
+              activeOpacity={0.7}
+            >
+              <Feather name="x" size={20} color="#ffffff" />
+            </TouchableOpacity>
+            {modalImageUrl ? (
+              <Image
+                source={{ uri: modalImageUrl }}
+                style={styles.imageViewerImg}
+                resizeMode="contain"
+              />
+            ) : null}
+          </Box>
+        </TouchableOpacity>
+      </Modal>
     </Box>
   );
 }
@@ -2665,6 +2763,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     marginTop: 2,
+    lineHeight: 18,
   },
   inputLabel: {
     fontSize: 12,
@@ -2749,7 +2848,7 @@ const styles = StyleSheet.create({
   },
   uploadedImage: {
     width: '100%',
-    height: 180,
+    height: 220,
     borderRadius: 12,
   },
   removeImgBtn: {
@@ -2907,7 +3006,7 @@ const styles = StyleSheet.create({
   },
   mockPostImage: {
     width: '100%',
-    height: 160,
+    height: 200,
     borderRadius: 8,
   },
   mockImagePlaceholder: {
@@ -2953,5 +3052,47 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  imageViewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  imageViewerContentBox: {
+    position: 'relative',
+    width: '100%',
+    maxHeight: '100%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  imageViewerCloseBtn: {
+    position: 'absolute',
+    top: -12,
+    right: -12,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+  },
+  imageViewerImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
   },
 });

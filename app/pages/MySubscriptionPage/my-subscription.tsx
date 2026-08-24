@@ -11,6 +11,8 @@ import {
   Modal,
   TextInput,
   Dimensions,
+  Linking,
+  Platform,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -18,7 +20,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather, FontAwesome5 } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
   getMyActiveSubscription,
@@ -163,6 +165,24 @@ export default function MySubscriptionScreen() {
     }
   };
 
+  const handleViewPlans = () => {
+    const baseUrl =
+      process.env.EXPO_PUBLIC_WEBSITE_BASE_URL ||
+      process.env.EXPO_PUBLIC_WEBSITE_URL ||
+      'https://postbell.in/';
+    const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    const targetUrl = `${cleanBase}pricing`;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(targetUrl, '_self');
+    } else {
+      Linking.openURL(targetUrl).catch((err) => {
+        console.error('Failed to open pricing URL:', err);
+        Alert.alert('Error', 'Could not open website pricing page.');
+      });
+    }
+  };
+
   const price = activeSub
     ? (activeSub.plan_snapshot?.price ??
       (activeSub.billing_cycle === 'monthly'
@@ -222,7 +242,7 @@ export default function MySubscriptionScreen() {
     <Box className="flex-1 bg-[#f8fafc]">
       {/* Header Banner */}
       <LinearGradient
-        colors={['#1e3a8a', '#2563eb', '#3b82f6']}
+        colors={['#0b53f8', '#084ad3', '#063bb3']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
@@ -776,7 +796,7 @@ export default function MySubscriptionScreen() {
                       with uninterrupted automated posts.
                     </Text>
                     <TouchableOpacity
-                      onPress={() => router.push('/pages/subscriptionPlans/subscription-plans')}
+                      onPress={handleViewPlans}
                       style={styles.viewPlansBtn}
                       activeOpacity={0.85}
                     >
