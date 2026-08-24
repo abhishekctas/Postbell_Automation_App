@@ -26,6 +26,7 @@ import {
   RecentActivity,
   SocialMediaPlatform,
 } from './CustomerdashboardApi';
+import { getProfile } from '@/app/pages/profile/profile.api';
 import { Feather, FontAwesome, AntDesign, FontAwesome6 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -284,6 +285,8 @@ export default function CustomerDashboard() {
   const [analyticsData, setAnalyticsData] = useState<CustomerAnalytics | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [expandedHashtags, setExpandedHashtags] = useState<Record<string, boolean>>({});
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
     if (!userId) {
@@ -294,10 +297,11 @@ export default function CustomerDashboard() {
 
     setError(null);
     try {
-      const [summaryRes, analyticsRes, activityRes] = await Promise.allSettled([
+      const [summaryRes, analyticsRes, activityRes, profileRes] = await Promise.allSettled([
         getCustomerDashboardSummary(userId),
         getCustomerAnalytics(userId),
         getCustomerRecentActivity(userId),
+        getProfile(userId),
       ]);
 
       if (summaryRes.status === 'fulfilled') {
@@ -316,6 +320,12 @@ export default function CustomerDashboard() {
         setRecentActivity(Array.isArray(activityRes.value) ? activityRes.value : []);
       } else {
         console.error('Customer recent activity fetch error:', activityRes.reason);
+      }
+
+      if (profileRes.status === 'fulfilled') {
+        const pData = profileRes.value?.data || profileRes.value;
+        const img = pData?.image || pData?.avatar || pData?.profile_image;
+        if (img) setProfileImage(img);
       }
 
       // If summary failed, set error for visibility
@@ -341,6 +351,7 @@ export default function CustomerDashboard() {
 
   const onRefresh = () => {
     setRefreshing(true);
+    setAvatarError(false);
     void fetchDashboardData();
   };
 
@@ -410,6 +421,9 @@ export default function CustomerDashboard() {
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
+  const userImage = profileImage || user?.image || user?.avatar || '';
+  const avatarUri = getMediaUrl(userImage);
+
   const posts = dashboardData?.posts;
   const social = dashboardData?.socialMedia;
 
@@ -437,10 +451,11 @@ export default function CustomerDashboard() {
         <HStack style={styles.headerContent}>
           <HStack space="md" style={{ alignItems: 'center', flex: 1 }}>
             <View style={styles.avatarWrapper}>
-              {user?.image || user?.avatar ? (
+              {avatarUri && !avatarError ? (
                 <Image
-                  source={{ uri: getMediaUrl(user.image || user.avatar) }}
+                  source={{ uri: avatarUri }}
                   style={styles.userAvatarHeader}
+                  onError={() => setAvatarError(true)}
                 />
               ) : (
                 <Box style={styles.avatarPlaceholderHeader}>
@@ -940,10 +955,10 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   userAvatarHeader: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 2,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.9)',
   },
   avatarPlaceholderHeader: {

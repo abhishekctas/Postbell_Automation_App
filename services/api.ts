@@ -67,7 +67,7 @@ export const API_ENDPOINTS = {
   posts: `${API_BASE_URL}/generated-posts`,
   socialPosts: `${API_BASE_URL}/social-post`,
   users: `${API_BASE_URL}/auth`,
-  profile: `${API_BASE_URL}/users`,
+  profile: `${API_BASE_URL}/customers`,
   settings: `${API_BASE_URL}/general-settings`,
   festivals: `${API_BASE_URL}/festivals`,
   subscriptionPlans: `${API_BASE_URL}/subscription-plans`,

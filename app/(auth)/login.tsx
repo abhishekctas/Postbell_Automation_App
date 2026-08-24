@@ -83,7 +83,7 @@ export default function LoginScreen() {
   const handleVerifyOtp = async (codeToVerify?: string) => {
     const otpCode = typeof codeToVerify === 'string' ? codeToVerify : otp.join('');
     if (otpCode.length < 6) {
-      Alert.alert('Error', 'Please enter the complete 6-digit OTP.');
+      Alert.alert('Error', 'Please enter the 6-digit verification code.');
       return;
     }
     if (isSubmitting) return;
