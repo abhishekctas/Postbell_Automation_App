@@ -17,7 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getCustomerConfig, saveCurrentStep, activeWorkspace } from './customer-setup.api';
 
 // Step components
-import AiConfiguration from './steps/AiConfiguration';
+// import AiConfiguration from './steps/AiConfiguration';
 import CompanyInformation from './steps/CompanyInformation';
 import SocialMediaAuth from './steps/SocialMediaAuth';
 import SocialMediaLinks from './steps/SocialMediaLinks';
@@ -124,12 +124,12 @@ const initialSetupData: SetupWizardData = {
 };
 
 const WIZARD_STEPS = [
-  { key: 0, label: 'AI Config', icon: 'cpu' },
-  { key: 1, label: 'Company', icon: 'briefcase' },
-  { key: 2, label: 'Auth', icon: 'shield' },
-  { key: 3, label: 'Links', icon: 'link' },
-  { key: 4, label: 'Branding', icon: 'sliders' },
-  { key: 5, label: 'Review', icon: 'check-circle' },
+  // { key: 0, label: 'AI Config', icon: 'cpu' },
+  { key: 0, label: 'Company', icon: 'briefcase' },
+  { key: 1, label: 'Auth', icon: 'shield' },
+  { key: 2, label: 'Links', icon: 'link' },
+  { key: 3, label: 'Branding', icon: 'sliders' },
+  { key: 4, label: 'Review', icon: 'check-circle' },
 ];
 
 export default function CustomerSetupWizard() {
@@ -239,21 +239,6 @@ export default function CustomerSetupWizard() {
   const validateStep = (step: number): { valid: boolean; errors: any } => {
     switch (step) {
       case 0: {
-        const openai = setupData.ai_config?.openai_api_key?.trim() || '';
-        const gemini = setupData.ai_config?.gemini_api_key?.trim() || '';
-        if (!openai && !gemini) {
-          return {
-            valid: false,
-            errors: {
-              openai_api_key: 'At least one API key is required',
-              gemini_api_key: 'At least one API key is required',
-            },
-          };
-        }
-        return { valid: true, errors: {} };
-      }
-
-      case 1: {
         const errors: any = {};
         if (!setupData.company_name?.trim()) {
           errors.company_name = 'Company name is required';
@@ -278,7 +263,7 @@ export default function CustomerSetupWizard() {
         return { valid: Object.keys(errors).length === 0, errors };
       }
 
-      case 3: {
+      case 2: {
         const errors: any = {};
         const isUrl = (val: string) =>
           /^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(\S*)?$/.test(val.trim());
@@ -301,17 +286,10 @@ export default function CustomerSetupWizard() {
     setStepErrors((prev) => ({ ...prev, [activeStep]: check.errors }));
 
     if (!check.valid) {
-      if (activeStep === 0) {
-        Alert.alert(
-          'Configuration Required',
-          'Please configure at least one AI API key (OpenAI or Gemini) to continue.'
-        );
-      } else {
-        Alert.alert(
-          'Validation Notice',
-          'Please correct the highlighted fields before proceeding.'
-        );
-      }
+      Alert.alert(
+        'Validation Notice',
+        'Please correct the highlighted fields before proceeding.'
+      );
       return;
     }
 
@@ -371,33 +349,25 @@ export default function CustomerSetupWizard() {
     switch (activeStep) {
       case 0:
         return (
-          <AiConfiguration
+          <CompanyInformation
             data={setupData}
             onChange={updateSetupData}
             errors={stepErrors[0] || {}}
           />
         );
       case 1:
-        return (
-          <CompanyInformation
-            data={setupData}
-            onChange={updateSetupData}
-            errors={stepErrors[1] || {}}
-          />
-        );
-      case 2:
         return <SocialMediaAuth data={setupData} onChange={updateSetupData} />;
-      case 3:
+      case 2:
         return (
           <SocialMediaLinks
             data={setupData}
             onChange={updateSetupData}
-            errors={stepErrors[3] || {}}
+            errors={stepErrors[2] || {}}
           />
         );
-      case 4:
+      case 3:
         return <BrandingPreferences data={setupData} onChange={updateSetupData} />;
-      case 5:
+      case 4:
         return (
           <ReviewFinish
             data={setupData}

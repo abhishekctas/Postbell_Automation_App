@@ -32,6 +32,7 @@ import {
   generateMarketingImageFromReference,
   analyzeReferenceMedia,
   uploadPostImage,
+  getImageUrl,
   Post,
 } from './posts.api';
 
@@ -84,7 +85,15 @@ export default function PostEditorScreen() {
     title?: string;
     caption?: string;
     hashtags?: string[];
+    image_url?: string;
+    image?: string;
+    id?: string;
+    _id?: string;
+    variant_name?: string;
   } | null>(null);
+  const [aiGeneratedPosts, setAiGeneratedPosts] = useState<any[]>([]);
+  const [downloadingPostIds, setDownloadingPostIds] = useState<Set<string>>(new Set());
+  const [downloadingAll, setDownloadingAll] = useState(false);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -145,6 +154,7 @@ export default function PostEditorScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [previewImgErrors, setPreviewImgErrors] = useState<Record<string, boolean>>({});
   const [genImgError, setGenImgError] = useState(false);
+  const [platformImgErrors, setPlatformImgErrors] = useState<Record<string, boolean>>({});
 
   // Fetch Post Details for Edit Mode & Fetch Social Accounts
   useEffect(() => {
@@ -173,12 +183,17 @@ export default function PostEditorScreen() {
           setCompanyEmail(postData.company_email || postData.companyEmail || '');
           setCompanyPhone(postData.company_phone || '');
           setHashtagsInput((postData.hashtags || []).join(', '));
-          setImageUrl(
-            typeof postData.image_url === 'string'
+          const initialImg =
+            typeof postData.image_url === 'string' && postData.image_url.trim()
               ? postData.image_url
-              : postData.generalContent?.media?.[0]?.url || ''
+              : postData.generalContent?.media?.[0]?.url ||
+              postData.generalContent?.media?.[0]?.imagePath ||
+              '';
+          setImageUrl(initialImg);
+          setImagePath(
+            postData.image_path || postData.generalContent?.media?.[0]?.imagePath || initialImg
           );
-          setImagePath(postData.image_path || postData.generalContent?.media?.[0]?.imagePath || '');
+          setGenImgError(false);
 
           if (
             postData.selectedNetworks &&
@@ -274,21 +289,35 @@ export default function PostEditorScreen() {
           setAiRefImage(uri);
         } else {
           setUploadingImage(true);
+          setGenImgError(false);
           try {
             const uploadRes = await uploadPostImage(
               uri,
               result.assets[0].fileName || undefined,
               result.assets[0].mimeType || undefined
             );
-            const serverUrl = uploadRes?.imageUrl || uploadRes?.url || uploadRes?.picture || uri;
-            const serverPath = uploadRes?.imagePath || uploadRes?.url || uploadRes?.picture || uri;
+            const serverUrl =
+              uploadRes?.picture ||
+              uploadRes?.imageUrl ||
+              uploadRes?.url ||
+              uploadRes?.data?.picture ||
+              uploadRes?.data?.imageUrl ||
+              uploadRes?.data?.url ||
+              uri;
+            const serverPath =
+              uploadRes?.picture ||
+              uploadRes?.imagePath ||
+              uploadRes?.url ||
+              uploadRes?.data?.picture ||
+              uploadRes?.data?.imagePath ||
+              uploadRes?.data?.url ||
+              uri;
 
             setImageUrl(serverUrl);
             setImagePath(serverPath);
             setErrors((prev) => ({ ...prev, imageUrl: '' }));
-          } catch {
-            setImageUrl(uri);
-            setErrors((prev) => ({ ...prev, imageUrl: '' }));
+          } catch (err: any) {
+            Alert.alert('Upload Failed', err?.message || 'Failed to upload image to server.');
           } finally {
             setUploadingImage(false);
           }
@@ -311,13 +340,21 @@ export default function PostEditorScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
         setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: true }));
+        setPlatformImgErrors((prev) => ({ ...prev, [platformKey]: false }));
         try {
           const uploadRes = await uploadPostImage(
             uri,
             result.assets[0].fileName || undefined,
             result.assets[0].mimeType || undefined
           );
-          const serverUrl = uploadRes?.imageUrl || uploadRes?.url || uploadRes?.picture || uri;
+          const serverUrl =
+            uploadRes?.picture ||
+            uploadRes?.imageUrl ||
+            uploadRes?.url ||
+            uploadRes?.data?.picture ||
+            uploadRes?.data?.imageUrl ||
+            uploadRes?.data?.url ||
+            uri;
           setPlatformOverrides((prev) => ({
             ...prev,
             [platformKey]: {
@@ -325,14 +362,8 @@ export default function PostEditorScreen() {
               image_url: serverUrl,
             },
           }));
-        } catch {
-          setPlatformOverrides((prev) => ({
-            ...prev,
-            [platformKey]: {
-              ...prev[platformKey],
-              image_url: uri,
-            },
-          }));
+        } catch (err: any) {
+          Alert.alert('Upload Failed', err?.message || `Failed to upload image for ${platformKey}.`);
         } finally {
           setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: false }));
         }
@@ -361,20 +392,34 @@ export default function PostEditorScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
         setUploadingImage(true);
+        setGenImgError(false);
         try {
           const uploadRes = await uploadPostImage(
             uri,
             result.assets[0].fileName || undefined,
             result.assets[0].mimeType || undefined
           );
-          const serverUrl = uploadRes?.imageUrl || uploadRes?.url || uploadRes?.picture || uri;
-          const serverPath = uploadRes?.imagePath || uploadRes?.url || uploadRes?.picture || uri;
+          const serverUrl =
+            uploadRes?.picture ||
+            uploadRes?.imageUrl ||
+            uploadRes?.url ||
+            uploadRes?.data?.picture ||
+            uploadRes?.data?.imageUrl ||
+            uploadRes?.data?.url ||
+            uri;
+          const serverPath =
+            uploadRes?.picture ||
+            uploadRes?.imagePath ||
+            uploadRes?.url ||
+            uploadRes?.data?.picture ||
+            uploadRes?.data?.imagePath ||
+            uploadRes?.data?.url ||
+            uri;
           setImageUrl(serverUrl);
           setImagePath(serverPath);
           setErrors((prev) => ({ ...prev, imageUrl: '' }));
-        } catch {
-          setImageUrl(uri);
-          setErrors((prev) => ({ ...prev, imageUrl: '' }));
+        } catch (err: any) {
+          Alert.alert('Upload Failed', err?.message || 'Failed to upload image to server.');
         } finally {
           setUploadingImage(false);
         }
@@ -403,13 +448,21 @@ export default function PostEditorScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
         setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: true }));
+        setPlatformImgErrors((prev) => ({ ...prev, [platformKey]: false }));
         try {
           const uploadRes = await uploadPostImage(
             uri,
             result.assets[0].fileName || undefined,
             result.assets[0].mimeType || undefined
           );
-          const serverUrl = uploadRes?.imageUrl || uploadRes?.url || uploadRes?.picture || uri;
+          const serverUrl =
+            uploadRes?.picture ||
+            uploadRes?.imageUrl ||
+            uploadRes?.url ||
+            uploadRes?.data?.picture ||
+            uploadRes?.data?.imageUrl ||
+            uploadRes?.data?.url ||
+            uri;
           setPlatformOverrides((prev) => ({
             ...prev,
             [platformKey]: {
@@ -417,14 +470,8 @@ export default function PostEditorScreen() {
               image_url: serverUrl,
             },
           }));
-        } catch {
-          setPlatformOverrides((prev) => ({
-            ...prev,
-            [platformKey]: {
-              ...prev[platformKey],
-              image_url: uri,
-            },
-          }));
+        } catch (err: any) {
+          Alert.alert('Upload Failed', err?.message || `Failed to upload image for ${platformKey}.`);
         } finally {
           setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: false }));
         }
@@ -466,16 +513,34 @@ export default function PostEditorScreen() {
         provider: aiProvider,
         platform: selectedPlatforms[0] || 'facebook',
       });
-      const generatedPost = res?.posts?.[0] || res?.data?.posts?.[0] || res;
+      const postsList = Array.isArray(res?.posts)
+        ? res.posts
+        : Array.isArray(res?.data?.posts)
+          ? res.data.posts
+          : Array.isArray(res)
+            ? res
+            : [];
+      const generatedPost = postsList[0] || res?.posts?.[0] || res?.data?.posts?.[0] || res;
       const genTitle = generatedPost?.title || aiPrompt;
       const genCaption = generatedPost?.caption || generatedPost?.post_content || '';
       const genHashtags = generatedPost?.hashtags || [];
+      const genImageUrl = generatedPost?.image_url || generatedPost?.image || '';
 
-      setAiResult({
+      const mainResult = {
+        id: String(generatedPost?.id || generatedPost?._id || 'opt-1'),
         title: genTitle,
         caption: genCaption,
         hashtags: Array.isArray(genHashtags) ? genHashtags : [],
-      });
+        image_url: genImageUrl,
+        variant_name: generatedPost?.variant_name || 'Option 1',
+      };
+
+      setAiResult(mainResult);
+      if (postsList.length > 0) {
+        setAiGeneratedPosts(postsList);
+      } else {
+        setAiGeneratedPosts([mainResult]);
+      }
     } catch (err: any) {
       Alert.alert('AI Generation Error', err.message || 'Failed to generate post using AI.');
     } finally {
@@ -484,15 +549,209 @@ export default function PostEditorScreen() {
   };
 
   // Apply AI Content into Form
-  const applyAiContent = () => {
-    if (!aiResult) return;
-    if (aiResult.title) setTitle(aiResult.title);
-    if (aiResult.caption) setCaption(aiResult.caption);
-    if (aiResult.hashtags && aiResult.hashtags.length > 0) {
-      setHashtagsInput(aiResult.hashtags.join(', '));
+  const applyAiContent = (postToApply?: Record<string, any>) => {
+    const target = postToApply || aiResult;
+    if (!target) return;
+    if (target.title) setTitle(target.title);
+    if (target.caption) setCaption(target.caption);
+    if (target.hashtags && target.hashtags.length > 0) {
+      setHashtagsInput(target.hashtags.join(', '));
+    }
+    const imgToUse = target.image_url || target.image || '';
+    if (imgToUse) {
+      setImageUrl(imgToUse);
+      setImagePath(imgToUse);
     }
     setActiveTab('manual');
     Alert.alert('Applied!', 'AI content has been transferred to the Manual Post Composer.');
+  };
+
+  // Download Filename Helper (Matches control-panel reference)
+  const getBaseFilename = (promptStr: string, labelStr: string) => {
+    let topic = (promptStr || '').toLowerCase();
+    for (let i = 0; i < 5; i++) {
+      const original = topic;
+      topic = topic
+        .replace(/^(generate|create|write|make|design|give\s+me|show\s+me)\b/, '')
+        .replace(/^(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/, '')
+        .replace(
+          /^(posts?|variations?|options?|versions?|images?|ideas?|captions?|copies|drafts?|results?)\b/,
+          ''
+        )
+        .replace(/^(for|about|of|on|to|with)\b/, '')
+        .replace(/^(a|an|the|new)\b/, '')
+        .trim();
+      if (topic === original) break;
+    }
+    topic = topic.replace(/\b(of|new|a|an|the)\b/g, ' ');
+    let slug = topic.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    if (slug.length > 50) {
+      slug = slug.substring(0, 50).replace(/-+$/, '');
+    }
+    if (!slug) slug = 'post';
+    const numMatch = (labelStr || '').match(/\d+/);
+    const postNum = numMatch ? numMatch[0] : '1';
+    return `${slug}-post-${postNum}`;
+  };
+
+  // Copy Content & Hashtags to Clipboard
+  const copyPostContent = (post: Record<string, any>) => {
+    const captionStr = String(post.caption || '');
+    const allHashtags = Array.isArray(post.hashtags)
+      ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
+      : '';
+    const fullText = allHashtags ? `${captionStr}\n\n${allHashtags}` : captionStr;
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard
+        .writeText(fullText)
+        .then(() => Alert.alert('Success', 'Content & hashtags copied to clipboard!'))
+        .catch(() => Alert.alert('Error', 'Failed to copy content.'));
+    } else {
+      Alert.alert('Content Copied', fullText);
+    }
+  };
+
+  // Download Text File Only (.txt)
+  const downloadTextContent = (post: Record<string, any>, labelStr: string) => {
+    try {
+      const captionStr = String(post.caption || '');
+      const allHashtags = Array.isArray(post.hashtags)
+        ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
+        : '';
+      const fullText = allHashtags ? `${captionStr}\n\n${allHashtags}` : captionStr;
+      const filenameBase = getBaseFilename(aiPrompt, labelStr);
+
+      if (Platform.OS === 'web' || typeof window !== 'undefined') {
+        const txtBlob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+        const txtUrl = URL.createObjectURL(txtBlob);
+        const txtLink = document.createElement('a');
+        txtLink.href = txtUrl;
+        txtLink.download = `${filenameBase}.txt`;
+        document.body.appendChild(txtLink);
+        txtLink.click();
+        document.body.removeChild(txtLink);
+        URL.revokeObjectURL(txtUrl);
+        Alert.alert('Downloaded', 'Content (.txt) downloaded successfully!');
+      } else {
+        Alert.alert('Content Ready', fullText);
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Download Failed', 'Could not download content text file.');
+    }
+  };
+
+  // Download Single Post (Image + Text)
+  const downloadPost = async (post: Record<string, any>, labelStr: string) => {
+    const postId = String(post.id || post._id || labelStr);
+    if (downloadingPostIds.has(postId)) return;
+
+    setDownloadingPostIds((prev) => new Set(prev).add(postId));
+
+    try {
+      const filenameBase = getBaseFilename(aiPrompt, labelStr);
+      const img = String(post.image_url || post.image || '').trim();
+
+      // 1. Download image if it exists
+      if (img && (Platform.OS === 'web' || typeof window !== 'undefined')) {
+        try {
+          const url = getImageUrl(img);
+          const r = await fetch(url);
+          if (r.ok) {
+            const blob = await r.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            const extension = blob.type === 'image/png' ? 'png' : 'jpg';
+            a.download = `${filenameBase}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+          }
+        } catch (imgErr) {
+          console.error('Image download error:', imgErr);
+        }
+      }
+
+      // 2. Download caption + hashtags as .txt file
+      downloadTextContent(post, labelStr);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', `Failed to download ${labelStr}. Please try again.`);
+    } finally {
+      setDownloadingPostIds((prev) => {
+        const next = new Set(prev);
+        next.delete(postId);
+        return next;
+      });
+    }
+  };
+
+  // Download All Variations (Batch Download)
+  const downloadAllPosts = async () => {
+    if (downloadingAll) return;
+    setDownloadingAll(true);
+
+    try {
+      const listToDownload =
+        aiGeneratedPosts.length > 0 ? aiGeneratedPosts : aiResult ? [aiResult] : [];
+      for (let i = 0; i < listToDownload.length; i++) {
+        const post = listToDownload[i];
+        const labelStr = String(post.variant_name || `Option ${i + 1}`);
+        const filenameBase = getBaseFilename(aiPrompt, labelStr);
+
+        // 1. Download image if it exists
+        const img = String(post.image_url || post.image || '').trim();
+        if (img && (Platform.OS === 'web' || typeof window !== 'undefined')) {
+          try {
+            const url = getImageUrl(img);
+            const r = await fetch(url);
+            if (r.ok) {
+              const blob = await r.blob();
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              const extension = blob.type === 'image/png' ? 'png' : 'jpg';
+              a.download = `${filenameBase}.${extension}`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(a.href);
+            }
+          } catch (imgErr) {
+            console.error('Image download error:', imgErr);
+          }
+        }
+
+        // 2. Download text file
+        const captionStr = String(post.caption || '');
+        const allHashtags = Array.isArray(post.hashtags)
+          ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
+          : '';
+        const fullText = allHashtags ? `${captionStr}\n\n${allHashtags}` : captionStr;
+
+        if (Platform.OS === 'web' || typeof window !== 'undefined') {
+          const txtBlob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+          const txtUrl = URL.createObjectURL(txtBlob);
+          const txtLink = document.createElement('a');
+          txtLink.href = txtUrl;
+          txtLink.download = `${filenameBase}.txt`;
+          document.body.appendChild(txtLink);
+          txtLink.click();
+          document.body.removeChild(txtLink);
+          URL.revokeObjectURL(txtUrl);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      Alert.alert('Success', 'All variations downloaded successfully!');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to download all variations.');
+    } finally {
+      setDownloadingAll(false);
+    }
   };
 
   // Reference Image Picker Handler
@@ -756,12 +1015,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-                {
-                  type: 'image',
-                  url: imageUrl,
-                  imagePath: imagePath || imageUrl,
-                },
-              ]
+              {
+                type: 'image',
+                url: imageUrl,
+                imagePath: imagePath || imageUrl,
+              },
+            ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -825,7 +1084,7 @@ export default function PostEditorScreen() {
         <Box className="px-5 pb-3 pt-12">
           <HStack className="mb-2 items-center justify-between">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.push('/pages/posts/posts')}
               style={styles.backBtn}
               activeOpacity={0.85}
             >
@@ -1099,38 +1358,151 @@ export default function PostEditorScreen() {
               </TouchableOpacity>
             </Box>
 
-            {/* AI Generated Result Preview Card */}
-            {aiResult && (
-              <Box style={[styles.card, styles.aiResultCard]}>
-                <HStack className="mb-2 items-center justify-between">
-                  <Heading size="xs" style={{ color: '#0052d4', fontWeight: '700' }}>
-                    ✨ AI Generated Output
-                  </Heading>
-                  <TouchableOpacity style={styles.applyBtn} onPress={applyAiContent}>
-                    <Text style={styles.applyBtnText}>Apply to Composer →</Text>
-                  </TouchableOpacity>
-                </HStack>
+            {/* AI Generated Result Preview Card & Variations with Download Functionality */}
+            {(aiGeneratedPosts.length > 0 ? aiGeneratedPosts : aiResult ? [aiResult] : []).map(
+              (postItem, index) => {
+                const label = String(postItem.variant_name || `Option ${index + 1}`);
+                const itemCap = String(postItem.caption || '');
+                const itemImg = String(postItem.image_url || postItem.image || '').trim();
+                const itemHashtags = Array.isArray(postItem.hashtags) ? postItem.hashtags : [];
+                const itemPostId = String(postItem.id || postItem._id || label);
+                const isDownloading = downloadingPostIds.has(itemPostId);
 
-                {aiResult.title && (
-                  <Text
-                    style={{ fontWeight: '700', color: '#0f172a', fontSize: 14, marginBottom: 4 }}
-                  >
-                    {aiResult.title}
-                  </Text>
-                )}
-                <Text style={{ color: '#334155', fontSize: 13, lineHeight: 20 }}>
-                  {aiResult.caption}
-                </Text>
-                {aiResult.hashtags && aiResult.hashtags.length > 0 && (
-                  <HStack space="xs" className="mt-2 flex-wrap">
-                    {aiResult.hashtags.map((tag, idx) => (
-                      <Box key={idx} style={styles.tagChip}>
-                        <Text style={styles.tagText}>#{tag}</Text>
+                return (
+                  <Box key={itemPostId + index} style={[styles.card, styles.aiResultCard, { marginBottom: 12 }]}>
+                    <HStack className="mb-2 items-center justify-between flex-wrap gap-2">
+                      <HStack space="xs" className="items-center gap-2">
+                        <Heading size="xs" style={{ color: '#0052d4', fontWeight: '700' }}>
+                          ✨ AI Generated Output ({label})
+                        </Heading>
+                      </HStack>
+                      <HStack space="xs" className="items-center gap-2">
+                        <TouchableOpacity
+                          style={[styles.downloadAllBtn, (downloadingAll || isDownloading) && { opacity: 0.7 }]}
+                          onPress={downloadAllPosts}
+                          disabled={downloadingAll || isDownloading}
+                        >
+                          {downloadingAll ? (
+                            <ActivityIndicator size="small" color="#166534" />
+                          ) : (
+                            <Feather name="download" size={14} color="#166534" />
+                          )}
+                          <Text style={styles.downloadAllBtnText}>
+                            {downloadingAll ? 'Downloading...' : 'Download All'}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.applyBtn}
+                          onPress={() => applyAiContent(postItem)}
+                        >
+                          <Text style={styles.applyBtnText}>Apply to Composer →</Text>
+                        </TouchableOpacity>
+                      </HStack>
+                    </HStack>
+
+                    {itemImg ? (
+                      <Box style={styles.previewImageContainer}>
+                        <Image
+                          source={{ uri: getImageUrl(itemImg) }}
+                          style={styles.previewImage}
+                          resizeMode="cover"
+                        />
+                        <TouchableOpacity
+                          style={styles.imageDownloadOverlayBtn}
+                          onPress={() => {
+                            const filenameBase = getBaseFilename(aiPrompt, label);
+                            const url = getImageUrl(itemImg);
+                            if (Platform.OS === 'web' || typeof window !== 'undefined') {
+                              fetch(url)
+                                .then((r) => r.blob())
+                                .then((blob) => {
+                                  const a = document.createElement('a');
+                                  a.href = URL.createObjectURL(blob);
+                                  a.download = `${filenameBase}.jpg`;
+                                  a.click();
+                                  URL.revokeObjectURL(a.href);
+                                })
+                                .catch(() => { });
+                            }
+                          }}
+                        >
+                          <Feather name="download" size={14} color="#ffffff" />
+                        </TouchableOpacity>
                       </Box>
-                    ))}
-                  </HStack>
-                )}
-              </Box>
+                    ) : null}
+
+                    {postItem.title && (
+                      <Text
+                        style={{
+                          fontWeight: '700',
+                          color: '#0f172a',
+                          fontSize: 14,
+                          marginBottom: 4,
+                          marginTop: itemImg ? 8 : 0,
+                        }}
+                      >
+                        {postItem.title}
+                      </Text>
+                    )}
+                    <Text style={{ color: '#334155', fontSize: 13, lineHeight: 20 }}>
+                      {itemCap}
+                    </Text>
+                    {itemHashtags.length > 0 && (
+                      <HStack space="xs" className="mt-2 flex-wrap gap-1">
+                        {itemHashtags.map((tag: string, idx: number) => (
+                          <Box key={idx} style={styles.tagChip}>
+                            <Text style={styles.tagText}>#{tag.replace(/^#/, '')}</Text>
+                          </Box>
+                        ))}
+                      </HStack>
+                    )}
+
+                    {/* Per-card Actions Toolbar (Copy, Download Text, Download Post) */}
+                    <HStack className="mt-3 pt-2 items-center justify-end border-t border-slate-200 gap-2 flex-wrap">
+                      {/* Copy Content Button */}
+                      <TouchableOpacity
+                        style={styles.actionIconBtn}
+                        onPress={() => copyPostContent(postItem)}
+                      >
+                        <Feather name="copy" size={14} color="#475569" />
+                        <Text style={styles.actionIconBtnText}>Copy Text</Text>
+                      </TouchableOpacity>
+
+                      {/* Download Content (.txt) Only Button */}
+                      <TouchableOpacity
+                        style={styles.actionIconBtn}
+                        onPress={() => downloadTextContent(postItem, label)}
+                      >
+                        <Feather name="file-text" size={14} color="#0284c7" />
+                        <Text style={[styles.actionIconBtnText, { color: '#0284c7' }]}>
+                          Download Text (.txt)
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Per-card Download Post (Image + Text) Button */}
+                      <TouchableOpacity
+                        style={[
+                          styles.actionIconBtn,
+                          { borderColor: '#16a34a', backgroundColor: '#f0fdf4' },
+                          (downloadingAll || isDownloading) && { opacity: 0.6 },
+                        ]}
+                        disabled={downloadingAll || isDownloading}
+                        onPress={() => downloadPost(postItem, label)}
+                      >
+                        {isDownloading ? (
+                          <ActivityIndicator size="small" color="#16a34a" />
+                        ) : (
+                          <Feather name="download" size={14} color="#16a34a" />
+                        )}
+                        <Text style={[styles.actionIconBtnText, { color: '#16a34a' }]}>
+                          {isDownloading ? 'Downloading...' : 'Download Post'}
+                        </Text>
+                      </TouchableOpacity>
+                    </HStack>
+                  </Box>
+                );
+              }
             )}
           </VStack>
         )}
@@ -1439,11 +1811,13 @@ export default function PostEditorScreen() {
                   <Box style={styles.imagePreviewBox}>
                     <TouchableOpacity
                       activeOpacity={0.9}
-                      onPress={() => setModalImageUrl(imageUrl)}
+                      onPress={() => setModalImageUrl(getImageUrl(imageUrl))}
                     >
                       <Image
                         source={
-                          genImgError ? require('@/assets/images/360_image.jpg') : { uri: imageUrl }
+                          genImgError
+                            ? require('@/assets/images/360_image.jpg')
+                            : { uri: getImageUrl(imageUrl) }
                         }
                         style={styles.uploadedImage}
                         resizeMode="cover"
@@ -1464,7 +1838,11 @@ export default function PostEditorScreen() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.imgActionBtn, { backgroundColor: '#dc2626' }]}
-                        onPress={() => setImageUrl('')}
+                        onPress={() => {
+                          setImageUrl('');
+                          setImagePath('');
+                          setGenImgError(false);
+                        }}
                         disabled={uploadingImage}
                       >
                         <Feather name="trash-2" size={14} color="#fff" />
@@ -1476,10 +1854,17 @@ export default function PostEditorScreen() {
                     <TouchableOpacity
                       style={[styles.uploadBox, errors.imageUrl ? styles.inputError : null]}
                       onPress={showGeneralImagePicker}
+                      disabled={uploadingImage}
                     >
-                      <Feather name="upload-cloud" size={28} color="#0052d4" />
-                      <Text style={styles.uploadText}>Choose Image</Text>
-                      <Text style={{ fontSize: 11, color: '#94a3b8' }}>Gallery or Camera</Text>
+                      {uploadingImage ? (
+                        <ActivityIndicator size="large" color="#0052d4" />
+                      ) : (
+                        <>
+                          <Feather name="upload-cloud" size={28} color="#0052d4" />
+                          <Text style={styles.uploadText}>Choose Image</Text>
+                          <Text style={{ fontSize: 11, color: '#94a3b8' }}>Gallery or Camera</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                   </VStack>
                 )}
@@ -1637,7 +2022,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabBtnActive,
+                        styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -1646,7 +2031,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                            styles.subTabTextActive,
+                          styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -1853,19 +2238,26 @@ export default function PostEditorScreen() {
                               ? currentOverride.image_url
                               : imageUrl;
                           const isUploading = Boolean(uploadingPlatformImage[targetPlatform]);
+                          const hasImgError = Boolean(platformImgErrors[targetPlatform]);
+                          const resolvedUri = getImageUrl(displayPlatformImg);
 
-                          // Show actual image if available, otherwise show 360 fallback image
-                          const imageSource = displayPlatformImg
-                            ? { uri: displayPlatformImg }
-                            : require('@/assets/images/360_image.jpg');
+                          if (resolvedUri) {
+                            const imageSource = hasImgError
+                              ? require('@/assets/images/360_image.jpg')
+                              : { uri: resolvedUri };
 
-                          if (displayPlatformImg) {
                             return (
                               <Box style={styles.imagePreviewBox}>
                                 <Image
                                   source={imageSource}
                                   style={styles.uploadedImage}
                                   resizeMode="cover"
+                                  onError={() =>
+                                    setPlatformImgErrors((prev) => ({
+                                      ...prev,
+                                      [targetPlatform]: true,
+                                    }))
+                                  }
                                 />
 
                                 <HStack space="xs" style={styles.imageActionOverlay}>
@@ -2206,7 +2598,8 @@ export default function PostEditorScreen() {
 
                         const override = platformOverrides[network] || {};
                         const acctCaption = override.caption || caption || '';
-                        const acctMediaUrl = override.image_url || imageUrl || imagePath || '';
+                        const rawAcctMediaUrl = override.image_url || imageUrl || imagePath || '';
+                        const acctMediaUrl = getImageUrl(rawAcctMediaUrl);
                         const acctLink = override.link || companyWebsite || '';
                         const acctHashtags: string[] =
                           override.hashtags ||
@@ -2642,6 +3035,49 @@ export default function PostEditorScreen() {
 }
 
 const styles = StyleSheet.create({
+  cropModalContainer: {
+    width: '90%',
+    maxWidth: 420,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+  },
+  cropModalImagePreviewContainer: {
+    width: '100%',
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cropActionOptionBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    backgroundColor: '#eff6ff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cropActionOptionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1d4ed8',
+  },
+  cancelModalBtn: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+  },
+  cancelModalBtnText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   headerGradient: {
     paddingBottom: 4,
     borderBottomLeftRadius: 28,
@@ -2890,13 +3326,68 @@ const styles = StyleSheet.create({
   applyBtn: {
     backgroundColor: '#0052d4',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 6,
   },
   applyBtnText: {
     color: '#fff',
     fontSize: 11,
     fontWeight: '700',
+  },
+  downloadAllBtn: {
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#86efac',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  downloadAllBtnText: {
+    color: '#166534',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  actionIconBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionIconBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  previewImageContainer: {
+    position: 'relative',
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 8,
+    backgroundColor: '#e2e8f0',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageDownloadOverlayBtn: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    padding: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tagChip: {
     backgroundColor: '#eff6ff',

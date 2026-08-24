@@ -13,11 +13,11 @@ interface ReviewFinishProps {
   onEdit: (stepIndex: number) => void;
 }
 
-export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishProps) {
+export default function ReviewFinish({ data, onEdit }: ReviewFinishProps) {
   const branding = data.branding_preferences || {};
   const socialAuth = data.social_media_auth || {};
   const socialLinks = data.social_links || {};
-  const aiConfig = data.ai_config || {};
+  // const aiConfig = data.ai_config || {};
 
   const logoPreview =
     data.company_logo_preview || (data.company_logo ? getCompanyLogoUrl(data.company_logo) : '');
@@ -25,8 +25,7 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
   // Calculate completion percentage
   const calculateCompletion = () => {
     let count = 0;
-    const total = 6;
-    if (aiConfig.openai_api_key || aiConfig.gemini_api_key) count++;
+    const total = 5;
     if (data.company_name?.trim()) count++;
     if (data.company_email?.trim()) count++;
     if (
@@ -93,7 +92,7 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
             <Feather name="briefcase" size={16} color="#0b53f8" />
             <Text style={styles.cardTitle}>Company Information</Text>
           </HStack>
-          <TouchableOpacity onPress={() => onEdit(1)} style={styles.editBtn}>
+          <TouchableOpacity onPress={() => onEdit(0)} style={styles.editBtn}>
             <Feather name="edit-2" size={13} color="#0b53f8" style={{ marginRight: 4 }} />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
@@ -126,7 +125,7 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
             <Feather name="shield" size={16} color="#0b53f8" />
             <Text style={styles.cardTitle}>Connected Platforms</Text>
           </HStack>
-          <TouchableOpacity onPress={() => onEdit(2)} style={styles.editBtn}>
+          <TouchableOpacity onPress={() => onEdit(1)} style={styles.editBtn}>
             <Feather name="edit-2" size={13} color="#0b53f8" style={{ marginRight: 4 }} />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
@@ -182,7 +181,7 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
             <Feather name="link" size={16} color="#0b53f8" />
             <Text style={styles.cardTitle}>Social Media Links</Text>
           </HStack>
-          <TouchableOpacity onPress={() => onEdit(3)} style={styles.editBtn}>
+          <TouchableOpacity onPress={() => onEdit(2)} style={styles.editBtn}>
             <Feather name="edit-2" size={13} color="#0b53f8" style={{ marginRight: 4 }} />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
@@ -215,7 +214,7 @@ export default function ReviewFinish({ data, onChange, onEdit }: ReviewFinishPro
             <Feather name="sliders" size={16} color="#0b53f8" />
             <Text style={styles.cardTitle}>Branding Preferences</Text>
           </HStack>
-          <TouchableOpacity onPress={() => onEdit(4)} style={styles.editBtn}>
+          <TouchableOpacity onPress={() => onEdit(3)} style={styles.editBtn}>
             <Feather name="edit-2" size={13} color="#0b53f8" style={{ marginRight: 4 }} />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>

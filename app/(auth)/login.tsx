@@ -57,6 +57,16 @@ export default function LoginScreen() {
     return () => clearTimeout(t);
   }, [resendCooldown]);
 
+  // Auto-focus first OTP input when entering OTP step
+  useEffect(() => {
+    if (step === 'otp') {
+      const t = setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [step]);
+
   const validateEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
 
   // ── Step 1: Request OTP ───────────────────────────────────────────────────
@@ -367,6 +377,7 @@ export default function LoginScreen() {
                     maxLength={1}
                     textAlign="center"
                     selectTextOnFocus
+                    autoFocus={i === 0}
                   />
                 ))}
               </HStack>
