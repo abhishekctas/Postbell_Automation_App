@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, Alert, Platform, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
@@ -12,8 +12,7 @@ import CustomerSetupWizard from './CustomerSetupWizard';
 
 export default function CustomerGeneralSettingScreen() {
   const { user, signOut } = useAuth();
-  const isSetupIncomplete =
-    user?.loginType === 'customer' && !user?.setup_completed;
+  const isSetupIncomplete = user?.loginType === 'customer' && !user?.setup_completed;
 
   const handleSignOut = () => {
     if (Platform.OS === 'web') {
@@ -32,7 +31,7 @@ export default function CustomerGeneralSettingScreen() {
     <Box style={styles.container}>
       {/* Premium Header Banner */}
       <LinearGradient
-        colors={['#193867', '#0b53f8', '#2563eb']}
+        colors={['#0b53f8', '#084ad3', '#063bb3']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
@@ -89,7 +88,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 28,
   },
   headerContent: {
-    paddingTop: 8,
+    paddingTop: 10,
   },
   headerRow: {
     alignItems: 'center',
@@ -105,7 +104,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.82)',
     marginTop: 2,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   iconContainer: {
     width: 48,

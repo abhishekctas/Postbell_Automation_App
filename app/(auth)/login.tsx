@@ -80,12 +80,13 @@ export default function LoginScreen() {
   };
 
   // ── Step 2: Verify OTP ────────────────────────────────────────────────────
-  const handleVerifyOtp = async () => {
-    const otpCode = otp.join('');
+  const handleVerifyOtp = async (codeToVerify?: string) => {
+    const otpCode = typeof codeToVerify === 'string' ? codeToVerify : otp.join('');
     if (otpCode.length < 6) {
       Alert.alert('Error', 'Please enter the complete 6-digit OTP.');
       return;
     }
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       const res = await verifyOtp({ email, otp: otpCode, requestId, loginType });
@@ -127,12 +128,33 @@ export default function LoginScreen() {
 
   // ── OTP input box handler ─────────────────────────────────────────────────
   const handleOtpChange = (val: string, index: number) => {
-    const digit = val.replace(/[^0-9]/g, '').slice(-1);
+    const clean = val.replace(/[^0-9]/g, '');
+    if (clean.length > 1) {
+      const pastedDigits = clean.slice(0, 6).split('');
+      const next = [...otp];
+      for (let i = 0; i < 6; i++) {
+        next[i] = pastedDigits[i] || next[i] || '';
+      }
+      setOtp(next);
+      const nextFocus = Math.min(pastedDigits.length, 5);
+      otpRefs.current[nextFocus]?.focus();
+      const fullCode = next.join('');
+      if (fullCode.length === 6) {
+        handleVerifyOtp(fullCode);
+      }
+      return;
+    }
+
+    const digit = clean.slice(-1);
     const next = [...otp];
     next[index] = digit;
     setOtp(next);
     if (digit && index < 5) {
       otpRefs.current[index + 1]?.focus();
+    }
+    const fullCode = next.join('');
+    if (fullCode.length === 6) {
+      handleVerifyOtp(fullCode);
     }
   };
 
@@ -351,7 +373,7 @@ export default function LoginScreen() {
 
               {/* Verify Button */}
               <TouchableOpacity
-                onPress={handleVerifyOtp}
+                onPress={() => handleVerifyOtp()}
                 disabled={isSubmitting || otp.join('').length < 6}
                 activeOpacity={0.85}
               >

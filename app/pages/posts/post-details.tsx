@@ -436,6 +436,7 @@ function AccountPostCard({
 
   const formattedDate = formatDate(platform.posted_at);
   const [captionExpanded, setCaptionExpanded] = useState(false);
+  const [mediaError, setMediaError] = useState(false);
   const CAPTION_LIMIT = 140;
 
   return (
@@ -507,7 +508,7 @@ function AccountPostCard({
       {/* ── Main body (Image + Caption + Hashtags + Metrics) ── */}
       <Box style={{ padding: 14 }}>
         {/* Media Preview */}
-        {mediaUrl ? (
+        {mediaUrl && !mediaError ? (
           <TouchableOpacity
             onPress={() => onOpenViewer(mediaUrl)}
             activeOpacity={0.9}
@@ -517,13 +518,20 @@ function AccountPostCard({
               source={{ uri: mediaUrl }}
               style={styles.platformMediaImage}
               resizeMode="cover"
+              onError={() => setMediaError(true)}
             />
             <Box style={styles.imageBadge}>
               <Feather name="maximize-2" size={12} color="#fff" />
               <Text style={styles.imageBadgeText}>Tap to View</Text>
             </Box>
           </TouchableOpacity>
-        ) : null}
+        ) : (
+          <Image
+            source={require('@/assets/images/360_image.jpg')}
+            style={styles.platformMediaImage}
+            resizeMode="cover"
+          />
+        )}
 
         {/* Caption */}
         {caption ? (
@@ -628,6 +636,7 @@ export default function PostDetailsScreen() {
   const [activeTab, setActiveTab] = useState(0);
   const [accountNameById, setAccountNameById] = useState<Record<string, string>>({});
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+  const [mainImageError, setMainImageError] = useState(false);
 
   const fetchPostDetails = useCallback(async () => {
     if (!id) return;
@@ -863,25 +872,29 @@ export default function PostDetailsScreen() {
           </HStack>
 
           {/* Media Preview */}
-          {mediaUrl ? (
+          {mediaUrl && !mainImageError ? (
             <TouchableOpacity
               onPress={() => setModalImageUrl(mediaUrl)}
               style={styles.imageWrapper}
               activeOpacity={0.9}
             >
-              <Image source={{ uri: mediaUrl }} style={styles.previewImage} resizeMode="cover" />
+              <Image
+                source={{ uri: mediaUrl }}
+                style={styles.previewImage}
+                resizeMode="cover"
+                onError={() => setMainImageError(true)}
+              />
               <Box style={styles.imageBadge}>
                 <Feather name="maximize-2" size={12} color="#fff" />
                 <Text style={styles.imageBadgeText}>Tap to View</Text>
               </Box>
             </TouchableOpacity>
           ) : (
-            <Box style={styles.noImagePlaceholder}>
-              <Feather name="image" size={32} color="#94a3b8" />
-              <Text style={{ color: '#94a3b8', marginTop: 6, fontSize: 13, fontWeight: '500' }}>
-                No Media Attached
-              </Text>
-            </Box>
+            <Image
+              source={require('@/assets/images/360_image.jpg')}
+              style={styles.previewImage}
+              resizeMode="cover"
+            />
           )}
 
           {/* Hashtags */}
@@ -1098,8 +1111,12 @@ export default function PostDetailsScreen() {
           onPress={() => setModalImageUrl(null)}
         >
           <Box style={styles.imageModalContent}>
-            <TouchableOpacity onPress={() => setModalImageUrl(null)} style={styles.closeModalBtn}>
-              <Feather name="x" size={24} color="#fff" />
+            <TouchableOpacity
+              onPress={() => setModalImageUrl(null)}
+              style={styles.closeModalBtn}
+              activeOpacity={0.7}
+            >
+              <Feather name="x" size={20} color="#fff" />
             </TouchableOpacity>
             {modalImageUrl && (
               <Image
@@ -1265,6 +1282,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
+  },
+  noImagePlaceholderSmall: {
+    height: 100,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   sectionLabel: {
     fontSize: 11,
@@ -1523,7 +1551,7 @@ const styles = StyleSheet.create({
   },
   platformMediaImage: {
     width: '100%',
-    height: 180,
+    height: 250,
     backgroundColor: '#f1f5f9',
   },
   captionText: {
@@ -1636,25 +1664,44 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 16,
   },
   imageModalContent: {
     width: '100%',
-    height: '100%',
+    maxHeight: '100%',
+    aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   closeModalBtn: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
-    right: 20,
+    top: -12,
+    right: -12,
     zIndex: 10,
-    padding: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
   },
   fullImage: {
-    width: '92%',
-    height: '80%',
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
   },
 });

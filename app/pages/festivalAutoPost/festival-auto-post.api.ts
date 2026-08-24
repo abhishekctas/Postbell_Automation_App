@@ -300,14 +300,18 @@ export const generateFestivalPostAI = async (
 
   if (payload.referenceImageUri) {
     const uri = payload.referenceImageUri;
-    const filename = uri.split('/').pop() || 'reference.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-    formData.append('reference_image', {
-      uri,
-      name: filename,
-      type,
-    } as any);
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      formData.append('reference_image_url', uri);
+    } else {
+      const filename = uri.split('/').pop() || 'reference.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      formData.append('reference_image', {
+        uri,
+        name: filename,
+        type,
+      } as any);
+    }
   }
 
   const aiUrl = `${API_BASE_URL}/ai/generate-post/${provider}`;
