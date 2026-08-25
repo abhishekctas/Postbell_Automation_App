@@ -25,15 +25,33 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { getProfile, updateProfile, uploadProfile } from './profile.api';
 
-const normalizeProfile = (data: any) => ({
-  id: data?.id || data?._id || null,
-  first_name: data?.first_name || '',
-  last_name: data?.last_name || '',
-  email: data?.email || '',
-  address: data?.address || '',
-  contact_no: data?.contact_no || '',
-  avatar: data?.avatar || '',
-});
+const normalizeProfile = (data: any) => {
+  let addrStr = '';
+  if (typeof data?.address === 'string') {
+    addrStr = data.address;
+  } else if (typeof data?.address === 'object' && data?.address !== null) {
+    const parts = [
+      data.address.address_line_1,
+      data.address.address_line_2,
+      data.address.city,
+      data.address.state,
+      data.address.pincode,
+    ].filter(Boolean);
+    addrStr = parts.length > 0 ? parts.join(', ') : '';
+  }
+
+  const contactNum = data?.contact_no || data?.address?.contact_no || '';
+
+  return {
+    id: data?.id || data?._id || null,
+    first_name: data?.first_name || '',
+    last_name: data?.last_name || '',
+    email: data?.email || '',
+    address: addrStr,
+    contact_no: contactNum ? String(contactNum) : '',
+    image: data?.image || '',
+  };
+};
 
 function InfoRow({
   label,
@@ -107,10 +125,10 @@ export default function ProfileScreen() {
             : ''
       );
       setAddress(normalized.address || '');
-      if (normalized.avatar) {
-        setAvatarUrl(normalized.avatar);
+      if (normalized.image) {
+        setAvatarUrl(normalized.image);
       } else {
-        setAvatarUrl(user?.avatar || null);
+        setAvatarUrl(user?.image || null);
       }
     } catch (e) {
       console.error('Profile load error:', e);
@@ -137,7 +155,7 @@ export default function ProfileScreen() {
       return avatar;
     }
     const baseUrl = API_BASE_URL.replace(/\/v1\/?$/, '');
-    return `${baseUrl}/profile/${avatar}`;
+    return `${baseUrl}/customer-profile/${encodeURIComponent(avatar)}`;
   };
 
   const handlePickAndUploadImage = async () => {
@@ -181,15 +199,15 @@ export default function ProfileScreen() {
           const userRes = await getProfile(targetId);
           const updatedData = userRes?.data || userRes;
           const newAvatar =
-            updatedData?.avatar ||
-            res?.data?.avatar ||
-            res?.avatar ||
-            res?.user?.avatar ||
+            updatedData?.image ||
+            res?.data?.image ||
+            res?.image ||
+            res?.user?.image ||
             asset.uri;
 
           setAvatarUrl(newAvatar);
           if (updateUser) {
-            await updateUser({ avatar: newAvatar });
+            await updateUser({ image: newAvatar });
           }
           Alert.alert('Success', 'Profile Image updated!');
           await refreshProfileData();

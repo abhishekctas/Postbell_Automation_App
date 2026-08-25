@@ -57,6 +57,16 @@ export default function LoginScreen() {
     return () => clearTimeout(t);
   }, [resendCooldown]);
 
+  // Auto-focus first OTP input when entering OTP step
+  useEffect(() => {
+    if (step === 'otp') {
+      const t = setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [step]);
+
   const validateEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
 
   // ── Step 1: Request OTP ───────────────────────────────────────────────────
@@ -83,7 +93,7 @@ export default function LoginScreen() {
   const handleVerifyOtp = async (codeToVerify?: string) => {
     const otpCode = typeof codeToVerify === 'string' ? codeToVerify : otp.join('');
     if (otpCode.length < 6) {
-      Alert.alert('Error', 'Please enter the complete 6-digit OTP.');
+      Alert.alert('Error', 'Please enter the 6-digit verification code.');
       return;
     }
     if (isSubmitting) return;
@@ -367,6 +377,7 @@ export default function LoginScreen() {
                     maxLength={1}
                     textAlign="center"
                     selectTextOnFocus
+                    autoFocus={i === 0}
                   />
                 ))}
               </HStack>

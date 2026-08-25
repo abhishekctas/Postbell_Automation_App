@@ -822,16 +822,14 @@ export default function PostDetailsScreen() {
         <Box className="px-5 pb-4 pt-12">
           <HStack className="items-center justify-between">
             <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.headerBtn}
+              onPress={() => router.push('/pages/posts/posts')}
+              style={styles.headerBackBtn}
               activeOpacity={0.85}
             >
-              <TouchableOpacity onPress={() => router.back()} style={styles.headerBackBtn}>
-                <HStack className="items-center gap-1">
-                  <Feather name="arrow-left" size={16} color="#fff" />
-                  <Text style={styles.headerBackText}>Back</Text>
-                </HStack>
-              </TouchableOpacity>
+              <HStack className="items-center gap-1">
+                <Feather name="arrow-left" size={16} color="#fff" />
+                <Text style={styles.headerBackText}>Back</Text>
+              </HStack>
             </TouchableOpacity>
 
             <VStack style={{ alignItems: 'center' }}>

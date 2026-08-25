@@ -67,7 +67,7 @@ export const API_ENDPOINTS = {
   posts: `${API_BASE_URL}/generated-posts`,
   socialPosts: `${API_BASE_URL}/social-post`,
   users: `${API_BASE_URL}/auth`,
-  profile: `${API_BASE_URL}/users`,
+  profile: `${API_BASE_URL}/customers`,
   settings: `${API_BASE_URL}/general-settings`,
   festivals: `${API_BASE_URL}/festivals`,
   subscriptionPlans: `${API_BASE_URL}/subscription-plans`,
@@ -111,11 +111,20 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
     '/ai-logo',
   ];
 
+  const skipAppendUserIdUrls = [
+    ...authUrls,
+    '/upload-post-image',
+    '/delete-post-image',
+    '/get-generated-posts',
+    '/get-active-social-accounts-post',
+  ];
+
   const isAuthUrl = authUrls.some((authUrl) => url.includes(authUrl));
+  const shouldSkipAppend = skipAppendUserIdUrls.some((skipUrl) => url.includes(skipUrl));
 
   let finalUrl = url;
 
-  if (loggedInUserId && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && !isAuthUrl) {
+  if (loggedInUserId && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && !shouldSkipAppend) {
     if (!url.includes(`/${loggedInUserId}`)) {
       if (url.includes('?')) {
         const [base, query] = url.split('?');
@@ -133,14 +142,23 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
       (options.body as any)._parts !== undefined) ||
     options.body?.constructor?.name === 'FormData';
 
-  const headers: HeadersInit = {
-    ...(!isFormData && { 'Content-Type': 'application/json' }),
+  const reqHeaders: Record<string, string> = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(loggedInUserId && !isAuthUrl ? { 'X-User-Id': loggedInUserId } : {}),
-    ...(options.headers || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
 
-  const config: RequestInit = { ...options, headers };
+  if (!isFormData) {
+    if (!reqHeaders['Content-Type'] && !reqHeaders['content-type']) {
+      reqHeaders['Content-Type'] = 'application/json';
+    }
+  } else {
+    delete reqHeaders['Content-Type'];
+    delete reqHeaders['content-type'];
+    delete reqHeaders['Content-type'];
+  }
+
+  const config: RequestInit = { ...options, headers: reqHeaders };
 
   try {
     const response = await fetch(finalUrl, config);

@@ -198,6 +198,29 @@ export const getAllSocialAccountsForPost = async (): Promise<any> => {
   return res?.data || res;
 };
 
+// === Helper for Image URL resolution ===
+export const getImageUrl = (url?: string): string => {
+  if (!url || typeof url !== 'string' || !url.trim()) return '';
+  const trimmed = url.trim();
+  if (
+    trimmed.startsWith('blob:') ||
+    trimmed.startsWith('file:') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://')
+  ) {
+    return trimmed;
+  }
+  const serverHost = API_BASE_URL.replace(/\/v1\/?$/, '');
+  if (trimmed.startsWith('/')) {
+    return `${serverHost}${trimmed}`;
+  }
+  if (trimmed.startsWith('generated-post-images/')) {
+    return `${serverHost}/${trimmed}`;
+  }
+  return `${serverHost}/generated-post-images/${trimmed}`;
+};
+
 // === Upload Post Image ===
 export const uploadPostImage = async (
   fileUriOrFormData: string | FormData,
@@ -209,7 +232,7 @@ export const uploadPostImage = async (
     body = new FormData();
     const name = fileName || `post-${Date.now()}.jpg`;
     const type = mimeType || 'image/jpeg';
-    body.append('image', {
+    body.append('file', {
       uri: fileUriOrFormData,
       name,
       type,
@@ -222,7 +245,7 @@ export const uploadPostImage = async (
     method: 'POST',
     body,
   });
-  if (res && res.success === false) {
+  if (res && (res.success === false || (res.statusCode && res.statusCode >= 400))) {
     throw new Error(res.message || 'Failed to upload image');
   }
   return res;

@@ -136,9 +136,18 @@ const hasError = <T = any>(res: unknown): res is CommonResponse<T> => {
 
 export const getMediaUrl = (imageUrl?: string): string => {
   if (!imageUrl) return '';
-  if (/^https?:\/\//i.test(imageUrl) || imageUrl.startsWith('file://')) return imageUrl;
+  if (
+    /^https?:\/\//i.test(imageUrl) ||
+    imageUrl.startsWith('file://') ||
+    imageUrl.startsWith('content://')
+  ) {
+    return imageUrl;
+  }
   const staticBase = API_BASE_URL.replace(/\/v1\/?$/, '');
-  return `${staticBase}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  if (imageUrl.startsWith('/')) return `${staticBase}${imageUrl}`;
+  if (imageUrl.startsWith('customer-profile/')) return `${staticBase}/${imageUrl}`;
+  if (imageUrl.startsWith('profile/')) return `${staticBase}/${imageUrl}`;
+  return `${staticBase}/customer-profile/${encodeURIComponent(imageUrl)}`;
 };
 
 // ─── API Calls ────────────────────────────────────────────────────────

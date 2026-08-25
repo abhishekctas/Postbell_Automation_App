@@ -20,7 +20,7 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
-import { listPosts, deletePost, Post } from './posts.api';
+import { listPosts, deletePost, Post, getImageUrl } from './posts.api';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 
@@ -145,8 +145,11 @@ function PostCard({
 }) {
   const [imageError, setImageError] = useState(false);
   const platforms = post.selectedNetworks ?? [];
-  const previewImg =
-    typeof post.image_url === 'string' && post.image_url.trim() ? post.image_url : undefined;
+  const rawImg =
+    typeof post.image_url === 'string' && post.image_url.trim()
+      ? post.image_url
+      : post.generalContent?.media?.[0]?.url || post.generalContent?.media?.[0]?.imagePath;
+  const previewImg = getImageUrl(rawImg);
 
   return (
     <TouchableOpacity activeOpacity={0.88} onPress={onPressCard} style={styles.postCardContainer}>
