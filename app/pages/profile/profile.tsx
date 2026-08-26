@@ -199,11 +199,7 @@ export default function ProfileScreen() {
           const userRes = await getProfile(targetId);
           const updatedData = userRes?.data || userRes;
           const newAvatar =
-            updatedData?.image ||
-            res?.data?.image ||
-            res?.image ||
-            res?.user?.image ||
-            asset.uri;
+            updatedData?.image || res?.data?.image || res?.image || res?.user?.image || asset.uri;
 
           setAvatarUrl(newAvatar);
           if (updateUser) {

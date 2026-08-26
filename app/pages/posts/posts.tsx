@@ -31,7 +31,7 @@ const PLATFORMS_FILTER = [
   { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp', color: '#25d366' },
   { id: 'twitter', label: 'Twitter / X', icon: 'twitter', color: '#1da1f2' },
   { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', color: '#0a66c2' },
-  { id: 'snapchat', label: 'Snapchat', icon: 'snapchat-ghost', color: '#eab308' },
+  // { id: 'snapchat', label: 'Snapchat', icon: 'snapchat-ghost', color: '#eab308' },
   { id: 'google-business', label: 'Google Business', icon: 'google', color: '#4285f4' },
   { id: 'pinterest', label: 'Pinterest', icon: 'pinterest', color: '#e60023' },
 ];
@@ -99,41 +99,8 @@ const FILTERS = [
   { id: 'draft', label: 'Drafts', icon: 'edit-3' as const },
 ];
 
-function FilterTabs({ active, onChange }: { active: string; onChange: (f: string) => void }) {
-  return (
-    <View style={styles.filterTabsWrapper}>
-      <FlatList
-        horizontal
-        data={FILTERS}
-        keyExtractor={(f) => f.id}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterList}
-        renderItem={({ item }) => {
-          const isActive = active === item.id;
-          return (
-            <TouchableOpacity
-              onPress={() => onChange(item.id)}
-              style={[styles.filterBtn, isActive && styles.filterBtnActive]}
-              activeOpacity={0.8}
-            >
-              <Feather
-                name={item.icon}
-                size={13}
-                color={isActive ? '#ffffff' : '#64748b'}
-                style={{ marginRight: 5 }}
-              />
-              <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
-      />
-    </View>
-  );
-}
-
 // ── Post card ─────────────────────────────────────────────────────────────────
+
 function PostCard({
   post,
   onPressCard,
@@ -301,6 +268,7 @@ export default function PostsScreen() {
 
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [platformDropdownOpen, setPlatformDropdownOpen] = useState(false);
+  const isAnyDropdownOpen = statusDropdownOpen || platformDropdownOpen;
 
   const selectedStatusItem = FILTERS.find((f) => f.id === filter) || FILTERS[0];
   const selectedPlatformItem =
@@ -427,6 +395,17 @@ export default function PostsScreen() {
 
   return (
     <Box className="flex-1 bg-[#f8fafc]">
+      {/* Backdrop overlay to close dropdown & block background scroll when open */}
+      {isAnyDropdownOpen && (
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.dropdownBackdrop}
+          onPress={() => {
+            setStatusDropdownOpen(false);
+            setPlatformDropdownOpen(false);
+          }}
+        />
+      )}
       {/* ── Unique Attractive Header ────────────────────────────────────────── */}
       <LinearGradient
         colors={['#0b53f8', '#084ad3', '#063bb3']}
@@ -503,8 +482,8 @@ export default function PostsScreen() {
 
       {/* ── Dropdown Filters Bar ────────────────────────────────────────────── */}
       <View style={styles.dropdownFiltersContainer}>
-        {/* Status Dropdown Wrapper */}
-        <View style={{ flex: 1, position: 'relative', zIndex: statusDropdownOpen ? 1000 : 1 }}>
+        {/* Status Dropdown Trigger */}
+        <View style={{ flex: 1 }}>
           <TouchableOpacity
             style={[
               styles.dropdownTrigger,
@@ -512,7 +491,7 @@ export default function PostsScreen() {
               statusDropdownOpen && styles.dropdownTriggerOpen,
             ]}
             onPress={() => {
-              setStatusDropdownOpen((prev) => !prev);
+              setStatusDropdownOpen(true);
               setPlatformDropdownOpen(false);
             }}
             activeOpacity={0.8}
@@ -533,66 +512,11 @@ export default function PostsScreen() {
                 {selectedStatusItem?.label || 'Status'}
               </Text>
             </HStack>
-            <Feather
-              name={statusDropdownOpen ? 'chevron-up' : 'chevron-down'}
-              size={14}
-              color={filter !== 'all' ? '#2563eb' : '#64748b'}
-              style={{ marginLeft: 4 }}
-            />
           </TouchableOpacity>
-
-          {/* Status Dropdown Menu (Half Width) */}
-          {statusDropdownOpen && (
-            <View style={styles.inlineDropdownMenu}>
-              <ScrollView
-                nestedScrollEnabled={true}
-                showsVerticalScrollIndicator={true}
-                scrollEnabled={true}
-                directionalLockEnabled={true}
-                keyboardShouldPersistTaps="always"
-                style={styles.dropdownScrollView}
-                contentContainerStyle={styles.dropdownScrollContent}
-              >
-                {FILTERS.map((item) => {
-                  const isSelected = filter === item.id;
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[styles.dropdownMenuItem, isSelected && styles.dropdownMenuItemActive]}
-                      onPress={() => {
-                        setFilter(item.id);
-                        setStatusDropdownOpen(false);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <HStack space="xs" className="items-center" style={{ flex: 1 }}>
-                        <Feather
-                          name={item.icon}
-                          size={14}
-                          color={isSelected ? '#2563eb' : '#64748b'}
-                          style={{ marginRight: 6 }}
-                        />
-                        <Text
-                          style={[
-                            styles.dropdownMenuItemText,
-                            isSelected && styles.dropdownMenuItemTextActive,
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {item.label}
-                        </Text>
-                      </HStack>
-                      {isSelected && <Feather name="check" size={14} color="#2563eb" />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
         </View>
 
-        {/* Platform Dropdown Wrapper */}
-        <View style={{ flex: 1, position: 'relative', zIndex: platformDropdownOpen ? 1000 : 1 }}>
+        {/* Platform Dropdown Trigger */}
+        <View style={{ flex: 1 }}>
           <TouchableOpacity
             style={[
               styles.dropdownTrigger,
@@ -600,7 +524,7 @@ export default function PostsScreen() {
               platformDropdownOpen && styles.dropdownTriggerOpen,
             ]}
             onPress={() => {
-              setPlatformDropdownOpen((prev) => !prev);
+              setPlatformDropdownOpen(true);
               setStatusDropdownOpen(false);
             }}
             activeOpacity={0.8}
@@ -629,71 +553,7 @@ export default function PostsScreen() {
                 {selectedPlatformItem?.label || 'Platform'}
               </Text>
             </HStack>
-            <Feather
-              name={platformDropdownOpen ? 'chevron-up' : 'chevron-down'}
-              size={14}
-              color={platformFilter !== 'all' ? '#2563eb' : '#64748b'}
-              style={{ marginLeft: 4 }}
-            />
           </TouchableOpacity>
-
-          {/* Platform Dropdown Menu (Half Width) */}
-          {platformDropdownOpen && (
-            <View style={styles.inlineDropdownMenu}>
-              <ScrollView
-                nestedScrollEnabled={true}
-                showsVerticalScrollIndicator={true}
-                scrollEnabled={true}
-                directionalLockEnabled={true}
-                keyboardShouldPersistTaps="always"
-                style={styles.dropdownScrollView}
-                contentContainerStyle={styles.dropdownScrollContent}
-              >
-                {PLATFORMS_FILTER.map((item) => {
-                  const isSelected = platformFilter === item.id;
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[styles.dropdownMenuItem, isSelected && styles.dropdownMenuItemActive]}
-                      onPress={() => {
-                        setPlatformFilter(item.id);
-                        setPlatformDropdownOpen(false);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <HStack space="xs" className="items-center" style={{ flex: 1 }}>
-                        {item.id === 'all' ? (
-                          <Feather
-                            name="globe"
-                            size={14}
-                            color={isSelected ? '#2563eb' : item.color}
-                            style={{ marginRight: 6 }}
-                          />
-                        ) : (
-                          <FontAwesome
-                            name={item.icon as any}
-                            size={14}
-                            color={item.color}
-                            style={{ marginRight: 6 }}
-                          />
-                        )}
-                        <Text
-                          style={[
-                            styles.dropdownMenuItemText,
-                            isSelected && styles.dropdownMenuItemTextActive,
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {item.label}
-                        </Text>
-                      </HStack>
-                      {isSelected && <Feather name="check" size={14} color="#2563eb" />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
         </View>
       </View>
 
@@ -706,6 +566,7 @@ export default function PostsScreen() {
       ) : (
         <FlatList
           data={posts}
+          scrollEnabled={!isAnyDropdownOpen}
           keyExtractor={(p) => p._id || p.id || Math.random().toString()}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -752,6 +613,134 @@ export default function PostsScreen() {
           )}
         />
       )}
+
+      {/* ── Filter Dropdown Selection Modal ── */}
+      <Modal
+        visible={isAnyDropdownOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setStatusDropdownOpen(false);
+          setPlatformDropdownOpen(false);
+        }}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            setStatusDropdownOpen(false);
+            setPlatformDropdownOpen(false);
+          }}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.dropdownModalCard}>
+            <HStack className="mb-3 items-center justify-between">
+              <HStack space="xs" className="items-center gap-2">
+                <Feather name={statusDropdownOpen ? 'filter' : 'globe'} size={18} color="#2563eb" />
+                <Heading size="md" style={{ color: '#0f172a', fontWeight: '700', fontSize: 16 }}>
+                  {statusDropdownOpen ? 'Select Status Filter' : 'Select Platform Filter'}
+                </Heading>
+              </HStack>
+              <TouchableOpacity
+                onPress={() => {
+                  setStatusDropdownOpen(false);
+                  setPlatformDropdownOpen(false);
+                }}
+              >
+                <Feather name="x" size={20} color="#64748b" style={{ color: '#ffffff' }} />
+              </TouchableOpacity>
+            </HStack>
+
+            <ScrollView
+              style={{ maxHeight: 320 }}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              {statusDropdownOpen &&
+                FILTERS.map((item) => {
+                  const isSelected = filter === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.dropdownModalItem,
+                        isSelected && styles.dropdownModalItemActive,
+                      ]}
+                      onPress={() => {
+                        setFilter(item.id);
+                        setStatusDropdownOpen(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <HStack space="sm" className="items-center" style={{ flex: 1 }}>
+                        <Feather
+                          name={item.icon}
+                          size={16}
+                          color={isSelected ? '#2563eb' : '#64748b'}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text
+                          style={[
+                            styles.dropdownModalItemText,
+                            isSelected && styles.dropdownModalItemTextActive,
+                          ]}
+                        >
+                          {item.label}
+                        </Text>
+                      </HStack>
+                      {isSelected && <Feather name="check" size={16} color="#2563eb" />}
+                    </TouchableOpacity>
+                  );
+                })}
+
+              {platformDropdownOpen &&
+                PLATFORMS_FILTER.map((item) => {
+                  const isSelected = platformFilter === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.dropdownModalItem,
+                        isSelected && styles.dropdownModalItemActive,
+                      ]}
+                      onPress={() => {
+                        setPlatformFilter(item.id);
+                        setPlatformDropdownOpen(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <HStack space="sm" className="items-center" style={{ flex: 1 }}>
+                        {item.id === 'all' ? (
+                          <Feather
+                            name="globe"
+                            size={16}
+                            color={isSelected ? '#2563eb' : item.color}
+                            style={{ marginRight: 8 }}
+                          />
+                        ) : (
+                          <FontAwesome
+                            name={item.icon as any}
+                            size={16}
+                            color={item.color}
+                            style={{ marginRight: 8 }}
+                          />
+                        )}
+                        <Text
+                          style={[
+                            styles.dropdownModalItemText,
+                            isSelected && styles.dropdownModalItemTextActive,
+                          ]}
+                        >
+                          {item.label}
+                        </Text>
+                      </HStack>
+                      {isSelected && <Feather name="check" size={16} color="#2563eb" />}
+                    </TouchableOpacity>
+                  );
+                })}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* ── Attractive Options Menu Modal ────────────────────────────────────── */}
       <Modal
@@ -1228,6 +1217,55 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#64748b',
   },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 998,
+    backgroundColor: 'transparent',
+  },
+  dropdownModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  dropdownModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  dropdownModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginVertical: 2,
+  },
+  dropdownModalItemActive: {
+    backgroundColor: '#eff6ff',
+  },
+  dropdownModalItemText: {
+    fontSize: 14,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  dropdownModalItemTextActive: {
+    color: '#1d4ed8',
+    fontWeight: '700',
+  },
   dropdownFiltersContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1243,7 +1281,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#0f172a',
@@ -1257,7 +1295,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#eff6ff',
   },
   dropdownTriggerText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: '#475569',
   },
@@ -1277,23 +1315,24 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     backgroundColor: '#ffffff',
     borderRadius: 14,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: '#cbd5e1',
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 10,
+    elevation: 25,
+    overflow: 'scroll',
   },
   dropdownScrollView: {
-    maxHeight: 250,
+    maxHeight: 240,
     flexGrow: 0,
+    overflow: 'scroll',
   },
 
   dropdownScrollContent: {
     paddingBottom: 4,
+    overflow: 'scroll',
   },
   dropdownMenuItem: {
     flexDirection: 'row',

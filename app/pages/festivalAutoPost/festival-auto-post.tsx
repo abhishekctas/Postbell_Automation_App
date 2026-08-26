@@ -91,6 +91,7 @@ function FestivalPostCard({
   const catColors = tokenColor(catToken);
   const eventColors = getEventColor(post.category, post.name);
   const imageUrl = getFestivalImageUrl(post.image || post.image_url);
+  const is360Image = !imageUrl || imageError || imageUrl.includes('360_image');
   const visibleHashtags = post.hashtags?.slice(0, expandedHashtag ? post.hashtags.length : 5);
   const hasMoreHashtags = (post.hashtags?.length || 0) > 5 && !expandedHashtag;
 
@@ -136,7 +137,14 @@ function FestivalPostCard({
       </HStack>
 
       {/* Post Image — 4:5 ratio */}
-      <TouchableOpacity activeOpacity={0.95} onPress={onViewImage}>
+      <TouchableOpacity
+        activeOpacity={is360Image ? 1 : 0.95}
+        onPress={() => {
+          if (!is360Image) {
+            onViewImage();
+          }
+        }}
+      >
         <Box style={styles.igImageWrap}>
           {imageUrl && !imageError ? (
             <Image
@@ -299,7 +307,9 @@ function FestivalPostCard({
               style={styles.actionMenuItem}
               onPress={() => {
                 setActionMenuOpen(false);
-                onViewImage();
+                if (!is360Image) {
+                  onViewImage();
+                }
               }}
             >
               <Feather name="eye" size={16} color="#475569" />
@@ -393,6 +403,7 @@ export default function FestivalAutoPostScreen() {
   const [imageUrl, setImageUrl] = useState('');
   const [localImageUri, setLocalImageUri] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [modalImageLoadError, setModalImageLoadError] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState<Date | null>(null);
   const [generatingType, setGeneratingType] = useState<'gemini' | 'openai' | null>(null);
@@ -512,6 +523,7 @@ export default function FestivalAutoPostScreen() {
     setImageUrl('');
     setLocalImageUri(null);
     setImageError(null);
+    setModalImageLoadError(false);
     setTouched({});
     setGeneratingType(null);
   };
@@ -612,6 +624,7 @@ export default function FestivalAutoPostScreen() {
   const handleRemoveImage = () => {
     setLocalImageUri(null);
     setImageUrl('');
+    setModalImageLoadError(false);
     setTouched((prev) => ({ ...prev, image: true }));
   };
 
@@ -805,6 +818,8 @@ export default function FestivalAutoPostScreen() {
   };
 
   const previewImageUri = localImageUri || (imageUrl ? getFestivalImageUrl(imageUrl) : '') || null;
+  const isModal360Image =
+    modalImageLoadError || !previewImageUri || previewImageUri.includes('360_image');
   const isCreate = !editingPost;
   const headerTitle =
     name.trim() || (isCreate ? 'New Festival Event' : editingPost?.name || 'Festival');
@@ -997,13 +1012,15 @@ export default function FestivalAutoPostScreen() {
                         onSelectPost={(checked) => handleOpenStatusConfirm(post, checked)}
                         onEditPost={() => handleOpenEdit(post)}
                         onSendNotification={() => handleSendNotification(post)}
-                        onViewImage={() =>
+                        onViewImage={() => {
+                          const img = getFestivalImageUrl(post.image || post.image_url);
+                          if (!img || img.includes('360_image')) return;
                           setImageViewer({
                             open: true,
-                            src: getFestivalImageUrl(post.image || post.image_url) || '',
+                            src: img,
                             alt: post.name || 'Festival Image',
-                          })
-                        }
+                          });
+                        }}
                       />
                     );
                   })}
@@ -1438,21 +1455,34 @@ export default function FestivalAutoPostScreen() {
                         <Feather name="trash-2" size={15} color="#ffffff" />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        activeOpacity={0.9}
+                        activeOpacity={isModal360Image ? 1 : 0.9}
                         style={{ width: '100%' }}
-                        onPress={() =>
-                          setImageViewer({
-                            open: true,
-                            src: previewImageUri,
-                            alt: name || 'Preview',
-                          })
-                        }
+                        onPress={() => {
+                          if (!isModal360Image && previewImageUri) {
+                            setImageViewer({
+                              open: true,
+                              src: previewImageUri,
+                              alt: name || 'Preview',
+                            });
+                          }
+                        }}
                       >
-                        <Image
-                          source={{ uri: previewImageUri }}
-                          style={styles.imagePreview}
-                          resizeMode="contain"
-                        />
+                        {previewImageUri &&
+                        !modalImageLoadError &&
+                        !previewImageUri.includes('360_image') ? (
+                          <Image
+                            source={{ uri: previewImageUri }}
+                            style={styles.imagePreview}
+                            resizeMode="contain"
+                            onError={() => setModalImageLoadError(true)}
+                          />
+                        ) : (
+                          <Image
+                            source={require('@/assets/images/360_image.jpg')}
+                            style={styles.imagePreview}
+                            resizeMode="contain"
+                          />
+                        )}
                       </TouchableOpacity>
                     </Box>
                   )}
@@ -1785,12 +1815,13 @@ const styles = StyleSheet.create({
   },
   igImageWrap: {
     width: '100%',
-    aspectRatio: 4 / 5,
+    aspectRatio: 6 / 5,
     backgroundColor: '#f1f5f9',
   },
   igImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'contain',
   },
   igImagePlaceholder: {
     flex: 1,

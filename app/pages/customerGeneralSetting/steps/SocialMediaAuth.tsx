@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -30,6 +30,7 @@ const PLATFORMS = [
     color: '#E4405F',
     bgColor: '#fdf2f4',
     borderColor: '#fbcfe8',
+    isComingSoon: false,
   },
   {
     id: 'facebook',
@@ -40,21 +41,137 @@ const PLATFORMS = [
     color: '#1877F2',
     bgColor: '#eff6ff',
     borderColor: '#bfdbfe',
+    isComingSoon: false,
+  },
+  {
+    id: 'twitter',
+    name: 'X (Twitter)',
+    description: 'Connect your X (Twitter) account for automated tweets & updates',
+    iconName: 'twitter',
+    color: '#000000',
+    bgColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+    isComingSoon: false,
+  },
+  {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    description: 'Connect your LinkedIn profile or organization page for professional posts',
+    iconName: 'linkedin-square',
+    color: '#0077B5',
+    bgColor: '#f0f9ff',
+    borderColor: '#bae6fd',
+    isComingSoon: false,
+  },
+  {
+    id: 'google_business',
+    name: 'Google Business Profile',
+    description: 'Connect Google Business Profile to update local business posts & offers',
+    iconName: 'google',
+    color: '#4285F4',
+    bgColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+    isComingSoon: false,
+  },
+  {
+    id: 'pinterest',
+    name: 'Pinterest',
+    description: 'Connect your Pinterest account for visual pins & ideas',
+    iconName: 'pinterest-p',
+    color: '#BD081C',
+    bgColor: '#fef2f2',
+    borderColor: '#fecaca',
+    isComingSoon: false,
+  },
+  {
+    id: 'snapchat',
+    name: 'Snapchat',
+    description: 'Connect your Snapchat account for story automation',
+    iconName: 'snapchat-ghost',
+    color: '#d97706',
+    bgColor: '#fffbeb',
+    borderColor: '#fef3c7',
+    isComingSoon: false,
   },
 ];
 
 export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps) {
   const [loadingPlatform, setLoadingPlatform] = useState<string | null>(null);
-  const [refreshingPlatform, setRefreshingPlatform] = useState<string | null>(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [selectedForDisconnect, setSelectedForDisconnect] = useState<{
-    platform: 'facebook' | 'instagram';
+    platform: string;
+    accountId?: string;
     name: string;
   } | null>(null);
 
   const authData = data.social_media_auth || {};
 
-  const handleConnect = async (platform: 'facebook' | 'instagram') => {
+  // Auto-refresh statuses on initial mount
+  useEffect(() => {
+    PLATFORMS.filter((p) => !p.isComingSoon).forEach((platform) => {
+      if (authData[platform.id]) {
+        void handleRefreshStatusSilently(platform.id);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleRefreshStatusSilently = async (platform: string) => {
+    try {
+      const res = await getConnectionStatus(platform);
+      if (res?.success && res.data) {
+        onChange({
+          social_media_auth: {
+            ...(data.social_media_auth || {}),
+            [platform]: res.data,
+          },
+        });
+      }
+    } catch (err) {
+      // Silent error on auto-refresh
+    }
+  };
+
+  const getPlatformAccounts = (platformId: string, platformData: any): any[] => {
+    if (!platformData) return [];
+
+    const mapCommonFields = (acc: any): any => ({
+      account_id:
+        acc.account_id || acc.page_id || acc.instagram_business_account_id || acc.id || platformId,
+      account_name:
+        acc.account_name ||
+        acc.page_name ||
+        acc.username ||
+        acc.verified_name ||
+        acc.connected_account_name ||
+        'Connected Account',
+      username: acc.username,
+      primary_phone: acc.primary_phone || acc.display_phone_number,
+      connection_status: acc.connection_status || 'connected',
+      auth_status: acc.auth_status || 'authorized',
+      is_connected: acc.connection_status === 'connected' || acc.is_connected !== false,
+    });
+
+    if (Array.isArray(platformData)) {
+      return platformData.map((acc: any) => mapCommonFields(acc));
+    }
+
+    if (typeof platformData === 'object') {
+      const isConnected =
+        platformData.connection_status === 'connected' || platformData.is_connected;
+      if (isConnected) {
+        return [mapCommonFields(platformData)];
+      }
+    }
+
+    return [];
+  };
+
+  const handleConnect = async (platform: string, isComingSoon?: boolean) => {
+    if (isComingSoon) {
+      Alert.alert('Coming Soon', `${platform} integration is coming soon!`);
+      return;
+    }
     setLoadingPlatform(platform);
     try {
       const res = await getOAuthUrl(platform, 'setup-wizard');
@@ -70,59 +187,40 @@ export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps
     }
   };
 
-  const handleRefreshStatus = async (platform: 'facebook' | 'instagram') => {
-    setRefreshingPlatform(platform);
-    try {
-      const res = await getConnectionStatus(platform);
-      if (res?.success && res.data) {
-        const isConnected = res.data.connection_status === 'connected' || res.data.is_connected;
-        onChange({
-          social_media_auth: {
-            ...authData,
-            [platform]: {
-              ...authData[platform],
-              connection_status: isConnected ? 'connected' : 'disconnected',
-              connected_account_name:
-                res.data.connected_account_name || authData[platform]?.connected_account_name || '',
-              auth_status: res.data.auth_status || 'authorized',
-            },
-          },
-        });
-        Alert.alert('Status Updated', `${platform} connection status refreshed successfully.`);
-      }
-    } catch (err: any) {
-      Alert.alert('Status Notice', err?.message || 'Could not fetch latest status.');
-    } finally {
-      setRefreshingPlatform(null);
-    }
-  };
-
-  const handleOpenDisconnectModal = (platform: 'facebook' | 'instagram', name: string) => {
-    setSelectedForDisconnect({ platform, name });
+  const handleOpenDisconnectModal = (platform: string, name: string, accountId?: string) => {
+    setSelectedForDisconnect({ platform, accountId, name });
     setConfirmModalOpen(true);
   };
 
   const handleConfirmDisconnect = async () => {
     if (!selectedForDisconnect) return;
-    const { platform } = selectedForDisconnect;
+    const { platform, accountId } = selectedForDisconnect;
     setConfirmModalOpen(false);
     setLoadingPlatform(platform);
 
     try {
       const res = await disconnectAccount(platform);
       if (res?.success) {
+        let updatedPlatformData: any = {
+          connection_status: 'disconnected',
+          connected_account_name: '',
+          auth_status: 'unauthorized',
+          reconnect_status: 'not_needed',
+        };
+
+        if (Array.isArray(authData[platform])) {
+          updatedPlatformData = authData[platform].filter(
+            (a: any) => (a.account_id || a.page_id || a.id) !== accountId
+          );
+        }
+
         onChange({
           social_media_auth: {
             ...authData,
-            [platform]: {
-              connection_status: 'disconnected',
-              connected_account_name: '',
-              auth_status: 'unauthorized',
-              reconnect_status: 'not_needed',
-            },
+            [platform]: updatedPlatformData,
           },
         });
-        Alert.alert('Disconnected', `${platform} account has been disconnected.`);
+        Alert.alert('Disconnected', `${platform.replace('_', ' ')} account has been disconnected.`);
       } else {
         throw new Error(res?.error || res?.message || 'Failed to disconnect account');
       }
@@ -153,16 +251,17 @@ export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps
 
       {/* Platform Cards */}
       {PLATFORMS.map((platform) => {
-        const pData = authData[platform.id] || {};
-        const isConnected = pData.connection_status === 'connected';
-        const accountName =
-          pData.connected_account_name || pData.username || pData.page_name || 'Authorized Page';
+        const platformData = authData[platform.id];
+        const accounts = getPlatformAccounts(platform.id, platformData);
+        const isConnected = accounts.length > 0;
         const isLoadingThis = loadingPlatform === platform.id;
-        const isRefreshingThis = refreshingPlatform === platform.id;
 
         return (
-          <View key={platform.id} style={styles.card}>
-            <HStack style={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <View
+            key={platform.id}
+            style={[styles.card, platform.isComingSoon && styles.cardDisabled]}
+          >
+            <HStack style={{ flexDirection: 'column' }}>
               <HStack space="md" style={{ flex: 1 }}>
                 {/* Platform Icon */}
                 <View
@@ -173,12 +272,10 @@ export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps
                 >
                   <FontAwesome name={platform.iconName as any} size={22} color={platform.color} />
                 </View>
-
-                {/* Platform Details */}
                 <VStack style={{ flex: 1 }}>
                   <HStack space="xs" style={{ alignItems: 'center' }}>
                     <Text style={styles.platformName}>{platform.name}</Text>
-                    {isConnected && (
+                    {isConnected ? (
                       <View style={styles.connectedBadge}>
                         <Feather
                           name="check-circle"
@@ -186,77 +283,106 @@ export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps
                           color="#16a34a"
                           style={{ marginRight: 4 }}
                         />
-                        <Text style={styles.connectedBadgeText}>Connected</Text>
+                        <Text style={styles.connectedBadgeText}>
+                          {accounts.length > 1 ? `${accounts.length} Accounts` : 'Connected'}
+                        </Text>
                       </View>
-                    )}
+                    ) : platform.isComingSoon ? (
+                      <View style={styles.comingSoonBadge}>
+                        <Text style={styles.comingSoonBadgeText}>Coming Soon</Text>
+                      </View>
+                    ) : null}
                   </HStack>
 
                   <Text style={styles.platformDesc}>{platform.description}</Text>
-
-                  {isConnected && (
-                    <View style={styles.connectedAccountBox}>
-                      <Feather
-                        name="user-check"
-                        size={13}
-                        color="#0f172a"
-                        style={{ marginRight: 6 }}
-                      />
-                      <Text style={styles.connectedAccountText} numberOfLines={1}>
-                        {accountName}
-                      </Text>
-                    </View>
-                  )}
                 </VStack>
               </HStack>
+              {/* Platform Details */}
+              <VStack style={{ flex: 1 }}>
+                {/* Connected Accounts List */}
+                {isConnected && (
+                  <VStack space="xs" style={{ marginTop: 8 }}>
+                    {accounts.map((acc, idx) => (
+                      <View key={acc.account_id || idx} style={styles.connectedAccountBox}>
+                        <Feather
+                          name="user-check"
+                          size={13}
+                          color="#0f172a"
+                          style={{ marginRight: 6 }}
+                        />
+                        <VStack style={{ flex: 1 }}>
+                          <Text style={styles.connectedAccountText} numberOfLines={1}>
+                            {acc.account_name}
+                          </Text>
+                          {acc.username && (
+                            <Text style={styles.accountSubText} numberOfLines={1}>
+                              @{acc.username}
+                            </Text>
+                          )}
+                          {acc.primary_phone && (
+                            <Text style={styles.accountSubText} numberOfLines={1}>
+                              📞 {acc.primary_phone}
+                            </Text>
+                          )}
+                        </VStack>
+
+                        {/* Disconnect button next to account name */}
+                        <TouchableOpacity
+                          onPress={() =>
+                            handleOpenDisconnectModal(
+                              platform.id,
+                              acc.account_name || platform.name,
+                              acc.account_id
+                            )
+                          }
+                          disabled={isLoadingThis}
+                          style={styles.disconnectIconBtn}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="link-2" size={14} color="#dc2626" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </VStack>
+                )}
+              </VStack>
             </HStack>
 
             {/* Action Buttons Row */}
-            <HStack space="xs" style={styles.actionRow}>
-              {isConnected ? (
-                <>
-                  <TouchableOpacity
-                    onPress={() => handleRefreshStatus(platform.id as any)}
-                    disabled={isRefreshingThis}
-                    style={styles.refreshBtn}
-                  >
-                    {isRefreshingThis ? (
-                      <ActivityIndicator size="small" color="#64748b" />
-                    ) : (
-                      <HStack space="xs" style={{ alignItems: 'center' }}>
-                        <Feather name="refresh-cw" size={13} color="#64748b" />
-                        <Text style={styles.refreshBtnText}>Refresh</Text>
-                      </HStack>
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => handleOpenDisconnectModal(platform.id as any, accountName)}
-                    disabled={isLoadingThis}
-                    style={styles.disconnectBtn}
-                  >
-                    <HStack space="xs" style={{ alignItems: 'center' }}>
-                      <Feather name="link-2" size={13} color="#dc2626" />
-                      <Text style={styles.disconnectBtnText}>Disconnect</Text>
-                    </HStack>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => handleConnect(platform.id as any)}
-                  disabled={isLoadingThis}
-                  style={[styles.connectBtn, { backgroundColor: platform.color }]}
-                >
-                  {isLoadingThis ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <HStack space="xs" style={{ alignItems: 'center' }}>
-                      <Feather name="link" size={14} color="#ffffff" />
-                      <Text style={styles.connectBtnText}>Connect Account</Text>
-                    </HStack>
-                  )}
-                </TouchableOpacity>
-              )}
-            </HStack>
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                onPress={() => handleConnect(platform.id, platform.isComingSoon)}
+                disabled={isLoadingThis || platform.isComingSoon}
+                style={[
+                  styles.connectBtn,
+                  {
+                    backgroundColor: platform.isComingSoon ? '#cbd5e1' : '#193867',
+                  },
+                ]}
+              >
+                {isLoadingThis ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <HStack space="xs" style={{ alignItems: 'center', justifyContent: 'center' }}>
+                    <Feather
+                      name={isConnected ? 'plus' : 'external-link'}
+                      size={14}
+                      color="#ffffff"
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={styles.connectBtnText}>
+                      {isLoadingThis
+                        ? 'Processing...'
+                        : platform.isComingSoon
+                          ? 'Coming Soon'
+                          : isConnected
+                            ? 'Add Account'
+                            : 'Connect Account'}
+                    </Text>
+                  </HStack>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         );
       })}
@@ -333,6 +459,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  cardDisabled: {
+    opacity: 0.7,
+  },
   platformIconCircle: {
     width: 44,
     height: 44,
@@ -362,6 +491,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#15803d',
   },
+  comingSoonBadge: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 6,
+  },
+  comingSoonBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748b',
+  },
   platformDesc: {
     fontSize: 12,
     color: '#64748b',
@@ -371,65 +514,51 @@ const styles = StyleSheet.create({
   connectedAccountBox: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginTop: 8,
+    paddingVertical: 8,
+    marginTop: 4,
   },
   connectedAccountText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#0f172a',
-    flex: 1,
+  },
+  accountSubText: {
+    fontSize: 11,
+    color: '#64748b',
+  },
+  disconnectIconBtn: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    marginLeft: 8,
   },
   actionRow: {
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
-    justifyContent: 'flex-end',
   },
   connectBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderRadius: 9,
+    width: '100%',
   },
   connectBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#ffffff',
-  },
-  refreshBtn: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  refreshBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  disconnectBtn: {
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fecaca',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-  disconnectBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#dc2626',
   },
   modalOverlay: {
     flex: 1,

@@ -62,4 +62,3 @@ export const deleteProfile = async (id: string) => {
 
   return res;
 };
-

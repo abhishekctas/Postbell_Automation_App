@@ -11,7 +11,10 @@ import {
   Switch,
   Modal,
   View,
+  PanResponder,
+  Button,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
@@ -34,6 +37,7 @@ import {
   uploadPostImage,
   getImageUrl,
   Post,
+  ReferenceDetectedObject,
 } from './posts.api';
 
 const CONTENT_TYPES = [
@@ -49,7 +53,7 @@ const SOCIAL_PLATFORMS = [
   { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp', color: '#25d366' },
   { id: 'twitter', label: 'Twitter', icon: 'twitter', color: '#1da1f2' },
   { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', color: '#0a66c2' },
-  { id: 'snapchat', label: 'Snapchat', icon: 'snapchat', color: '#e2de07ff' },
+  // { id: 'snapchat', label: 'Snapchat', icon: 'snapchat', color: '#e2de07ff' },
   { id: 'google_business', label: 'Google Business', icon: 'google', color: '#313641ff' },
   { id: 'pinterest', label: 'Pinterest', icon: 'pinterest', color: '#bd081c' },
 ];
@@ -128,6 +132,25 @@ export default function PostEditorScreen() {
   const [referenceImageProvider, setReferenceImageProvider] = useState<
     'auto' | 'gemini' | 'openai'
   >('auto');
+  const [aiReferenceManualObjects, setAiReferenceManualObjects] = useState<
+    ReferenceDetectedObject[]
+  >([]);
+  const [markObjectModalOpen, setMarkObjectModalOpen] = useState<boolean>(false);
+  const [markStrokes, setMarkStrokes] = useState<{ x: number; y: number }[][]>([]);
+  const [currentMarkStroke, setCurrentMarkStroke] = useState<{ x: number; y: number }[]>([]);
+  const [markObjectLabel, setMarkObjectLabel] = useState<string>('');
+  const [markCanvasLayout, setMarkCanvasLayout] = useState<{ width: number; height: number }>({
+    width: 320,
+    height: 280,
+  });
+  const markCanvasLayoutRef = useRef<{ width: number; height: number }>({
+    width: 320,
+    height: 280,
+  });
+
+  useEffect(() => {
+    markCanvasLayoutRef.current = markCanvasLayout;
+  }, [markCanvasLayout]);
 
   // Content Type & Platform-Specific Overrides
   const [activePlatformTab, setActivePlatformTab] = useState<string>('general');
@@ -144,8 +167,112 @@ export default function PostEditorScreen() {
       }
     >
   >({});
+  const [platformSpecificContent, setPlatformSpecificContent] = useState<Record<string, any[]>>({});
   const [platformHashtagsInput, setPlatformHashtagsInput] = useState<Record<string, string>>({});
   const [uploadingPlatformImage, setUploadingPlatformImage] = useState<Record<string, boolean>>({});
+
+  const handlePlatformSpecificChange = (
+    platform: string,
+    accountId: string,
+    field: string,
+    value: any
+  ) => {
+    setPlatformSpecificContent((prev) => {
+      const platformAccs = socialAccounts.filter(
+        (a) =>
+          isPlatformMatch(a.platform, platform) &&
+          selectedAccounts.includes(a.account_id || a.value || a.id || a._id)
+      );
+
+      let currentEntries = prev[platform] ? [...prev[platform]] : [];
+
+      if (platformAccs.length > 0) {
+        const updatedEntries = platformAccs.map((acc, idx) => {
+          const accId = acc.account_id || acc.value || acc.id || acc._id;
+          let item = currentEntries.find((e: any) => e.account_id === accId) || currentEntries[idx];
+
+          if (!item) {
+            const override = platformOverrides[platform] || {};
+            item = {
+              account_id: accId,
+              caption: override.caption || caption || '',
+              link: override.link || companyWebsite || '',
+              hashtags:
+                override.hashtags && override.hashtags.length > 0
+                  ? override.hashtags
+                  : hashtagsInput
+                    ? hashtagsInput
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
+                    : [],
+              mediaUrl:
+                override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
+              contentType: override.contentType || contentTypeOverrides[platform] || 'media',
+            };
+          } else {
+            item = { ...item, account_id: accId };
+          }
+
+          if (!accountId || item.account_id === accountId || (idx === 0 && !accountId)) {
+            if (field.includes('.')) {
+              const [parent, child] = field.split('.');
+              return {
+                ...item,
+                [parent]: { ...(item[parent] || {}), [child]: value },
+              };
+            }
+            return { ...item, [field]: value };
+          }
+          return item;
+        });
+
+        return {
+          ...prev,
+          [platform]: updatedEntries,
+        };
+      } else {
+        if (currentEntries.length === 0) {
+          const override = platformOverrides[platform] || {};
+          currentEntries = [
+            {
+              account_id: accountId || '',
+              caption: override.caption || caption || '',
+              link: override.link || companyWebsite || '',
+              hashtags:
+                override.hashtags && override.hashtags.length > 0
+                  ? override.hashtags
+                  : hashtagsInput
+                    ? hashtagsInput
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
+                    : [],
+              mediaUrl:
+                override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
+              contentType: override.contentType || contentTypeOverrides[platform] || 'media',
+            },
+          ];
+        }
+
+        const updatedEntries = currentEntries.map((item: any) => {
+          if (field.includes('.')) {
+            const [parent, child] = field.split('.');
+            return {
+              ...item,
+              [parent]: { ...(item[parent] || {}), [child]: value },
+            };
+          }
+          return { ...item, [field]: value };
+        });
+
+        return {
+          ...prev,
+          [platform]: updatedEntries,
+        };
+      }
+    });
+  };
 
   // Connected Social Accounts
   const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
@@ -163,13 +290,7 @@ export default function PostEditorScreen() {
       try {
         let loadedAccounts: any[] = [];
         try {
-          const accountsRes = await getAllSocialAccountsForPost();
-          if (Array.isArray(accountsRes)) {
-            loadedAccounts = accountsRes;
-          } else if (accountsRes?.data && Array.isArray(accountsRes.data)) {
-            loadedAccounts = accountsRes.data;
-          }
-          setSocialAccounts(loadedAccounts);
+          loadedAccounts = await fetchAndSetSocialAccounts();
         } catch {
           // Default fallback if social accounts fetch fails
         }
@@ -187,8 +308,8 @@ export default function PostEditorScreen() {
             typeof postData.image_url === 'string' && postData.image_url.trim()
               ? postData.image_url
               : postData.generalContent?.media?.[0]?.url ||
-              postData.generalContent?.media?.[0]?.imagePath ||
-              '';
+                postData.generalContent?.media?.[0]?.imagePath ||
+                '';
           setImageUrl(initialImg);
           setImagePath(
             postData.image_path || postData.generalContent?.media?.[0]?.imagePath || initialImg
@@ -218,10 +339,10 @@ export default function PostEditorScreen() {
             setSelectedAccounts(loadedAccIds);
           } else if (loadedAccounts.length > 0) {
             const autoSelected = loadedAccounts
-              .filter((acc) =>
+              .filter((acc: any) =>
                 (postData.selectedNetworks || ['facebook', 'instagram']).includes(acc.platform)
               )
-              .map((acc) => acc.account_id);
+              .map((acc: any) => acc.account_id || acc.value || acc.id);
             setSelectedAccounts(autoSelected);
           }
 
@@ -230,6 +351,7 @@ export default function PostEditorScreen() {
             postData.platformSpecificContent &&
             typeof postData.platformSpecificContent === 'object'
           ) {
+            setPlatformSpecificContent(postData.platformSpecificContent as Record<string, any[]>);
             const overridesMap: Record<string, any> = {};
             const initialPlatformTags: Record<string, string> = {};
             Object.entries(postData.platformSpecificContent).forEach(
@@ -243,6 +365,16 @@ export default function PostEditorScreen() {
                     hashtags: first.hashtags || [],
                     image_url: first.mediaUrl || first.media_url || '',
                   };
+                  entryList.forEach((entry: any, idx: number) => {
+                    const tagKey = `${plat}:${entry.account_id || idx}`;
+                    if (
+                      entry.hashtags &&
+                      Array.isArray(entry.hashtags) &&
+                      entry.hashtags.length > 0
+                    ) {
+                      initialPlatformTags[tagKey] = entry.hashtags.join(', ');
+                    }
+                  });
                   if (
                     first.hashtags &&
                     Array.isArray(first.hashtags) &&
@@ -329,7 +461,12 @@ export default function PostEditorScreen() {
   };
 
   // Platform-Specific Image Picker
-  const pickPlatformImage = async (platformKey: string, withCrop: boolean = false) => {
+  const pickPlatformImage = async (
+    platformKey: string,
+    withCrop: boolean = false,
+    accountId: string = ''
+  ) => {
+    const key = `${platformKey}:${accountId || 'default'}`;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
@@ -339,8 +476,8 @@ export default function PostEditorScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
-        setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: true }));
-        setPlatformImgErrors((prev) => ({ ...prev, [platformKey]: false }));
+        setUploadingPlatformImage((prev) => ({ ...prev, [key]: true, [platformKey]: true }));
+        setPlatformImgErrors((prev) => ({ ...prev, [key]: false, [platformKey]: false }));
         try {
           const uploadRes = await uploadPostImage(
             uri,
@@ -355,6 +492,8 @@ export default function PostEditorScreen() {
             uploadRes?.data?.imageUrl ||
             uploadRes?.data?.url ||
             uri;
+
+          handlePlatformSpecificChange(platformKey, accountId, 'mediaUrl', serverUrl);
           setPlatformOverrides((prev) => ({
             ...prev,
             [platformKey]: {
@@ -363,9 +502,12 @@ export default function PostEditorScreen() {
             },
           }));
         } catch (err: any) {
-          Alert.alert('Upload Failed', err?.message || `Failed to upload image for ${platformKey}.`);
+          Alert.alert(
+            'Upload Failed',
+            err?.message || `Failed to upload image for ${platformKey}.`
+          );
         } finally {
-          setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: false }));
+          setUploadingPlatformImage((prev) => ({ ...prev, [key]: false, [platformKey]: false }));
         }
       }
     } catch {
@@ -430,7 +572,12 @@ export default function PostEditorScreen() {
   };
 
   // Camera Image Capture for Platform-Specific
-  const takePlatformImage = async (platformKey: string, withCrop: boolean = false) => {
+  const takePlatformImage = async (
+    platformKey: string,
+    withCrop: boolean = false,
+    accountId: string = ''
+  ) => {
+    const key = `${platformKey}:${accountId || 'default'}`;
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
@@ -447,8 +594,8 @@ export default function PostEditorScreen() {
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
-        setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: true }));
-        setPlatformImgErrors((prev) => ({ ...prev, [platformKey]: false }));
+        setUploadingPlatformImage((prev) => ({ ...prev, [key]: true, [platformKey]: true }));
+        setPlatformImgErrors((prev) => ({ ...prev, [key]: false, [platformKey]: false }));
         try {
           const uploadRes = await uploadPostImage(
             uri,
@@ -463,6 +610,8 @@ export default function PostEditorScreen() {
             uploadRes?.data?.imageUrl ||
             uploadRes?.data?.url ||
             uri;
+
+          handlePlatformSpecificChange(platformKey, accountId, 'mediaUrl', serverUrl);
           setPlatformOverrides((prev) => ({
             ...prev,
             [platformKey]: {
@@ -471,9 +620,12 @@ export default function PostEditorScreen() {
             },
           }));
         } catch (err: any) {
-          Alert.alert('Upload Failed', err?.message || `Failed to upload image for ${platformKey}.`);
+          Alert.alert(
+            'Upload Failed',
+            err?.message || `Failed to upload image for ${platformKey}.`
+          );
         } finally {
-          setUploadingPlatformImage((prev) => ({ ...prev, [platformKey]: false }));
+          setUploadingPlatformImage((prev) => ({ ...prev, [key]: false, [platformKey]: false }));
         }
       }
     } catch {
@@ -491,10 +643,10 @@ export default function PostEditorScreen() {
   };
 
   // Image Source Picker for Platform-Specific
-  const showPlatformImagePicker = (platformKey: string) => {
+  const showPlatformImagePicker = (platformKey: string, accountId: string = '') => {
     Alert.alert('Select Image Source', 'Choose an option', [
-      { text: 'Gallery', onPress: () => pickPlatformImage(platformKey, false) },
-      { text: 'Camera', onPress: () => takePlatformImage(platformKey, false) },
+      { text: 'Gallery', onPress: () => pickPlatformImage(platformKey, false, accountId) },
+      { text: 'Camera', onPress: () => takePlatformImage(platformKey, false, accountId) },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -759,7 +911,7 @@ export default function PostEditorScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.8,
       });
 
@@ -786,7 +938,7 @@ export default function PostEditorScreen() {
       }
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.8,
       });
 
@@ -809,6 +961,158 @@ export default function PostEditorScreen() {
     ]);
   };
 
+  // PanResponder for Interactive Touch Object Marking
+  const markPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const { locationX, locationY } = evt.nativeEvent;
+        const w = markCanvasLayoutRef.current.width || 1;
+        const h = markCanvasLayoutRef.current.height || 1;
+        const x = Math.min(Math.max(locationX / w, 0), 1);
+        const y = Math.min(Math.max(locationY / h, 0), 1);
+        setCurrentMarkStroke([{ x, y }]);
+      },
+      onPanResponderMove: (evt) => {
+        const { locationX, locationY } = evt.nativeEvent;
+        const w = markCanvasLayoutRef.current.width || 1;
+        const h = markCanvasLayoutRef.current.height || 1;
+        const x = Math.min(Math.max(locationX / w, 0), 1);
+        const y = Math.min(Math.max(locationY / h, 0), 1);
+        setCurrentMarkStroke((prev) => {
+          const last = prev[prev.length - 1];
+          if (last && Math.abs(last.x - x) < 0.003 && Math.abs(last.y - y) < 0.003) {
+            return prev;
+          }
+          return [...prev, { x, y }];
+        });
+      },
+      onPanResponderRelease: () => {
+        setCurrentMarkStroke((current) => {
+          if (current.length > 1) {
+            setMarkStrokes((prev) => [...prev, current]);
+          }
+          return [];
+        });
+      },
+      onPanResponderTerminate: () => {
+        setCurrentMarkStroke((current) => {
+          if (current.length > 1) {
+            setMarkStrokes((prev) => [...prev, current]);
+          }
+          return [];
+        });
+      },
+    })
+  ).current;
+
+  const strokeToSvgPath = (stroke: { x: number; y: number }[]) =>
+    stroke
+      .map(
+        (p, index) =>
+          `${index === 0 ? 'M' : 'L'} ${(p.x * 100).toFixed(2)} ${(p.y * 100).toFixed(2)}`
+      )
+      .join(' ');
+
+  // Clear Reference Image & Associated Data
+  const handleClearReferenceImage = () => {
+    setReferenceImageUri('');
+    setAiRefImage('');
+    setAiMarketingImageUrl('');
+    setAiReferenceManualObjects([]);
+    setMarkStrokes([]);
+    setCurrentMarkStroke([]);
+    setMarkObjectLabel('');
+    setMarkObjectModalOpen(false);
+  };
+
+  // Open Object Marking Modal
+  const openMarkObjectModal = () => {
+    const targetUri = referenceImageUri || aiRefImage;
+    if (!targetUri) {
+      Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
+      return;
+    }
+    setMarkStrokes([]);
+    setCurrentMarkStroke([]);
+    setMarkObjectLabel('');
+    setMarkObjectModalOpen(true);
+  };
+
+  // Save Manual Object Mark
+  const handleSaveObjectMark = () => {
+    const allStrokes = [
+      ...markStrokes,
+      ...(currentMarkStroke.length > 1 ? [currentMarkStroke] : []),
+    ];
+    const points = allStrokes.flat();
+    if (points.length < 2) {
+      Alert.alert(
+        'Selection Required',
+        'Please trace or draw a region over an object on the image.'
+      );
+      return;
+    }
+
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    const maxX = Math.max(...xs);
+    const maxY = Math.max(...ys);
+    const width = Math.max(maxX - minX, 0.02);
+    const height = Math.max(maxY - minY, 0.02);
+    const nextIdx = aiReferenceManualObjects.length + 1;
+    const label = markObjectLabel.trim() || `Marked Object ${nextIdx}`;
+
+    const newObject: ReferenceDetectedObject = {
+      id: `manual-${Date.now()}-${nextIdx}`,
+      label,
+      confidence: 1,
+      bbox: { x: minX, y: minY, width, height },
+      description: 'Manually marked selection',
+    };
+
+    setAiReferenceManualObjects((prev) => [...prev, newObject]);
+    setMarkStrokes([]);
+    setCurrentMarkStroke([]);
+    setMarkObjectLabel('');
+    setMarkObjectModalOpen(false);
+    Alert.alert('Success', `Object "${label}" marked successfully!`);
+  };
+
+  // Remove Marked Object
+  const handleRemoveManualObjectMark = (objectId: string) => {
+    setAiReferenceManualObjects((prev) => prev.filter((obj) => obj.id !== objectId));
+  };
+
+  // Crop Reference Image Handler
+  const handleCropReferenceImage = async () => {
+    const targetUri = referenceImageUri || aiRefImage;
+    if (!targetUri) {
+      Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.9,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const croppedUri = result.assets[0].uri;
+        setReferenceImageUri(croppedUri);
+        setAiRefImage(croppedUri);
+        Alert.alert('Success', 'Reference image cropped successfully!');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to crop reference image.');
+    }
+  };
+
   // AI Marketing Image from Reference Handler
   const handleGenerateAiMarketingImage = async (customUri?: string): Promise<void> => {
     const imgUri = customUri || referenceImageUri || aiRefImage;
@@ -824,6 +1128,8 @@ export default function PostEditorScreen() {
         company_website: companyWebsite,
         company_email: companyEmail,
         provider: referenceImageProvider || aiProvider,
+        reference_objects:
+          aiReferenceManualObjects.length > 0 ? aiReferenceManualObjects : undefined,
       });
       const generatedUrl =
         res?.imageUrl || res?.url || res?.image_url || res?.data?.imageUrl || res?.data?.url;
@@ -958,39 +1264,74 @@ export default function PostEditorScreen() {
       const platformSpecificContentObj: Record<string, any[]> = {};
       selectedPlatforms.forEach((platform) => {
         const platformAccs = socialAccounts.filter(
-          (a) => a.platform === platform && selectedAccounts.includes(a.account_id)
+          (a) =>
+            isPlatformMatch(a.platform, platform) &&
+            selectedAccounts.includes(a.account_id || a.value || a.id || a._id)
         );
+        const existingEntries = platformSpecificContent[platform] || [];
         const override = platformOverrides[platform] || {};
-        const platformContentType =
-          override.contentType || contentTypeOverrides[platform] || 'media';
-
-        const platformLink = formatWebsiteUrl(override.link) || formattedWebsite;
-
-        const platformHashtags =
-          override.hashtags && override.hashtags.length > 0 ? override.hashtags : hashtagsArray;
-
-        const platformMediaUrl =
-          override.image_url !== undefined ? override.image_url : imageUrl || '';
 
         if (platformAccs.length > 0) {
-          platformSpecificContentObj[platform] = platformAccs.map((acc) => ({
-            account_id: acc.account_id,
-            caption: override.caption || caption || '',
-            link: platformLink || '',
-            hashtags: platformHashtags,
-            mediaUrl: platformMediaUrl,
-            contentType: platformContentType,
-            post_status: finalStatus,
-          }));
+          platformSpecificContentObj[platform] = platformAccs.map((acc) => {
+            const accId = acc.account_id || acc.value || acc.id || acc._id;
+            const item = existingEntries.find((e: any) => e.account_id === accId) || {};
+
+            const itemContentType =
+              item.contentType || override.contentType || contentTypeOverrides[platform] || 'media';
+            const itemCaption =
+              item.caption !== undefined ? item.caption : override.caption || caption || '';
+            const itemLink = formatWebsiteUrl(item.link || override.link) || formattedWebsite || '';
+            const itemHashtags =
+              item.hashtags && item.hashtags.length > 0
+                ? item.hashtags
+                : override.hashtags && override.hashtags.length > 0
+                  ? override.hashtags
+                  : hashtagsArray;
+            const itemMediaUrl =
+              item.mediaUrl !== undefined
+                ? item.mediaUrl
+                : override.image_url !== undefined
+                  ? override.image_url
+                  : imageUrl || '';
+
+            return {
+              account_id: accId,
+              caption: itemCaption,
+              link: itemLink,
+              hashtags: itemHashtags,
+              mediaUrl: itemMediaUrl,
+              contentType: itemContentType,
+              post_status: finalStatus,
+            };
+          });
         } else {
+          const item = existingEntries[0] || {};
+          const itemContentType =
+            item.contentType || override.contentType || contentTypeOverrides[platform] || 'media';
+          const itemCaption =
+            item.caption !== undefined ? item.caption : override.caption || caption || '';
+          const itemLink = formatWebsiteUrl(item.link || override.link) || formattedWebsite || '';
+          const itemHashtags =
+            item.hashtags && item.hashtags.length > 0
+              ? item.hashtags
+              : override.hashtags && override.hashtags.length > 0
+                ? override.hashtags
+                : hashtagsArray;
+          const itemMediaUrl =
+            item.mediaUrl !== undefined
+              ? item.mediaUrl
+              : override.image_url !== undefined
+                ? override.image_url
+                : imageUrl || '';
+
           platformSpecificContentObj[platform] = [
             {
               account_id: '',
-              caption: override.caption || caption || '',
-              link: platformLink || '',
-              hashtags: platformHashtags,
-              mediaUrl: platformMediaUrl,
-              contentType: platformContentType,
+              caption: itemCaption,
+              link: itemLink,
+              hashtags: itemHashtags,
+              mediaUrl: itemMediaUrl,
+              contentType: itemContentType,
               post_status: finalStatus,
             },
           ];
@@ -1015,12 +1356,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-              {
-                type: 'image',
-                url: imageUrl,
-                imagePath: imagePath || imageUrl,
-              },
-            ]
+                {
+                  type: 'image',
+                  url: imageUrl,
+                  imagePath: imagePath || imageUrl,
+                },
+              ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -1054,10 +1395,169 @@ export default function PostEditorScreen() {
     }
   };
 
-  const togglePlatform = (pId: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(pId) ? prev.filter((x) => x !== pId) : [...prev, pId]
+  // ── Account & Platform Selection Handlers (Panel Reference Logic) ──
+  const isPlatformMatch = (accPlatform?: string, platId?: string) => {
+    if (!accPlatform || !platId) return false;
+    const p1 = accPlatform.toLowerCase().trim();
+    const p2 = platId.toLowerCase().trim();
+    if (p1 === p2) return true;
+    if ((p1 === 'twitter' || p1 === 'x') && (p2 === 'twitter' || p2 === 'x')) return true;
+    if (
+      (p1 === 'google' || p1 === 'google_business') &&
+      (p2 === 'google' || p2 === 'google_business')
+    )
+      return true;
+    return false;
+  };
+
+  const fetchAndSetSocialAccounts = async () => {
+    try {
+      const res = await getAllSocialAccountsForPost();
+      let accs: any[] = [];
+      if (Array.isArray(res)) {
+        accs = res;
+      } else if (Array.isArray(res?.data)) {
+        accs = res.data;
+      } else if (Array.isArray(res?.data?.data)) {
+        accs = res.data.data;
+      }
+      setSocialAccounts(accs);
+      return accs;
+    } catch (err) {
+      console.error('Failed to load social accounts:', err);
+      return [];
+    }
+  };
+
+  const openNetworksModal = async () => {
+    await fetchAndSetSocialAccounts();
+    setNetworksModalOpen(true);
+  };
+
+  const syncPlatformSpecificContent = (accounts: string[], platforms: string[]) => {
+    setPlatformSpecificContent((prev) => {
+      const nextContent: Record<string, any[]> = {};
+      platforms.forEach((platform) => {
+        const platformAccs = socialAccounts.filter(
+          (a) =>
+            isPlatformMatch(a.platform, platform) &&
+            accounts.includes(a.account_id || a.value || a.id || a._id)
+        );
+
+        const existingEntries = prev[platform] || [];
+        const override = platformOverrides[platform] || {};
+
+        if (platformAccs.length > 0) {
+          nextContent[platform] = platformAccs.map((acc) => {
+            const accId = acc.account_id || acc.value || acc.id || acc._id;
+            const existing = existingEntries.find((item: any) => item.account_id === accId);
+            if (existing) return existing;
+
+            return {
+              account_id: accId,
+              caption: override.caption || caption || '',
+              hashtags:
+                override.hashtags && override.hashtags.length > 0
+                  ? override.hashtags
+                  : hashtagsInput
+                    ? hashtagsInput
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
+                    : [],
+              link: override.link || companyWebsite || '',
+              mediaUrl:
+                override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
+              contentType: override.contentType || contentTypeOverrides[platform] || 'media',
+            };
+          });
+        } else {
+          const existing = existingEntries[0];
+          nextContent[platform] = [
+            existing || {
+              account_id: '',
+              caption: override.caption || caption || '',
+              hashtags:
+                override.hashtags && override.hashtags.length > 0
+                  ? override.hashtags
+                  : hashtagsInput
+                    ? hashtagsInput
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
+                    : [],
+              link: override.link || companyWebsite || '',
+              mediaUrl:
+                override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
+              contentType: override.contentType || contentTypeOverrides[platform] || 'media',
+            },
+          ];
+        }
+      });
+      return nextContent;
+    });
+  };
+
+  const handleAccountSelection = (accounts: string[], customPlatforms?: string[]) => {
+    setSelectedAccounts(accounts);
+    // Derive selectedPlatforms from selectedAccounts
+    const derivedPlatforms = Array.from(
+      new Set(
+        accounts
+          .map((accId) => {
+            const acc = socialAccounts.find(
+              (a) => (a.account_id || a.value || a.id || a._id) === accId
+            );
+            return acc?.platform;
+          })
+          .filter(Boolean) as string[]
+      )
     );
+    // Keep platforms that have selected accounts, plus manual platform selections if no connected accounts exist for them
+    const currentPlatforms = customPlatforms || selectedPlatforms;
+    const manualOnlyPlatforms = currentPlatforms.filter(
+      (p) => !socialAccounts.some((a) => isPlatformMatch(a.platform, p))
+    );
+    const nextPlatforms = Array.from(new Set([...derivedPlatforms, ...manualOnlyPlatforms]));
+    setSelectedPlatforms(nextPlatforms);
+    syncPlatformSpecificContent(accounts, nextPlatforms);
+  };
+
+  const togglePlatform = (pId: string) => {
+    const platformAccounts = socialAccounts.filter((a) => isPlatformMatch(a.platform, pId));
+    if (platformAccounts.length === 0) {
+      const nextPlatforms = selectedPlatforms.includes(pId)
+        ? selectedPlatforms.filter((x) => x !== pId)
+        : [...selectedPlatforms, pId];
+      setSelectedPlatforms(nextPlatforms);
+      syncPlatformSpecificContent(selectedAccounts, nextPlatforms);
+      return;
+    }
+
+    const platformAccIds = platformAccounts.map((a) => a.account_id || a.value || a.id || a._id);
+    const allSelected = platformAccIds.every((id) => selectedAccounts.includes(id));
+
+    let updatedAccounts: string[];
+    if (allSelected) {
+      updatedAccounts = selectedAccounts.filter((id) => !platformAccIds.includes(id));
+    } else {
+      const toAdd = platformAccIds.filter((id) => !selectedAccounts.includes(id));
+      updatedAccounts = [...selectedAccounts, ...toAdd];
+    }
+    handleAccountSelection(updatedAccounts);
+  };
+
+  const handleDeleteNetwork = (pId: string) => {
+    const platformAccounts = socialAccounts.filter((a) => isPlatformMatch(a.platform, pId));
+    if (platformAccounts.length === 0) {
+      const nextPlatforms = selectedPlatforms.filter((x) => x !== pId);
+      setSelectedPlatforms(nextPlatforms);
+      syncPlatformSpecificContent(selectedAccounts, nextPlatforms);
+      return;
+    }
+    const platformAccIds = platformAccounts.map((a) => a.account_id || a.value || a.id || a._id);
+    const updatedAccounts = selectedAccounts.filter((id) => !platformAccIds.includes(id));
+    handleAccountSelection(updatedAccounts);
   };
 
   if (loading) {
@@ -1175,12 +1675,7 @@ export default function PostEditorScreen() {
         {activeTab === 'ai' && (
           <VStack space="md">
             <Box style={styles.card}>
-              <HStack space="xs" className="items-center">
-                <Ionicons name="sparkles" size={18} color="#2563eb" />
-                <Heading size="sm" style={styles.cardTitle}>
-                  Generate Post with AI
-                </Heading>
-              </HStack>
+              <HStack space="xs" className="items-center"></HStack>
               <Text style={styles.cardSub}>
                 Describe your post topic or campaign idea, and AI will auto-generate copy, hashtags,
                 and format.
@@ -1369,8 +1864,11 @@ export default function PostEditorScreen() {
                 const isDownloading = downloadingPostIds.has(itemPostId);
 
                 return (
-                  <Box key={itemPostId + index} style={[styles.card, styles.aiResultCard, { marginBottom: 12 }]}>
-                    <HStack className="mb-2 items-center justify-between flex-wrap gap-2">
+                  <Box
+                    key={itemPostId + index}
+                    style={[styles.card, styles.aiResultCard, { marginBottom: 12 }]}
+                  >
+                    <HStack className="mb-2 flex-wrap items-center justify-between gap-2">
                       <HStack space="xs" className="items-center gap-2">
                         <Heading size="xs" style={{ color: '#0052d4', fontWeight: '700' }}>
                           ✨ AI Generated Output ({label})
@@ -1378,7 +1876,10 @@ export default function PostEditorScreen() {
                       </HStack>
                       <HStack space="xs" className="items-center gap-2">
                         <TouchableOpacity
-                          style={[styles.downloadAllBtn, (downloadingAll || isDownloading) && { opacity: 0.7 }]}
+                          style={[
+                            styles.downloadAllBtn,
+                            (downloadingAll || isDownloading) && { opacity: 0.7 },
+                          ]}
                           onPress={downloadAllPosts}
                           disabled={downloadingAll || isDownloading}
                         >
@@ -1423,7 +1924,7 @@ export default function PostEditorScreen() {
                                   a.click();
                                   URL.revokeObjectURL(a.href);
                                 })
-                                .catch(() => { });
+                                .catch(() => {});
                             }
                           }}
                         >
@@ -1459,7 +1960,7 @@ export default function PostEditorScreen() {
                     )}
 
                     {/* Per-card Actions Toolbar (Copy, Download Text, Download Post) */}
-                    <HStack className="mt-3 pt-2 items-center justify-end border-t border-slate-200 gap-2 flex-wrap">
+                    <HStack className="mt-3 flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-2">
                       {/* Copy Content Button */}
                       <TouchableOpacity
                         style={styles.actionIconBtn}
@@ -1532,13 +2033,7 @@ export default function PostEditorScreen() {
                   </Heading>
                 </HStack>
                 {referenceImageUri || aiRefImage ? (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setReferenceImageUri('');
-                      setAiRefImage('');
-                      setAiMarketingImageUrl('');
-                    }}
-                  >
+                  <TouchableOpacity onPress={handleClearReferenceImage}>
                     <Text style={{ color: '#dc2626', fontSize: 12, fontWeight: '600' }}>Clear</Text>
                   </TouchableOpacity>
                 ) : null}
@@ -1574,24 +2069,102 @@ export default function PostEditorScreen() {
                 </TouchableOpacity>
               ) : (
                 <VStack space="md" style={{ marginTop: 12 }}>
-                  {/* Reference Image Preview */}
+                  {/* Reference Image Preview & Action Tools */}
                   <Box style={styles.imagePreviewBox}>
                     <Image
                       source={{ uri: referenceImageUri || aiRefImage }}
                       style={styles.uploadedImage}
                       resizeMode="cover"
                     />
-                    <TouchableOpacity
-                      style={styles.removeImgBtn}
-                      onPress={() => {
-                        setReferenceImageUri('');
-                        setAiRefImage('');
-                        setAiMarketingImageUrl('');
+                    {/* Top Overlay Action Icons: Mark Object, Crop Image, Remove */}
+                    <HStack
+                      space="sm"
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        gap: 12,
+                        alignItems: 'center',
                       }}
                     >
-                      <Feather name="trash-2" size={16} color="#fff" />
-                    </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={openMarkObjectModal}
+                        style={{
+                          padding: 6,
+                          backgroundColor: '#60a5fa',
+                          borderRadius: 8,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Feather name="target" size={18} color="#ffffff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={handleCropReferenceImage}
+                        style={{
+                          padding: 6,
+                          backgroundColor: '#1c243cff',
+                          borderRadius: 8,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Feather name="crop" size={18} color="#ffffff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={handleClearReferenceImage}
+                        style={{
+                          padding: 6,
+                          backgroundColor: '#f87171',
+                          borderRadius: 8,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Feather name="trash-2" size={18} color="#ffffff" />
+                      </TouchableOpacity>
+                    </HStack>
                   </Box>
+
+                  {/* Marked Objects Chips List */}
+                  {aiReferenceManualObjects.length > 0 && (
+                    <VStack space="xs" style={{ marginTop: 2 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569' }}>
+                        Marked Objects ({aiReferenceManualObjects.length}):
+                      </Text>
+                      <HStack style={{ flexWrap: 'wrap', gap: 6 }}>
+                        {aiReferenceManualObjects.map((obj) => (
+                          <Box
+                            key={obj.id}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              backgroundColor: '#f3e8ff',
+                              borderWidth: 1,
+                              borderColor: '#d8b4fe',
+                              borderRadius: 16,
+                              paddingVertical: 4,
+                              paddingHorizontal: 10,
+                              gap: 6,
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#7e22ce' }}>
+                              🏷️ {obj.label}
+                            </Text>
+                            <TouchableOpacity onPress={() => handleRemoveManualObjectMark(obj.id)}>
+                              <Feather name="x" size={13} color="#9333ea" />
+                            </TouchableOpacity>
+                          </Box>
+                        ))}
+                      </HStack>
+                    </VStack>
+                  )}
 
                   {/* Optional Custom Reference Image Prompt */}
                   <VStack space="xs">
@@ -1673,7 +2246,7 @@ export default function PostEditorScreen() {
                           color="#fff"
                           style={{ marginRight: 6 }}
                         />
-                        <Text style={styles.primaryBtnText}>Generate AI Marketing Poster</Text>
+                        <Text style={styles.primaryBtnText}>Generate Marketing Image</Text>
                       </HStack>
                     )}
                   </TouchableOpacity>
@@ -1707,15 +2280,35 @@ export default function PostEditorScreen() {
                           resizeMode="cover"
                         />
                       </Box>
-                      <TouchableOpacity
-                        style={[styles.primaryBtn, { backgroundColor: '#2563eb', marginTop: 10 }]}
-                        onPress={() => {
-                          setImageUrl(aiMarketingImageUrl);
-                          Alert.alert('Applied!', 'AI generated image set as post media.');
-                        }}
-                      >
-                        <Text style={styles.primaryBtnText}>Use This Image in Post ✓</Text>
-                      </TouchableOpacity>
+                      <Box className="flex-row items-center gap-2">
+                        <TouchableOpacity
+                          style={[styles.primaryBtn, { backgroundColor: '#2563eb', marginTop: 10 }]}
+                          onPress={() => {
+                            setImageUrl(aiMarketingImageUrl);
+                            Alert.alert('Applied!', 'AI generated image set as post media.');
+                          }}
+                        >
+                          <Text style={styles.primaryBtnText}>Use This Image</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.primaryBtn,
+                            {
+                              backgroundColor: 'transparent',
+                              borderWidth: 1,
+                              borderColor: '#cbd5e1',
+                              marginTop: 8,
+                            },
+                          ]}
+                          onPress={() => {
+                            setAiMarketingImageUrl('');
+                            setImageUrl('');
+                            setImagePath('');
+                          }}
+                        >
+                          <Text style={[styles.primaryBtnText, { color: '#475569' }]}>Discard</Text>
+                        </TouchableOpacity>
+                      </Box>
                     </Box>
                   ) : null}
                 </VStack>
@@ -1861,7 +2454,7 @@ export default function PostEditorScreen() {
                       ) : (
                         <>
                           <Feather name="upload-cloud" size={28} color="#0052d4" />
-                          <Text style={styles.uploadText}>Choose Image</Text>
+                          <Text style={styles.uploadText}>Upload Image</Text>
                           <Text style={{ fontSize: 11, color: '#94a3b8' }}>Gallery or Camera</Text>
                         </>
                       )}
@@ -1878,122 +2471,110 @@ export default function PostEditorScreen() {
                 <HStack space="xs" className="items-center gap-2">
                   <Feather name="share-2" size={17} color="#2563eb" />
                   <Heading size="sm" style={styles.cardTitle}>
-                    Select Target Social Platforms *
+                    Select Platforms *
                   </Heading>
                 </HStack>
+
+                <TouchableOpacity
+                  onPress={() => setNetworksModalOpen(true)}
+                  style={{
+                    backgroundColor: '#2563EB',
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
+                    borderRadius: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    shadowColor: '#2563EB',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 8,
+                    elevation: 5,
+                  }}
+                >
+                  <Feather name="settings" size={16} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={{ fontSize: 15, color: '#fff', fontWeight: '900' }}>Platforms</Text>
+                </TouchableOpacity>
               </HStack>
               {errors.platforms && <Text style={styles.errorText}>{errors.platforms}</Text>}
 
-              <HStack space="xs" className="mt-3 flex-wrap">
-                {SOCIAL_PLATFORMS.map((plat) => {
-                  const isSelected = selectedPlatforms.includes(plat.id);
-                  return (
-                    <TouchableOpacity
-                      key={plat.id}
-                      style={[styles.platformPill, isSelected && styles.platformPillActive]}
-                      onPress={() => togglePlatform(plat.id)}
-                    >
-                      <FontAwesome
-                        name={plat.icon as any}
-                        size={16}
-                        color={isSelected ? '#fff' : plat.color}
-                      />
-                      <Text
-                        style={[
-                          styles.platformPillLabel,
-                          isSelected && styles.platformPillLabelActive,
-                        ]}
-                      >
-                        {plat.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </HStack>
+              {/* Selected Platform Pills Badges (Panel style) */}
+              {selectedPlatforms.length > 0 && (
+                <HStack space="xs" className="mt-3 flex-wrap" style={{ gap: 6 }}>
+                  {selectedPlatforms.map((net) => {
+                    const plat = SOCIAL_PLATFORMS.find((p) => p.id === net);
+                    const platColor = plat?.color || '#0052d4';
+                    const accountCount = selectedAccounts.filter((accId) =>
+                      socialAccounts.find(
+                        (a) =>
+                          (a.account_id || a.value || a.id || a._id) === accId &&
+                          isPlatformMatch(a.platform, net)
+                      )
+                    ).length;
 
-              {/* Connected Accounts Selection */}
-              {socialAccounts.length > 0 && (
-                <VStack
-                  style={{
-                    marginTop: 14,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
-                    borderTopColor: '#f1f5f9',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      color: '#64748b',
-                      fontWeight: '700',
-                      textTransform: 'uppercase',
-                      marginBottom: 6,
-                    }}
-                  >
-                    Select Connected Accounts ({selectedAccounts.length}/{socialAccounts.length})
-                  </Text>
-                  {errors.selectedAccounts && (
-                    <Text style={styles.errorText}>{errors.selectedAccounts}</Text>
-                  )}
-                  <HStack space="xs" className="flex-wrap">
-                    {socialAccounts.map((acc) => {
-                      const isAccSelected = selectedAccounts.includes(acc.account_id);
-                      return (
+                    return (
+                      <TouchableOpacity
+                        key={net}
+                        onPress={openNetworksModal}
+                        activeOpacity={0.8}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: `${platColor}15`,
+                          borderColor: `${platColor}40`,
+                          borderWidth: 1,
+                          borderRadius: 10,
+                          paddingVertical: 5,
+                          paddingHorizontal: 10,
+                          gap: 6,
+                          marginTop: 2,
+                        }}
+                      >
+                        <FontAwesome
+                          name={(plat?.icon as any) || 'share-alt'}
+                          size={14}
+                          color={platColor}
+                        />
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: platColor }}>
+                          {plat?.label || net}
+                        </Text>
+                        {accountCount > 1 && (
+                          <Box
+                            style={{
+                              backgroundColor: platColor,
+                              borderRadius: 8,
+                              paddingHorizontal: 6,
+                              paddingVertical: 1,
+                            }}
+                          >
+                            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>
+                              {accountCount} accounts
+                            </Text>
+                          </Box>
+                        )}
                         <TouchableOpacity
-                          key={acc.account_id}
-                          style={[styles.accountPill, isAccSelected && styles.accountPillActive]}
-                          onPress={() => {
-                            setSelectedAccounts((prev) =>
-                              prev.includes(acc.account_id)
-                                ? prev.filter((id) => id !== acc.account_id)
-                                : [...prev, acc.account_id]
-                            );
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteNetwork(net);
+                          }}
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: '#000000',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginLeft: 4,
                           }}
                         >
-                          <Feather
-                            name={isAccSelected ? 'check-circle' : 'circle'}
-                            size={13}
-                            color={isAccSelected ? '#0052d4' : '#94a3b8'}
-                            style={{ marginRight: 5 }}
-                          />
-                          <Text
-                            style={[
-                              styles.accountPillText,
-                              isAccSelected && styles.accountPillTextActive,
-                            ]}
-                          >
-                            {acc.account_name || acc.username || acc.platform}
-                          </Text>
+                          <Feather name="x" size={10} color="#fff" />
                         </TouchableOpacity>
-                      );
-                    })}
-                  </HStack>
-                </VStack>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </HStack>
               )}
             </Box>
-
-            <TouchableOpacity
-              onPress={() => setNetworksModalOpen(true)}
-              style={{
-                backgroundColor: '#2563EB',
-                height: 42,
-                paddingHorizontal: 18,
-                borderRadius: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                shadowColor: '#2563EB',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.25,
-                shadowRadius: 8,
-                elevation: 5,
-              }}
-            >
-              <Feather name="settings" size={16} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={{ fontSize: 15, color: '#fff', fontWeight: '900' }}>
-                Platform Configuration
-              </Text>
-            </TouchableOpacity>
 
             {/* 4. Platform-Specific Content Card (Displayed when platforms are selected) */}
             {selectedPlatforms.length > 0 && (
@@ -2022,7 +2603,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                        styles.subTabBtnActive,
+                          styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -2031,7 +2612,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabTextActive,
+                            styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -2048,273 +2629,456 @@ export default function PostEditorScreen() {
 
                   if (!targetPlatform) return null;
 
-                  const currentOverride = platformOverrides[targetPlatform] || {};
-                  const activeCt =
-                    currentOverride.contentType || contentTypeOverrides[targetPlatform] || 'media';
+                  const platformConfig = SOCIAL_PLATFORMS.find((p) => p.id === targetPlatform) || {
+                    id: targetPlatform,
+                    label: targetPlatform.charAt(0).toUpperCase() + targetPlatform.slice(1),
+                    icon: 'share-alt',
+                    color: '#2563eb',
+                  };
+
+                  const platformAccs = socialAccounts.filter(
+                    (a) =>
+                      isPlatformMatch(a.platform, targetPlatform) &&
+                      selectedAccounts.includes(a.account_id || a.value || a.id || a._id)
+                  );
+                  const rawEntries = platformSpecificContent[targetPlatform] || [];
+                  const override = platformOverrides[targetPlatform] || {};
+
+                  let platformEntries: any[] = [];
+
+                  if (platformAccs.length > 0) {
+                    platformEntries = platformAccs.map((acc, idx) => {
+                      const accId = acc.account_id || acc.value || acc.id || acc._id;
+                      const existing =
+                        rawEntries.find((e: any) => e.account_id === accId) || rawEntries[idx];
+
+                      if (existing) {
+                        return {
+                          ...existing,
+                          account_id: accId,
+                        };
+                      }
+
+                      return {
+                        account_id: accId,
+                        caption: override.caption || caption || '',
+                        link: override.link || companyWebsite || '',
+                        hashtags:
+                          override.hashtags && override.hashtags.length > 0
+                            ? override.hashtags
+                            : hashtagsInput
+                              ? hashtagsInput
+                                  .split(',')
+                                  .map((t) => t.trim().replace(/^#/, ''))
+                                  .filter(Boolean)
+                              : [],
+                        mediaUrl:
+                          override.image_url !== undefined
+                            ? override.image_url
+                            : imageUrl || imagePath || '',
+                        contentType:
+                          override.contentType || contentTypeOverrides[targetPlatform] || 'media',
+                      };
+                    });
+                  } else {
+                    if (rawEntries.length > 0) {
+                      platformEntries = rawEntries;
+                    } else {
+                      platformEntries = [
+                        {
+                          account_id: '',
+                          caption: override.caption || caption || '',
+                          link: override.link || companyWebsite || '',
+                          hashtags:
+                            override.hashtags && override.hashtags.length > 0
+                              ? override.hashtags
+                              : hashtagsInput
+                                ? hashtagsInput
+                                    .split(',')
+                                    .map((t) => t.trim().replace(/^#/, ''))
+                                    .filter(Boolean)
+                                : [],
+                          mediaUrl:
+                            override.image_url !== undefined
+                              ? override.image_url
+                              : imageUrl || imagePath || '',
+                          contentType:
+                            override.contentType || contentTypeOverrides[targetPlatform] || 'media',
+                        },
+                      ];
+                    }
+                  }
 
                   return (
-                    <VStack space="sm" style={{ marginTop: 6 }}>
-                      {/* Content Type Selector */}
-                      <VStack space="xs">
-                        <Text style={styles.inputLabel}>
-                          Content Type ({targetPlatform.toUpperCase()})
-                        </Text>
-                        <HStack space="xs" className="mt-1 flex-wrap">
-                          {CONTENT_TYPES.map((ct) => {
-                            const isSelected = activeCt === ct.value;
-                            return (
-                              <TouchableOpacity
-                                key={ct.value}
-                                style={[
-                                  styles.providerChip,
-                                  isSelected && styles.providerChipActive,
-                                ]}
-                                onPress={() => {
-                                  setContentTypeOverrides((prev) => ({
-                                    ...prev,
-                                    [targetPlatform]: ct.value,
-                                  }));
+                    <VStack space="md" style={{ marginTop: 12 }}>
+                      {platformEntries.map((platformContent, entryIdx) => {
+                        const accountId = platformContent.account_id || '';
+                        const accountInfo = socialAccounts.find(
+                          (a) => (a.account_id || a.value || a.id || a._id) === accountId
+                        );
+
+                        const accountDisplayName =
+                          accountInfo?.account_name ||
+                          accountInfo?.name ||
+                          (accountInfo?.first_name
+                            ? `${accountInfo.first_name} ${accountInfo.last_name || ''}`.trim()
+                            : '') ||
+                          accountInfo?.username ||
+                          accountId;
+
+                        const activeCt =
+                          platformContent.contentType ||
+                          contentTypeOverrides[targetPlatform] ||
+                          'media';
+                        const entryCaption =
+                          platformContent.caption !== undefined ? platformContent.caption : caption;
+                        const entryLink =
+                          platformContent.link !== undefined
+                            ? platformContent.link
+                            : companyWebsite;
+                        const entryMediaUrl =
+                          platformContent.mediaUrl !== undefined
+                            ? platformContent.mediaUrl
+                            : imageUrl;
+                        const hasCustomMedia =
+                          platformContent.mediaUrl !== undefined &&
+                          platformContent.mediaUrl !== imageUrl;
+
+                        const hashtagsKey = `${targetPlatform}:${accountId || entryIdx}`;
+                        const hashtagsVal =
+                          platformHashtagsInput[hashtagsKey] !== undefined
+                            ? platformHashtagsInput[hashtagsKey]
+                            : platformContent.hashtags && platformContent.hashtags.length > 0
+                              ? platformContent.hashtags.join(', ')
+                              : hashtagsInput;
+
+                        const uploadKey = `${targetPlatform}:${accountId || 'default'}`;
+                        const isUploading = Boolean(
+                          uploadingPlatformImage[uploadKey] ||
+                          uploadingPlatformImage[targetPlatform]
+                        );
+                        const hasImgError = Boolean(
+                          platformImgErrors[uploadKey] || platformImgErrors[targetPlatform]
+                        );
+                        const resolvedUri = getImageUrl(entryMediaUrl);
+
+                        return (
+                          <Box
+                            key={accountId || entryIdx}
+                            style={{
+                              borderColor: `${platformConfig.color}35`,
+                              borderWidth: 1,
+                              borderRadius: 12,
+                              padding: 12,
+                              backgroundColor: `${platformConfig.color}05`,
+                              marginBottom: platformEntries.length > 1 ? 8 : 0,
+                            }}
+                          >
+                            {/* Account Identity Header Card */}
+                            {(platformEntries.length > 1 || Boolean(accountId)) && (
+                              <HStack
+                                className="mb-3 items-center justify-between pb-2"
+                                style={{
+                                  borderBottomWidth: 1,
+                                  borderBottomColor: `${platformConfig.color}20`,
+                                }}
+                              >
+                                <HStack space="xs" className="items-center" style={{ flex: 1 }}>
+                                  <Box
+                                    style={{
+                                      backgroundColor: platformConfig.color,
+                                      width: 28,
+                                      height: 28,
+                                      borderRadius: 14,
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    <FontAwesome
+                                      name={(platformConfig.icon as any) || 'share-alt'}
+                                      size={12}
+                                      color="#fff"
+                                    />
+                                  </Box>
+                                  <VStack style={{ flex: 1, marginLeft: 6 }}>
+                                    <Text
+                                      style={{ fontWeight: '700', fontSize: 13, color: '#0f172a' }}
+                                    >
+                                      {accountDisplayName || `${platformConfig.label} Account`}
+                                    </Text>
+                                    {accountInfo?.username ? (
+                                      <Text style={{ fontSize: 10, color: '#64748b' }}>
+                                        @{accountInfo.username}
+                                      </Text>
+                                    ) : accountInfo?.page_id ? (
+                                      <Text style={{ fontSize: 10, color: '#64748b' }}>
+                                        Page ID: {accountInfo.page_id}
+                                      </Text>
+                                    ) : null}
+                                  </VStack>
+                                </HStack>
+                                <Box
+                                  style={{
+                                    backgroundColor: `${platformConfig.color}20`,
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 2,
+                                    borderRadius: 8,
+                                  }}
+                                >
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: '700',
+                                      color: platformConfig.color,
+                                    }}
+                                  >
+                                    Account {entryIdx + 1}
+                                  </Text>
+                                </Box>
+                              </HStack>
+                            )}
+
+                            {/* Content Type Selector */}
+                            <VStack space="xs">
+                              <Text style={styles.inputLabel}>Content Type</Text>
+                              <HStack space="xs" className="mt-1 flex-wrap">
+                                {CONTENT_TYPES.map((ct) => {
+                                  const isSelected = activeCt === ct.value;
+                                  return (
+                                    <TouchableOpacity
+                                      key={ct.value}
+                                      style={[
+                                        styles.providerChip,
+                                        isSelected && styles.providerChipActive,
+                                      ]}
+                                      onPress={() => {
+                                        handlePlatformSpecificChange(
+                                          targetPlatform,
+                                          accountId,
+                                          'contentType',
+                                          ct.value
+                                        );
+                                        setContentTypeOverrides((prev) => ({
+                                          ...prev,
+                                          [targetPlatform]: ct.value,
+                                        }));
+                                      }}
+                                    >
+                                      <Text
+                                        style={[
+                                          styles.providerChipText,
+                                          isSelected && styles.providerChipTextActive,
+                                        ]}
+                                      >
+                                        {ct.label}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </HStack>
+                            </VStack>
+
+                            {/* Caption */}
+                            <VStack space="xs" style={{ marginTop: 10 }}>
+                              <Text style={styles.inputLabel}>Caption</Text>
+                              <TextInput
+                                style={[styles.input, styles.multilineInput]}
+                                value={entryCaption}
+                                onChangeText={(val) => {
+                                  handlePlatformSpecificChange(
+                                    targetPlatform,
+                                    accountId,
+                                    'caption',
+                                    val
+                                  );
                                   setPlatformOverrides((prev) => ({
                                     ...prev,
-                                    [targetPlatform]: {
-                                      ...prev[targetPlatform],
-                                      contentType: ct.value,
-                                    },
+                                    [targetPlatform]: { ...prev[targetPlatform], caption: val },
                                   }));
                                 }}
-                              >
-                                <Text
-                                  style={[
-                                    styles.providerChipText,
-                                    isSelected && styles.providerChipTextActive,
-                                  ]}
-                                >
-                                  {ct.label}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </HStack>
-                      </VStack>
+                                placeholder={`Custom caption for ${accountDisplayName || platformConfig.label}...`}
+                                placeholderTextColor="#94a3b8"
+                                multiline
+                                numberOfLines={4}
+                                maxLength={2200}
+                              />
+                            </VStack>
 
-                      {/* Platform Specific Caption */}
-                      <VStack space="xs" style={{ marginTop: 8 }}>
-                        <Text style={styles.inputLabel}>
-                          {targetPlatform.toUpperCase()} Caption
-                        </Text>
-                        <TextInput
-                          style={[styles.input, styles.multilineInput]}
-                          value={currentOverride.caption ?? caption}
-                          onChangeText={(val) => {
-                            setPlatformOverrides((prev) => ({
-                              ...prev,
-                              [targetPlatform]: {
-                                ...prev[targetPlatform],
-                                caption: val,
-                              },
-                            }));
-                          }}
-                          placeholder={`Custom caption for ${targetPlatform}...`}
-                          placeholderTextColor="#94a3b8"
-                          multiline
-                          numberOfLines={4}
-                          maxLength={2200}
-                        />
-                      </VStack>
-
-                      {/* Platform Specific Custom Link  */}
-                      <VStack space="xs" style={{ marginTop: 8 }}>
-                        <Text style={styles.inputLabel}>
-                          {targetPlatform.toUpperCase()} Custom Link
-                        </Text>
-                        <TextInput
-                          style={styles.input}
-                          value={currentOverride.link ?? companyWebsite}
-                          onChangeText={(val) => {
-                            setPlatformOverrides((prev) => ({
-                              ...prev,
-                              [targetPlatform]: {
-                                ...prev[targetPlatform],
-                                link: val,
-                              },
-                            }));
-                          }}
-                          placeholder={`Custom link for ${targetPlatform}`}
-                          placeholderTextColor="#94a3b8"
-                          keyboardType="url"
-                          autoCapitalize="none"
-                          maxLength={500}
-                        />
-                      </VStack>
-
-                      {/* Platform Specific Hashtags */}
-                      <VStack space="xs" style={{ marginTop: 8 }}>
-                        <Text style={styles.inputLabel}>
-                          {targetPlatform.toUpperCase()} Hashtags (comma separated)
-                        </Text>
-                        <TextInput
-                          style={styles.input}
-                          value={
-                            platformHashtagsInput[targetPlatform] !== undefined
-                              ? platformHashtagsInput[targetPlatform]
-                              : currentOverride.hashtags && currentOverride.hashtags.length > 0
-                                ? currentOverride.hashtags.join(', ')
-                                : hashtagsInput
-                          }
-                          onChangeText={(val) => {
-                            setPlatformHashtagsInput((prev) => ({
-                              ...prev,
-                              [targetPlatform]: val,
-                            }));
-                            const parsed = val
-                              .split(',')
-                              .map((tag) => tag.replace(/^#/, '').trim())
-                              .filter(Boolean);
-                            setPlatformOverrides((prev) => ({
-                              ...prev,
-                              [targetPlatform]: {
-                                ...prev[targetPlatform],
-                                hashtags: parsed,
-                              },
-                            }));
-                          }}
-                          placeholder={`Custom hashtags for ${targetPlatform}...`}
-                          placeholderTextColor="#94a3b8"
-                          maxLength={300}
-                        />
-                        {(() => {
-                          const rawVal =
-                            platformHashtagsInput[targetPlatform] !== undefined
-                              ? platformHashtagsInput[targetPlatform]
-                              : currentOverride.hashtags && currentOverride.hashtags.length > 0
-                                ? currentOverride.hashtags.join(', ')
-                                : hashtagsInput;
-                          if (!rawVal || !rawVal.trim()) return null;
-                          const tags = rawVal
-                            .split(',')
-                            .map((t) => t.trim().replace(/^#/, ''))
-                            .filter(Boolean);
-                          if (tags.length === 0) return null;
-                          return (
-                            <HStack space="xs" className="mt-2 flex-wrap">
-                              {tags.map((tag, idx) => (
-                                <Box key={idx} style={styles.tagChip}>
-                                  <Text style={styles.tagText}>#{tag}</Text>
-                                </Box>
-                              ))}
-                            </HStack>
-                          );
-                        })()}
-                      </VStack>
-
-                      {/* Platform Specific Image Override */}
-                      <VStack space="xs" style={{ marginTop: 8 }}>
-                        <HStack className="items-center justify-between">
-                          <Text style={styles.inputLabel}>
-                            {targetPlatform.toUpperCase()} Image
-                          </Text>
-                          {currentOverride.image_url !== undefined &&
-                            currentOverride.image_url !== imageUrl &&
-                            Boolean(imageUrl) && (
-                              <TouchableOpacity
-                                onPress={() => {
-                                  setPlatformOverrides((prev) => {
-                                    const updated = { ...prev[targetPlatform] };
-                                    delete updated.image_url;
-                                    return { ...prev, [targetPlatform]: updated };
-                                  });
+                            {/* Custom Link */}
+                            <VStack space="xs" style={{ marginTop: 10 }}>
+                              <Text style={styles.inputLabel}>Custom Link</Text>
+                              <TextInput
+                                style={styles.input}
+                                value={entryLink}
+                                onChangeText={(val) => {
+                                  handlePlatformSpecificChange(
+                                    targetPlatform,
+                                    accountId,
+                                    'link',
+                                    val
+                                  );
+                                  setPlatformOverrides((prev) => ({
+                                    ...prev,
+                                    [targetPlatform]: { ...prev[targetPlatform], link: val },
+                                  }));
                                 }}
-                              >
-                                <Text style={{ fontSize: 11, color: '#2563eb', fontWeight: '600' }}>
-                                  Reset to General Image
-                                </Text>
-                              </TouchableOpacity>
-                            )}
-                        </HStack>
+                                placeholder={`Custom link for ${accountDisplayName || platformConfig.label}...`}
+                                placeholderTextColor="#94a3b8"
+                                keyboardType="url"
+                                autoCapitalize="none"
+                                maxLength={500}
+                              />
+                            </VStack>
 
-                        {(() => {
-                          const displayPlatformImg =
-                            currentOverride.image_url !== undefined
-                              ? currentOverride.image_url
-                              : imageUrl;
-                          const isUploading = Boolean(uploadingPlatformImage[targetPlatform]);
-                          const hasImgError = Boolean(platformImgErrors[targetPlatform]);
-                          const resolvedUri = getImageUrl(displayPlatformImg);
+                            {/* Hashtags */}
+                            <VStack space="xs" style={{ marginTop: 10 }}>
+                              <Text style={styles.inputLabel}>Hashtags (comma separated)</Text>
+                              <TextInput
+                                style={styles.input}
+                                value={hashtagsVal}
+                                onChangeText={(val) => {
+                                  setPlatformHashtagsInput((prev) => ({
+                                    ...prev,
+                                    [hashtagsKey]: val,
+                                  }));
+                                  const parsed = val
+                                    .split(',')
+                                    .map((tag) => tag.replace(/^#/, '').trim())
+                                    .filter(Boolean);
+                                  handlePlatformSpecificChange(
+                                    targetPlatform,
+                                    accountId,
+                                    'hashtags',
+                                    parsed
+                                  );
+                                  setPlatformOverrides((prev) => ({
+                                    ...prev,
+                                    [targetPlatform]: { ...prev[targetPlatform], hashtags: parsed },
+                                  }));
+                                }}
+                                placeholder={`Custom hashtags for ${accountDisplayName || platformConfig.label}...`}
+                                placeholderTextColor="#94a3b8"
+                                maxLength={300}
+                              />
+                              {(() => {
+                                if (!hashtagsVal || !hashtagsVal.trim()) return null;
+                                const tags: string[] = hashtagsVal
+                                  .split(',')
+                                  .map((t: string) => t.trim().replace(/^#/, ''))
+                                  .filter(Boolean);
+                                if (tags.length === 0) return null;
+                                return (
+                                  <HStack space="xs" className="mt-2 flex-wrap">
+                                    {tags.map((tag: string, idx: number) => (
+                                      <Box key={idx} style={styles.tagChip}>
+                                        <Text style={styles.tagText}>#{tag}</Text>
+                                      </Box>
+                                    ))}
+                                  </HStack>
+                                );
+                              })()}
+                            </VStack>
 
-                          if (resolvedUri) {
-                            const imageSource = hasImgError
-                              ? require('@/assets/images/360_image.jpg')
-                              : { uri: resolvedUri };
-
-                            return (
-                              <Box style={styles.imagePreviewBox}>
-                                <Image
-                                  source={imageSource}
-                                  style={styles.uploadedImage}
-                                  resizeMode="cover"
-                                  onError={() =>
-                                    setPlatformImgErrors((prev) => ({
-                                      ...prev,
-                                      [targetPlatform]: true,
-                                    }))
-                                  }
-                                />
-
-                                <HStack space="xs" style={styles.imageActionOverlay}>
+                            {/* Image Override */}
+                            <VStack space="xs" style={{ marginTop: 10 }}>
+                              <HStack className="items-center justify-between">
+                                <Text style={styles.inputLabel}>Image</Text>
+                                {hasCustomMedia && (
                                   <TouchableOpacity
-                                    style={styles.imgActionBtn}
-                                    onPress={() => pickPlatformImage(targetPlatform, true)}
-                                    disabled={isUploading}
-                                  >
-                                    {isUploading ? (
-                                      <ActivityIndicator size="small" color="#fff" />
-                                    ) : (
-                                      <Feather name="crop" size={14} color="#fff" />
-                                    )}
-                                  </TouchableOpacity>
-                                  <TouchableOpacity
-                                    style={[styles.imgActionBtn, { backgroundColor: '#dc2626' }]}
                                     onPress={() => {
-                                      setPlatformOverrides((prev) => ({
-                                        ...prev,
-                                        [targetPlatform]: {
-                                          ...prev[targetPlatform],
-                                          image_url: '',
-                                        },
-                                      }));
+                                      handlePlatformSpecificChange(
+                                        targetPlatform,
+                                        accountId,
+                                        'mediaUrl',
+                                        imageUrl
+                                      );
                                     }}
-                                    disabled={isUploading}
                                   >
-                                    <Feather name="trash-2" size={14} color="#fff" />
+                                    <Text
+                                      style={{ fontSize: 11, color: '#2563eb', fontWeight: '600' }}
+                                    >
+                                      Reset to General Image
+                                    </Text>
                                   </TouchableOpacity>
-                                </HStack>
-                              </Box>
-                            );
-                          }
+                                )}
+                              </HStack>
 
-                          return (
-                            <TouchableOpacity
-                              style={[styles.uploadBox, { paddingVertical: 12 }]}
-                              onPress={() => showPlatformImagePicker(targetPlatform)}
-                              disabled={isUploading}
-                            >
-                              {isUploading ? (
-                                <ActivityIndicator size="small" color="#0052d4" />
+                              {resolvedUri ? (
+                                <Box style={styles.imagePreviewBox}>
+                                  <Image
+                                    source={
+                                      hasImgError
+                                        ? require('@/assets/images/360_image.jpg')
+                                        : { uri: resolvedUri }
+                                    }
+                                    style={styles.uploadedImage}
+                                    resizeMode="cover"
+                                    onError={() =>
+                                      setPlatformImgErrors((prev) => ({
+                                        ...prev,
+                                        [uploadKey]: true,
+                                      }))
+                                    }
+                                  />
+
+                                  <HStack space="xs" style={styles.imageActionOverlay}>
+                                    <TouchableOpacity
+                                      style={styles.imgActionBtn}
+                                      onPress={() =>
+                                        pickPlatformImage(targetPlatform, true, accountId)
+                                      }
+                                      disabled={isUploading}
+                                    >
+                                      {isUploading ? (
+                                        <ActivityIndicator size="small" color="#fff" />
+                                      ) : (
+                                        <Feather name="crop" size={14} color="#fff" />
+                                      )}
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      style={[styles.imgActionBtn, { backgroundColor: '#dc2626' }]}
+                                      onPress={() => {
+                                        handlePlatformSpecificChange(
+                                          targetPlatform,
+                                          accountId,
+                                          'mediaUrl',
+                                          ''
+                                        );
+                                      }}
+                                      disabled={isUploading}
+                                    >
+                                      <Feather name="trash-2" size={14} color="#fff" />
+                                    </TouchableOpacity>
+                                  </HStack>
+                                </Box>
                               ) : (
-                                <>
-                                  <Feather name="image" size={20} color="#0052d4" />
-                                  <Text style={[styles.uploadText, { fontSize: 12 }]}>
-                                    Upload Image for {targetPlatform.toUpperCase()}
-                                  </Text>
-                                  <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-                                    Gallery or Camera
-                                  </Text>
-                                </>
+                                <TouchableOpacity
+                                  style={[styles.uploadBox, { paddingVertical: 12 }]}
+                                  onPress={() => showPlatformImagePicker(targetPlatform, accountId)}
+                                  disabled={isUploading}
+                                >
+                                  {isUploading ? (
+                                    <ActivityIndicator size="small" color="#0052d4" />
+                                  ) : (
+                                    <>
+                                      <Feather name="image" size={20} color="#0052d4" />
+                                      <Text style={[styles.uploadText, { fontSize: 12 }]}>
+                                        Upload Image for{' '}
+                                        {accountDisplayName || targetPlatform.toUpperCase()}
+                                      </Text>
+                                      <Text
+                                        style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}
+                                      >
+                                        Gallery or Camera
+                                      </Text>
+                                    </>
+                                  )}
+                                </TouchableOpacity>
                               )}
-                            </TouchableOpacity>
-                          );
-                        })()}
-                      </VStack>
+                            </VStack>
+                          </Box>
+                        );
+                      })}
                     </VStack>
                   );
                 })()}
@@ -2586,9 +3350,11 @@ export default function PostEditorScreen() {
 
                       // Helper function to render a single preview card for a given account entry or default platform preview
                       const renderCard = (acct: any | null) => {
-                        const accountId = acct?.account_id || 'default';
+                        const accountId =
+                          acct?.account_id || acct?.value || acct?.id || acct?._id || 'default';
                         const accountName =
                           acct?.account_name ||
+                          acct?.name ||
                           (acct?.first_name
                             ? `${acct.first_name} ${acct.last_name || ''}`.trim()
                             : '') ||
@@ -2596,20 +3362,48 @@ export default function PostEditorScreen() {
                           companyName ||
                           platformConfig.label;
 
+                        const platformEntries = platformSpecificContent[network] || [];
+                        const acctEntry = acct
+                          ? platformEntries.find(
+                              (e: any) =>
+                                e.account_id ===
+                                (acct.account_id || acct.value || acct.id || acct._id)
+                            )
+                          : platformEntries[0];
+
                         const override = platformOverrides[network] || {};
-                        const acctCaption = override.caption || caption || '';
-                        const rawAcctMediaUrl = override.image_url || imageUrl || imagePath || '';
+
+                        const acctCaption =
+                          acctEntry?.caption !== undefined
+                            ? acctEntry.caption
+                            : override.caption || caption || '';
+
+                        const rawAcctMediaUrl =
+                          acctEntry?.mediaUrl !== undefined
+                            ? acctEntry.mediaUrl
+                            : override.image_url || imageUrl || imagePath || '';
+
                         const acctMediaUrl = getImageUrl(rawAcctMediaUrl);
-                        const acctLink = override.link || companyWebsite || '';
+
+                        const acctLink =
+                          acctEntry?.link !== undefined
+                            ? acctEntry.link
+                            : override.link || companyWebsite || '';
+
                         const acctHashtags: string[] =
-                          override.hashtags ||
-                          hashtagsInput
-                            .split(',')
-                            .map((t) => t.trim().replace(/^#/, ''))
-                            .filter(Boolean);
+                          acctEntry?.hashtags && acctEntry.hashtags.length > 0
+                            ? acctEntry.hashtags
+                            : override.hashtags ||
+                              hashtagsInput
+                                .split(',')
+                                .map((t) => t.trim().replace(/^#/, ''))
+                                .filter(Boolean);
 
                         const activeContentType =
-                          override.contentType || contentTypeOverrides[network] || 'media';
+                          acctEntry?.contentType ||
+                          override.contentType ||
+                          contentTypeOverrides[network] ||
+                          'media';
 
                         return (
                           <Box
@@ -2900,102 +3694,281 @@ export default function PostEditorScreen() {
           onPress={() => setNetworksModalOpen(false)}
         >
           <TouchableOpacity activeOpacity={1} style={styles.optionsModalCard}>
-            <HStack className="mb-2 items-center justify-between">
-              <HStack space="xs" className="items-center gap-2">
-                <Feather name="share-2" size={18} color="#2563eb" />
-                <Heading size="md" style={{ color: '#0f172a', fontWeight: '700' }}>
-                  Select Platforms & Accounts
-                </Heading>
-              </HStack>
-              <TouchableOpacity onPress={() => setNetworksModalOpen(false)}>
-                <Feather name="x" size={22} color="#64748b" />
+            <HStack className="mb-3 items-center justify-between">
+              <Heading size="md" style={{ color: '#0f172a', fontWeight: '800', fontSize: 18 }}>
+                Select Platforms & Accounts
+              </Heading>
+              <TouchableOpacity
+                style={{ padding: 5, backgroundColor: '#15203cff', borderRadius: 24 }}
+                onPress={() => setNetworksModalOpen(false)}
+              >
+                <Feather name="x" size={20} color="#ffffff" />
               </TouchableOpacity>
             </HStack>
 
-            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
-              {SOCIAL_PLATFORMS.map((plat) => {
-                const isSelected = selectedPlatforms.includes(plat.id);
-                const platformAccounts = socialAccounts.filter((a) => a.platform === plat.id);
+            {/* Select All Accounts Master Switch */}
+            {socialAccounts.length > 0 ? (
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 10,
+                  paddingHorizontal: 4,
+                  marginBottom: 10,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#e2e8f0',
+                }}
+                onPress={() => {
+                  const allAccIds = socialAccounts.map(
+                    (a) => a.account_id || a.value || a.id || a._id
+                  );
+                  if (selectedAccounts.length === allAccIds.length) {
+                    handleAccountSelection([]);
+                  } else {
+                    handleAccountSelection(allAccIds);
+                  }
+                }}
+              >
+                <Feather
+                  name={
+                    selectedAccounts.length === socialAccounts.length
+                      ? 'check-square'
+                      : selectedAccounts.length > 0
+                        ? 'minus-square'
+                        : 'square'
+                  }
+                  size={18}
+                  color="#2563eb"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
+                  Select All Accounts ({socialAccounts.length})
+                </Text>
+              </TouchableOpacity>
+            ) : null}
 
-                return (
-                  <Box
-                    key={plat.id}
-                    style={{
-                      marginBottom: 10,
-                      paddingBottom: 6,
-                      borderBottomWidth: 1,
-                      borderBottomColor: '#f1f5f9',
-                    }}
-                  >
-                    <TouchableOpacity
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {socialAccounts.length === 0 ? (
+                <Box style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <Text style={{ color: '#64748b', fontSize: 14 }}>
+                    No social media accounts available
+                  </Text>
+                </Box>
+              ) : (
+                SOCIAL_PLATFORMS.map((plat) => {
+                  const platformAccounts = socialAccounts.filter((a) =>
+                    isPlatformMatch(a.platform, plat.id)
+                  );
+                  if (platformAccounts.length === 0) return null;
+
+                  const platformAccIds = platformAccounts.map(
+                    (a) => a.account_id || a.value || a.id || a._id
+                  );
+                  const selectedForPlatform = platformAccIds.filter((id) =>
+                    selectedAccounts.includes(id)
+                  );
+                  const isAllSelected =
+                    platformAccIds.length > 0 &&
+                    selectedForPlatform.length === platformAccIds.length;
+                  const isPartiallySelected = selectedForPlatform.length > 0 && !isAllSelected;
+
+                  return (
+                    <Box
+                      key={plat.id}
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
+                        marginBottom: 14,
                       }}
-                      onPress={() => togglePlatform(plat.id)}
                     >
-                      <HStack space="sm" className="items-center">
-                        <FontAwesome name={plat.icon as any} size={18} color={plat.color} />
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
-                          {plat.label}
+                      {/* Platform Group Header Bar */}
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          backgroundColor: `${plat.color}10`,
+                          paddingVertical: 8,
+                          paddingHorizontal: 12,
+                          borderRadius: 8,
+                          marginBottom: 4,
+                        }}
+                        onPress={() => togglePlatform(plat.id)}
+                      >
+                        <HStack space="xs" className="items-center" style={{ flex: 1 }}>
+                          <Feather
+                            name={
+                              isAllSelected
+                                ? 'check-square'
+                                : isPartiallySelected
+                                  ? 'minus-square'
+                                  : 'square'
+                            }
+                            size={16}
+                            color={plat.color}
+                            style={{ marginRight: 8 }}
+                          />
+                          <FontAwesome
+                            name={plat.icon as any}
+                            size={15}
+                            color={plat.color}
+                            style={{ marginRight: 6 }}
+                          />
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: '800',
+                              color: plat.color,
+                              letterSpacing: 0.5,
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {plat.label}
+                          </Text>
+                        </HStack>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            color: '#64748b',
+                            fontWeight: '600',
+                          }}
+                        >
+                          {selectedForPlatform.length}/{platformAccounts.length} selected
                         </Text>
-                      </HStack>
-                      <Switch
-                        value={isSelected}
-                        onValueChange={() => togglePlatform(plat.id)}
-                        trackColor={{ false: '#cbd5e1', true: '#0052d4' }}
-                      />
-                    </TouchableOpacity>
+                      </TouchableOpacity>
 
-                    {isSelected && platformAccounts.length > 0 && (
-                      <VStack style={{ marginTop: 8, paddingLeft: 24 }} space="xs">
-                        <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '600' }}>
-                          Select Accounts:
-                        </Text>
+                      {/* Account Items List under Platform */}
+                      <VStack space="xs">
                         {platformAccounts.map((acc) => {
-                          const isAccChecked = selectedAccounts.includes(acc.account_id);
+                          const accId = acc.account_id || acc.value || acc.id || acc._id;
+                          const isAccChecked = selectedAccounts.includes(accId);
+                          const displayName =
+                            acc.account_name ||
+                            (acc.first_name
+                              ? `${acc.first_name} ${acc.last_name || ''}`.trim()
+                              : '') ||
+                            acc.username ||
+                            plat.label;
+
+                          const subtitle = acc.page_id
+                            ? `Page: ${acc.page_id}`
+                            : acc.waba_id
+                              ? `WABA: ${acc.waba_id}`
+                              : acc.username
+                                ? acc.username.startsWith('@')
+                                  ? acc.username
+                                  : `@${acc.username}`
+                                : '';
+
                           return (
                             <TouchableOpacity
-                              key={acc.account_id}
+                              key={accId}
                               style={{
                                 flexDirection: 'row',
                                 alignItems: 'center',
-                                paddingVertical: 4,
+                                justifyContent: 'space-between',
+                                paddingVertical: 8,
+                                paddingHorizontal: 8,
+                                borderRadius: 8,
+                                marginVertical: 1,
                               }}
                               onPress={() => {
-                                setSelectedAccounts((prev) =>
-                                  prev.includes(acc.account_id)
-                                    ? prev.filter((id) => id !== acc.account_id)
-                                    : [...prev, acc.account_id]
-                                );
+                                const updated = isAccChecked
+                                  ? selectedAccounts.filter((id) => id !== accId)
+                                  : [...selectedAccounts, accId];
+                                handleAccountSelection(updated);
                               }}
                             >
+                              <HStack space="sm" className="items-center" style={{ flex: 1 }}>
+                                {/* Account Avatar Circle */}
+                                <Box
+                                  style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 18,
+                                    backgroundColor: plat.color,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: 10,
+                                  }}
+                                >
+                                  <FontAwesome name={plat.icon as any} size={16} color="#ffffff" />
+                                </Box>
+                                <VStack style={{ flex: 1 }}>
+                                  <Text
+                                    style={{
+                                      fontSize: 14,
+                                      color: '#0f172a',
+                                      fontWeight: '700',
+                                    }}
+                                    numberOfLines={1}
+                                  >
+                                    {displayName}
+                                  </Text>
+                                  {subtitle ? (
+                                    <Text
+                                      style={{ fontSize: 11, color: '#64748b' }}
+                                      numberOfLines={1}
+                                    >
+                                      {subtitle}
+                                    </Text>
+                                  ) : null}
+                                </VStack>
+                              </HStack>
+
                               <Feather
                                 name={isAccChecked ? 'check-square' : 'square'}
-                                size={16}
-                                color={isAccChecked ? '#0052d4' : '#94a3b8'}
-                                style={{ marginRight: 8 }}
+                                size={18}
+                                color={isAccChecked ? plat.color : '#cbd5e1'}
+                                style={{ marginLeft: 8 }}
                               />
-                              <Text style={{ fontSize: 13, color: '#334155', fontWeight: '500' }}>
-                                {acc.account_name || acc.username || acc.platform}
-                              </Text>
                             </TouchableOpacity>
                           );
                         })}
                       </VStack>
-                    )}
-                  </Box>
-                );
-              })}
+                    </Box>
+                  );
+                })
+              )}
             </ScrollView>
 
-            <TouchableOpacity
-              style={[styles.primaryBtn, { marginTop: 16 }]}
-              onPress={() => setNetworksModalOpen(false)}
+            {/* Modal Footer Buttons */}
+            <HStack
+              className="items-center justify-between"
+              style={{ paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}
             >
-              <Text style={styles.primaryBtnText}>Done</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setNetworksModalOpen(false)}
+                style={{ paddingVertical: 8, paddingHorizontal: 16 }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: '700',
+                    color: '#475569',
+                    borderWidth: 1,
+                    borderColor: '#cbd5e1',
+                    borderRadius: 20,
+                    paddingVertical: 7,
+                    paddingHorizontal: 18,
+                  }}
+                >
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#1e293b',
+                  paddingHorizontal: 20,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                }}
+                onPress={() => setNetworksModalOpen(false)}
+              >
+                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '700' }}>
+                  Done ({selectedAccounts.length} account{selectedAccounts.length === 1 ? '' : 's'})
+                </Text>
+              </TouchableOpacity>
+            </HStack>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -3029,6 +4002,183 @@ export default function PostEditorScreen() {
             ) : null}
           </Box>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Mark Object on Reference Image Modal */}
+      <Modal
+        visible={markObjectModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setMarkObjectModalOpen(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 16,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              backgroundColor: '#ffffff',
+              borderRadius: 16,
+              overflow: 'hidden',
+              padding: 16,
+              maxHeight: '90%',
+            }}
+          >
+            {/* Modal Header */}
+            <HStack className="mb-3 items-center justify-between">
+              <HStack space="xs" className="items-center gap-2">
+                <Feather name="target" size={18} color="#2563eb" />
+                <Heading size="sm" style={{ color: '#0f172a', fontWeight: '800', fontSize: 16 }}>
+                  Mark Object on Reference Image
+                </Heading>
+              </HStack>
+              <TouchableOpacity
+                style={{ padding: 4, backgroundColor: '#f1f5f9', borderRadius: 20 }}
+                onPress={() => setMarkObjectModalOpen(false)}
+              >
+                <Feather name="x" size={18} color="#475569" />
+              </TouchableOpacity>
+            </HStack>
+
+            <Text style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>
+              Trace or drag with your finger over the object on the reference image to mark it.
+            </Text>
+
+            {/* Canvas Drawing Image Area */}
+            <View
+              style={{
+                width: '100%',
+                height: 280,
+                backgroundColor: '#0f172a',
+                borderRadius: 12,
+                overflow: 'hidden',
+                position: 'relative',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              onLayout={(e) => {
+                const { width, height } = e.nativeEvent.layout;
+                if (width > 0 && height > 0) {
+                  setMarkCanvasLayout({ width, height });
+                }
+              }}
+              {...markPanResponder.panHandlers}
+            >
+              <Image
+                source={{ uri: referenceImageUri || aiRefImage }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="contain"
+              />
+              {/* SVG Drawing Canvas Overlay */}
+              <Svg
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+              >
+                {/* Saved / Finished Strokes */}
+                {markStrokes.map((stroke, idx) => (
+                  <Path
+                    key={`stroke-${idx}`}
+                    d={strokeToSvgPath(stroke)}
+                    fill="none"
+                    stroke="#9c27b0"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ))}
+                {/* Current Active Stroke */}
+                {currentMarkStroke.length > 0 && (
+                  <Path
+                    d={strokeToSvgPath(currentMarkStroke)}
+                    fill="none"
+                    stroke="#e11d48"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+              </Svg>
+            </View>
+
+            {/* Object Label Input */}
+            <VStack space="xs" style={{ marginTop: 12 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155' }}>
+                Object Label (Optional)
+              </Text>
+              <TextInput
+                style={[styles.input, { fontSize: 13, backgroundColor: '#f8fafc' }]}
+                value={markObjectLabel}
+                onChangeText={setMarkObjectLabel}
+                placeholder="e.g. main product, bottle, box, logo"
+                placeholderTextColor="#94a3b8"
+              />
+            </VStack>
+
+            {/* Modal Actions */}
+            <HStack className="items-center justify-between" style={{ marginTop: 16 }}>
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 9,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: '#cbd5e1',
+                }}
+                onPress={() => {
+                  setMarkStrokes([]);
+                  setCurrentMarkStroke([]);
+                  setMarkObjectModalOpen(false);
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <HStack space="xs">
+                {markStrokes.length > 0 && (
+                  <TouchableOpacity
+                    style={{
+                      paddingVertical: 9,
+                      paddingHorizontal: 12,
+                      borderRadius: 8,
+                      backgroundColor: '#fef2f2',
+                      marginRight: 6,
+                    }}
+                    onPress={() => setMarkStrokes([])}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#dc2626' }}>
+                      Reset Mark
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={{
+                    paddingVertical: 9,
+                    paddingHorizontal: 18,
+                    borderRadius: 8,
+                    backgroundColor:
+                      markStrokes.length > 0 || currentMarkStroke.length > 0
+                        ? '#2563eb'
+                        : '#94a3b8',
+                  }}
+                  disabled={markStrokes.length === 0 && currentMarkStroke.length === 0}
+                  onPress={handleSaveObjectMark}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff' }}>
+                    Save Mark
+                  </Text>
+                </TouchableOpacity>
+              </HStack>
+            </HStack>
+          </View>
+        </View>
       </Modal>
     </Box>
   );
@@ -3307,11 +4457,12 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: '#0052d4',
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    flex: 1,
   },
   primaryBtnText: {
     color: '#fff',
@@ -3541,7 +4692,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 24,
+    padding: 20,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   imageViewerOverlay: {
