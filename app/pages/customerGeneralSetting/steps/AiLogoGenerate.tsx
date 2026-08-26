@@ -219,7 +219,7 @@ export default function AiLogoGeneratorModal({
       <View style={styles.overlay}>
         <View style={styles.modalContent}>
           <LinearGradient
-            colors={['#193867', '#0b53f8', '#2563eb']}
+            colors={['#0b53f8', '#084ad3', '#063bb3']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
@@ -230,7 +230,7 @@ export default function AiLogoGeneratorModal({
                   <Feather name="zap" size={20} color="#0b53f8" />
                 </View>
                 <VStack style={{ flex: 1 }}>
-                  <Heading style={styles.title}>AI Logo Generator</Heading>
+                  <Heading style={styles.title}>Generate Logo with AI</Heading>
                   <Text style={styles.subtitle}>
                     Describe your brand to generate tailored, multi-concept logos
                   </Text>
@@ -278,7 +278,7 @@ export default function AiLogoGeneratorModal({
                 {/* Company Name */}
                 <VStack space="xs">
                   <HStack style={{ alignItems: 'center' }}>
-                    <Text style={styles.fieldLabel}>Company / Brand Name</Text>
+                    <Text style={styles.fieldLabel}>Company Name</Text>
                     <Text style={{ color: '#dc2626', fontSize: 13 }}> *</Text>
                   </HStack>
                   <TextInput
@@ -306,7 +306,7 @@ export default function AiLogoGeneratorModal({
                     />
                   </VStack>
                   <VStack space="xs" style={{ flex: 1 }}>
-                    <Text style={styles.fieldLabel}>Industry / Niche</Text>
+                    <Text style={styles.fieldLabel}>Industry / Business Category</Text>
                     <TextInput
                       style={styles.input}
                       placeholder="e.g. Fintech, SaaS, Health"
@@ -319,7 +319,7 @@ export default function AiLogoGeneratorModal({
 
                 {/* Colors */}
                 <VStack space="xs">
-                  <Text style={styles.fieldLabel}>Preferred Colors</Text>
+                  <Text style={styles.fieldLabel}>Preferred Colors(Optional)</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="e.g. Deep Blue and Emerald Green"
@@ -331,7 +331,7 @@ export default function AiLogoGeneratorModal({
 
                 {/* Style Selector */}
                 <VStack space="xs">
-                  <Text style={styles.fieldLabel}>Design Aesthetic</Text>
+                  <Text style={styles.fieldLabel}>LOGO STYLE</Text>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -380,7 +380,7 @@ export default function AiLogoGeneratorModal({
                   <HStack space="sm" style={{ alignItems: 'center' }}>
                     <Feather name="zap" size={16} color="#ffffff" />
                     <Text style={styles.generateBtnText}>
-                      {hasGenerated ? 'Re-generate All Concepts' : 'Generate Logo Concepts'}
+                      {hasGenerated ? 'Re-generate All Concepts' : 'Generate Logo'}
                     </Text>
                   </HStack>
                 )}
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 9,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 5,
     marginRight: 8,
   },
   styleChipActive: {
@@ -652,10 +652,10 @@ const styles = StyleSheet.create({
   generateBtn: {
     backgroundColor: '#0b53f8',
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 14,
     shadowColor: '#0b53f8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#0b53f8',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 7,
     borderRadius: 10,
   },
   selectBtnText: {

@@ -1,4 +1,6 @@
 import { fetchWithAuth, API_BASE_URL } from '@/services/api';
+import { getSecureUserData } from '@/utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE = `${API_BASE_URL}/generated-posts`;
 const SOCIAL_BASE = `${API_BASE_URL}/social-post`;
@@ -190,12 +192,49 @@ export const publishPostNow = async (postId: string): Promise<any> => {
 };
 
 // === Get Active Social Accounts ===
-export const getAllSocialAccountsForPost = async (): Promise<any> => {
-  const res = await fetchWithAuth(`${BASE}/get-active-social-accounts-post`);
-  if (res && res.success === false) {
-    throw new Error(res.message || 'Failed to fetch social accounts');
+export const getAllSocialAccountsForPost = async (loginTypeParam?: string): Promise<any> => {
+  try {
+    let loginType = loginTypeParam;
+    if (!loginType) {
+      const user = await getSecureUserData();
+      const rawLoginType = await AsyncStorage.getItem('loginType');
+      loginType = user?.loginType || rawLoginType || 'customer';
+    }
+
+    let res = await fetchWithAuth(`${BASE}/get-active-social-accounts-post?loginType=${loginType}`);
+    let dataList = res?.data || res;
+
+    // Fallback: If empty array returned, attempt alternate loginType ('user' vs 'customer')
+    if ((!Array.isArray(dataList) || dataList.length === 0) && !loginTypeParam) {
+      const fallbackType = loginType === 'customer' ? 'user' : 'customer';
+      try {
+        const fallbackRes = await fetchWithAuth(
+          `${BASE}/get-active-social-accounts-post?loginType=${fallbackType}`
+        );
+        const fallbackData = fallbackRes?.data || fallbackRes;
+        if (Array.isArray(fallbackData) && fallbackData.length > 0) {
+          return fallbackData;
+        }
+      } catch {
+        // Ignore fallback error
+      }
+    }
+
+    return dataList;
+  } catch (err) {
+    if (!loginTypeParam) {
+      try {
+        const fallbackType = 'user';
+        const fallbackRes = await fetchWithAuth(
+          `${BASE}/get-active-social-accounts-post?loginType=${fallbackType}`
+        );
+        return fallbackRes?.data || fallbackRes;
+      } catch {
+        // Return empty or original error
+      }
+    }
+    throw err;
   }
-  return res?.data || res;
 };
 
 // === Helper for Image URL resolution ===
@@ -275,6 +314,19 @@ export const generateSocialMediaPost = async (payload: {
   return res?.data || res;
 };
 
+export interface ReferenceDetectedObject {
+  id: string;
+  label: string;
+  confidence: number;
+  bbox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  description?: string;
+}
+
 // === Generate Marketing Image From Reference ===
 export const generateMarketingImageFromReference = async (
   fileUri: string,
@@ -285,6 +337,7 @@ export const generateMarketingImageFromReference = async (
     company_website?: string;
     company_email?: string;
     provider?: 'auto' | 'gemini' | 'openai';
+    reference_objects?: ReferenceDetectedObject[] | string;
   } = {}
 ): Promise<any> => {
   const formData = new FormData();
@@ -300,6 +353,14 @@ export const generateMarketingImageFromReference = async (
   if (options.company_website) formData.append('company_website', options.company_website);
   if (options.company_email) formData.append('company_email', options.company_email);
   if (options.provider) formData.append('provider', options.provider);
+  if (options.reference_objects) {
+    formData.append(
+      'reference_objects',
+      typeof options.reference_objects === 'string'
+        ? options.reference_objects
+        : JSON.stringify(options.reference_objects)
+    );
+  }
 
   const res = await fetchWithAuth(`${BASE}/generate-marketing-image-from-reference`, {
     method: 'POST',

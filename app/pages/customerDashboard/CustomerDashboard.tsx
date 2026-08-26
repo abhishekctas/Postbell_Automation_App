@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { router } from 'expo-router';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
@@ -44,25 +45,34 @@ function StatCard({
   iconColor,
   value,
   label,
+  onPress,
 }: {
   icon: string;
   iconBg: string;
   iconColor: string;
   value: number | string;
   label: string;
+  onPress?: () => void;
 }) {
   return (
-    <View style={styles.statCard}>
-      <HStack style={styles.statCardTop}>
-        <Box style={[styles.statIconContainer, { backgroundColor: iconBg }]}>
-          <Feather name={icon as any} size={15} color={iconColor} />
-        </Box>
-      </HStack>
-      <Text style={styles.statValText}>{formatNumber(value as any)}</Text>
-      <Text style={styles.statLabelText} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.statCard}>
+        <HStack style={styles.statCardTop}>
+          <Box style={[styles.statIconContainer, { backgroundColor: iconBg }]}>
+            <Feather name={icon as any} size={15} color={iconColor} />
+          </Box>
+        </HStack>
+        <Text style={styles.statValText}>{formatNumber(value as any)}</Text>
+        <Text style={styles.statLabelText} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -522,6 +532,7 @@ export default function CustomerDashboard() {
                 iconColor="#0b53f8"
                 value={posts?.total ?? 0}
                 label="Total Posts"
+                onPress={() => router.push('/pages/posts/posts')}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -530,7 +541,10 @@ export default function CustomerDashboard() {
                 iconBg="#f0fdf4"
                 iconColor="#16a34a"
                 value={posts?.published ?? 0}
-                label="Posted"
+                label="Published"
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'published' } })
+                }
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -540,6 +554,9 @@ export default function CustomerDashboard() {
                 iconColor="#d97706"
                 value={posts?.scheduled ?? 0}
                 label="Scheduled"
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'scheduled' } })
+                }
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -549,6 +566,9 @@ export default function CustomerDashboard() {
                 iconColor="#7c3aed"
                 value={posts?.draft ?? 0}
                 label="Draft"
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'draft' } })
+                }
               />
             </View>
           </HStack>
@@ -562,6 +582,9 @@ export default function CustomerDashboard() {
                 iconColor="#dc2626"
                 value={posts?.failed ?? 0}
                 label="Failed"
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'failed' } })
+                }
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -571,6 +594,9 @@ export default function CustomerDashboard() {
                 iconColor="#0f766e"
                 value={posts?.partial ?? 0}
                 label="Partial"
+                onPress={() =>
+                  router.push({ pathname: '/pages/posts/posts', params: { status: 'partial' } })
+                }
               />
             </View>
             <View style={{ flex: 1 }}>

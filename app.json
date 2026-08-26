@@ -58,6 +58,16 @@
           "backgroundColor": "#ffffff"
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow app to access your photos.",
+          "cameraPermission": "Allow app to access your camera.",
+          "android": {
+            "usePhotoPicker": false
+          }
+        }
+      ],
       "expo-font",
       "expo-web-browser"
     ],

@@ -31,30 +31,21 @@ export interface SetupWizardData {
   company_phone: string;
   company_logo: string;
   company_logo_preview?: string;
-  social_media_auth: {
-    instagram: {
-      connection_status: string;
-      connected_account_name: string;
-      auth_status: string;
-      reconnect_status: string;
-      account_id?: string;
-      username?: string;
-    };
-    facebook: {
-      connection_status: string;
-      connected_account_name: string;
-      auth_status: string;
-      reconnect_status: string;
-      page_id?: string;
-      page_name?: string;
-    };
-    whatsapp: {
-      connection_status: string;
-      connected_account_name: string;
-      auth_status: string;
-      reconnect_status: string;
-    };
-  };
+  social_media_auth: Record<
+    string,
+    | {
+        connection_status?: string;
+        connected_account_name?: string;
+        auth_status?: string;
+        reconnect_status?: string;
+        account_id?: string;
+        username?: string;
+        page_id?: string;
+        page_name?: string;
+        [key: string]: any;
+      }
+    | any
+  >;
   social_links: {
     instagram_url: string;
     facebook_url: string;
@@ -96,6 +87,36 @@ const initialSetupData: SetupWizardData = {
       reconnect_status: 'not_needed',
     },
     whatsapp: {
+      connection_status: 'disconnected',
+      connected_account_name: '',
+      auth_status: 'unauthorized',
+      reconnect_status: 'not_needed',
+    },
+    twitter: {
+      connection_status: 'disconnected',
+      connected_account_name: '',
+      auth_status: 'unauthorized',
+      reconnect_status: 'not_needed',
+    },
+    linkedin: {
+      connection_status: 'disconnected',
+      connected_account_name: '',
+      auth_status: 'unauthorized',
+      reconnect_status: 'not_needed',
+    },
+    google_business: {
+      connection_status: 'disconnected',
+      connected_account_name: '',
+      auth_status: 'unauthorized',
+      reconnect_status: 'not_needed',
+    },
+    pinterest: {
+      connection_status: 'disconnected',
+      connected_account_name: '',
+      auth_status: 'unauthorized',
+      reconnect_status: 'not_needed',
+    },
+    snapchat: {
       connection_status: 'disconnected',
       connected_account_name: '',
       auth_status: 'unauthorized',
@@ -286,10 +307,7 @@ export default function CustomerSetupWizard() {
     setStepErrors((prev) => ({ ...prev, [activeStep]: check.errors }));
 
     if (!check.valid) {
-      Alert.alert(
-        'Validation Notice',
-        'Please correct the highlighted fields before proceeding.'
-      );
+      Alert.alert('Validation Notice', 'Please correct the highlighted fields before proceeding.');
       return;
     }
 

@@ -10,30 +10,21 @@ export interface CustomerSetupConfig {
   company_phone: string;
   company_logo: string;
   company_address?: string;
-  social_media_auth: {
-    instagram: {
-      connection_status: string;
-      connected_account_name: string;
-      auth_status: string;
-      reconnect_status: string;
-      account_id?: string;
-      username?: string;
-    };
-    facebook: {
-      connection_status: string;
-      connected_account_name: string;
-      auth_status: string;
-      reconnect_status: string;
-      page_id?: string;
-      page_name?: string;
-    };
-    whatsapp: {
-      connection_status: string;
-      connected_account_name: string;
-      auth_status: string;
-      reconnect_status: string;
-    };
-  };
+  social_media_auth: Record<
+    string,
+    | {
+        connection_status?: string;
+        connected_account_name?: string;
+        auth_status?: string;
+        reconnect_status?: string;
+        account_id?: string;
+        username?: string;
+        page_id?: string;
+        page_name?: string;
+        [key: string]: any;
+      }
+    | any
+  >;
   social_links: {
     instagram_url: string;
     facebook_url: string;
@@ -167,16 +158,30 @@ export const updateSocialConnection = async (platform: string, data: any): Promi
   }
 };
 
-// ── Meta OAuth APIs ──────────────────────────────────────────────────────────
+// ── Meta & External OAuth APIs ──────────────────────────────────────────────────────────
+
+const EXTERNAL_PLATFORMS = ['twitter', 'snapchat', 'google_business', 'linkedin', 'pinterest'];
+
+export type SocialMediaPlatform =
+  | 'facebook'
+  | 'instagram'
+  | 'whatsapp'
+  | 'twitter'
+  | 'snapchat'
+  | 'google_business'
+  | 'linkedin'
+  | 'pinterest'
+  | string;
 
 export const getOAuthUrl = async (
-  platform: 'facebook' | 'instagram',
+  platform: SocialMediaPlatform,
   source: string = 'setup-wizard'
 ): Promise<any> => {
   try {
-    const response = await fetchWithAuth(
-      `${META_OAUTH_BASE}/auth-url/${platform}?source=${encodeURIComponent(source)}`
-    );
+    const url = EXTERNAL_PLATFORMS.includes(platform)
+      ? `${API_BASE_URL}/auth/${platform}?source=${encodeURIComponent(source)}`
+      : `${META_OAUTH_BASE}/auth-url/${platform}?source=${encodeURIComponent(source)}`;
+    const response = await fetchWithAuth(url);
     return response;
   } catch (error: any) {
     return {
@@ -186,7 +191,7 @@ export const getOAuthUrl = async (
   }
 };
 
-export const getConnectionStatus = async (platform: 'facebook' | 'instagram'): Promise<any> => {
+export const getConnectionStatus = async (platform: SocialMediaPlatform): Promise<any> => {
   try {
     const response = await fetchWithAuth(`${META_OAUTH_BASE}/status/${platform}`);
     return response;
@@ -198,7 +203,7 @@ export const getConnectionStatus = async (platform: 'facebook' | 'instagram'): P
   }
 };
 
-export const disconnectAccount = async (platform: 'facebook' | 'instagram'): Promise<any> => {
+export const disconnectAccount = async (platform: SocialMediaPlatform): Promise<any> => {
   try {
     const response = await fetchWithAuth(`${META_OAUTH_BASE}/disconnect/${platform}`, {
       method: 'POST',
