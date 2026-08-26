@@ -12,7 +12,7 @@ import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { getCustomerConfig, saveCurrentStep, activeWorkspace } from './customer-setup.api';
 
@@ -155,12 +155,22 @@ const WIZARD_STEPS = [
 
 export default function CustomerSetupWizard() {
   const { updateUser } = useAuth();
+  const { step } = useLocalSearchParams<{ tab?: string; step?: string }>();
   const [activeStep, setActiveStep] = useState(0);
   const [setupData, setSetupData] = useState<SetupWizardData>(initialSetupData);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [stepErrors, setStepErrors] = useState<Record<number, any>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (step !== undefined && step !== null) {
+      const stepNum = parseInt(String(step), 10);
+      if (!isNaN(stepNum)) {
+        setActiveStep(stepNum);
+      }
+    }
+  }, [step]);
 
   // Load configuration on mount
   useEffect(() => {

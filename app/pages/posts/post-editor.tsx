@@ -24,6 +24,7 @@ import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   getPost,
@@ -53,7 +54,7 @@ const SOCIAL_PLATFORMS = [
   { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp', color: '#25d366' },
   { id: 'twitter', label: 'Twitter', icon: 'twitter', color: '#1da1f2' },
   { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', color: '#0a66c2' },
-  // { id: 'snapchat', label: 'Snapchat', icon: 'snapchat', color: '#e2de07ff' },
+  { id: 'snapchat', label: 'Snapchat', icon: 'snapchat', color: '#e2de07ff' },
   { id: 'google_business', label: 'Google Business', icon: 'google', color: '#313641ff' },
   { id: 'pinterest', label: 'Pinterest', icon: 'pinterest', color: '#bd081c' },
 ];
@@ -121,6 +122,471 @@ export default function PostEditorScreen() {
   // Platforms & Accounts Selection Modal State
   const [networksModalOpen, setNetworksModalOpen] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+
+  // Existing Image Crop Modal State
+  const [cropModalVisible, setCropModalVisible] = useState(false);
+  const [cropImageUri, setCropImageUri] = useState<string>('');
+  const [cropTargetType, setCropTargetType] = useState<'general' | 'platform' | 'ai'>('general');
+  const [cropTargetPlatform, setCropTargetPlatform] = useState<string>('');
+  const [cropTargetAccountId, setCropTargetAccountId] = useState<string>('');
+  const [selectedCropAspect, setSelectedCropAspect] = useState<
+    'custom' | '1:1' | '4:5' | '16:9' | '9:16' | 'original'
+  >('custom');
+  const [cropRotation, setCropRotation] = useState<number>(0);
+  const [croppingInProgress, setCroppingInProgress] = useState(false);
+
+  // Custom Interactive Crop Overlay State
+  const [cropBox, setCropBox] = useState<{ x: number; y: number; width: number; height: number }>({
+    x: 30,
+    y: 20,
+    width: 240,
+    height: 240,
+  });
+  const [containerDim, setContainerDim] = useState<{ width: number; height: number }>({
+    width: 360,
+    height: 320,
+  });
+  const [realImgDim, setRealImgDim] = useState<{ width: number; height: number }>({
+    width: 800,
+    height: 600,
+  });
+
+  // Calculate displayed image frame inside container (resizeMode="contain")
+  const isRotated90or270 = cropRotation === 90 || cropRotation === 270;
+  const curImgW = isRotated90or270 ? realImgDim.height : realImgDim.width;
+  const curImgH = isRotated90or270 ? realImgDim.width : realImgDim.height;
+
+  const currentScale =
+    curImgW && curImgH
+      ? Math.min(containerDim.width / curImgW, containerDim.height / curImgH)
+      : 1;
+  const currentDispW = curImgW ? curImgW * currentScale : containerDim.width;
+  const currentDispH = curImgH ? curImgH * currentScale : containerDim.height;
+  const currentOffX = (containerDim.width - currentDispW) / 2;
+  const currentOffY = (containerDim.height - currentDispH) / 2;
+
+  // PanResponders for Custom Interactive Crop Box (Whole Box & 8 Handles)
+  const boxMovePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedCropAspect('custom');
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setCropBox((prev) => {
+          const minX = currentOffX;
+          const maxX = Math.max(minX, currentOffX + currentDispW - prev.width);
+          const minY = currentOffY;
+          const maxY = Math.max(minY, currentOffY + currentDispH - prev.height);
+
+          const newX = Math.max(minX, Math.min(maxX, prev.x + gestureState.dx));
+          const newY = Math.max(minY, Math.min(maxY, prev.y + gestureState.dy));
+
+          return { ...prev, x: newX, y: newY };
+        });
+      },
+    })
+  ).current;
+
+  const topLeftPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedCropAspect('custom');
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setCropBox((prev) => {
+          const newX = Math.max(currentOffX, Math.min(prev.x + prev.width - 40, prev.x + gestureState.dx));
+          const newY = Math.max(currentOffY, Math.min(prev.y + prev.height - 40, prev.y + gestureState.dy));
+          const newW = prev.width + (prev.x - newX);
+          const newH = prev.height + (prev.y - newY);
+          return { x: newX, y: newY, width: newW, height: newH };
+        });
+      },
+    })
+  ).current;
+
+  const topRightPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedCropAspect('custom');
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setCropBox((prev) => {
+          const maxW = currentOffX + currentDispW - prev.x;
+          const newY = Math.max(currentOffY, Math.min(prev.y + prev.height - 40, prev.y + gestureState.dy));
+          const newW = Math.max(40, Math.min(maxW, prev.width + gestureState.dx));
+          const newH = prev.height + (prev.y - newY);
+          return { ...prev, y: newY, width: newW, height: newH };
+        });
+      },
+    })
+  ).current;
+
+  const bottomLeftPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedCropAspect('custom');
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setCropBox((prev) => {
+          const newX = Math.max(currentOffX, Math.min(prev.x + prev.width - 40, prev.x + gestureState.dx));
+          const maxH = currentOffY + currentDispH - prev.y;
+          const newW = prev.width + (prev.x - newX);
+          const newH = Math.max(40, Math.min(maxH, prev.height + gestureState.dy));
+          return { ...prev, x: newX, width: newW, height: newH };
+        });
+      },
+    })
+  ).current;
+
+  const bottomRightPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedCropAspect('custom');
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setCropBox((prev) => {
+          const maxW = currentOffX + currentDispW - prev.x;
+          const maxH = currentOffY + currentDispH - prev.y;
+          const newW = Math.max(40, Math.min(maxW, prev.width + gestureState.dx));
+          const newH = Math.max(40, Math.min(maxH, prev.height + gestureState.dy));
+          return { ...prev, width: newW, height: newH };
+        });
+      },
+    })
+  ).current;
+
+  const topEdgePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedCropAspect('custom');
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setCropBox((prev) => {
+          const newY = Math.max(currentOffY, Math.min(prev.y + prev.height - 40, prev.y + gestureState.dy));
+          const newH = prev.height + (prev.y - newY);
+          return { ...prev, y: newY, height: newH };
+        });
+      },
+    })
+  ).current;
+
+  const bottomEdgePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedCropAspect('custom');
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setCropBox((prev) => {
+          const maxH = currentOffY + currentDispH - prev.y;
+          const newH = Math.max(40, Math.min(maxH, prev.height + gestureState.dy));
+          return { ...prev, height: newH };
+        });
+      },
+    })
+  ).current;
+
+  const leftEdgePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedCropAspect('custom');
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setCropBox((prev) => {
+          const newX = Math.max(currentOffX, Math.min(prev.x + prev.width - 40, prev.x + gestureState.dx));
+          const newW = prev.width + (prev.x - newX);
+          return { ...prev, x: newX, width: newW };
+        });
+      },
+    })
+  ).current;
+
+  const rightEdgePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedCropAspect('custom');
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setCropBox((prev) => {
+          const maxW = currentOffX + currentDispW - prev.x;
+          const newW = Math.max(40, Math.min(maxW, prev.width + gestureState.dx));
+          return { ...prev, width: newW };
+        });
+      },
+    })
+  ).current;
+
+  const handleSelectAspect = (
+    aspect: 'custom' | '1:1' | '4:5' | '16:9' | '9:16' | 'original'
+  ) => {
+    setSelectedCropAspect(aspect);
+    const cW = containerDim.width || 360;
+    const cH = containerDim.height || 320;
+    const isRot = cropRotation === 90 || cropRotation === 270;
+    const w = isRot ? realImgDim.height : realImgDim.width;
+    const h = isRot ? realImgDim.width : realImgDim.height;
+
+    const scale = w && h ? Math.min(cW / w, cH / h) : 1;
+    const dW = w ? w * scale : cW;
+    const dH = h ? h * scale : cH;
+    const oX = (cW - dW) / 2;
+    const oY = (cH - dH) / 2;
+
+    if (aspect === 'original') {
+      setCropBox({ x: oX, y: oY, width: dW, height: dH });
+      return;
+    }
+
+    if (aspect === 'custom') {
+      const bW = dW * 0.9;
+      const bH = dH * 0.9;
+      setCropBox({ x: oX + (dW - bW) / 2, y: oY + (dH - bH) / 2, width: bW, height: bH });
+      return;
+    }
+
+    let targetRatio = 1;
+    if (aspect === '1:1') targetRatio = 1;
+    else if (aspect === '4:5') targetRatio = 4 / 5;
+    else if (aspect === '16:9') targetRatio = 16 / 9;
+    else if (aspect === '9:16') targetRatio = 9 / 16;
+
+    let bW = dW;
+    let bH = dH;
+
+    if (dW / dH > targetRatio) {
+      bH = dH * 0.9;
+      bW = bH * targetRatio;
+    } else {
+      bW = dW * 0.9;
+      bH = bW / targetRatio;
+    }
+
+    setCropBox({
+      x: oX + (dW - bW) / 2,
+      y: oY + (dH - bH) / 2,
+      width: bW,
+      height: bH,
+    });
+  };
+
+  const getLoadableImageUri = async (uri: string): Promise<string> => {
+    if (!uri) return '';
+    const fullUrl = getImageUrl(uri) || uri;
+    if (Platform.OS === 'web' && (fullUrl.startsWith('http://') || fullUrl.startsWith('https://'))) {
+      try {
+        const res = await fetch(fullUrl, { mode: 'cors' });
+        if (res.ok) {
+          const blob = await res.blob();
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(fullUrl);
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (e) {
+        console.log('Loadable URI fetch notice:', e);
+      }
+    }
+    return fullUrl;
+  };
+
+  const openCropForExistingImage = async (
+    uri: string,
+    target: 'general' | 'platform' | 'ai',
+    platform?: string,
+    accountId?: string
+  ) => {
+    if (!uri) {
+      Alert.alert('No Image', 'No image available to crop.');
+      return;
+    }
+    const resolvedUri = getImageUrl(uri) || uri;
+    const loadableUri = await getLoadableImageUri(resolvedUri);
+    setCropImageUri(loadableUri);
+    setCropTargetType(target);
+    setCropTargetPlatform(platform || '');
+    setCropTargetAccountId(accountId || '');
+    setSelectedCropAspect('custom');
+    setCropRotation(0);
+
+    Image.getSize(loadableUri, (w, h) => {
+      setRealImgDim({ width: w, height: h });
+      const cW = containerDim.width || 360;
+      const cH = containerDim.height || 320;
+      const scale = Math.min(cW / w, cH / h);
+      const dW = w * scale;
+      const dH = h * scale;
+      const oX = (cW - dW) / 2;
+      const oY = (cH - dH) / 2;
+
+      const bW = dW * 0.85;
+      const bH = dH * 0.85;
+      setCropBox({
+        x: oX + (dW - bW) / 2,
+        y: oY + (dH - bH) / 2,
+        width: bW,
+        height: bH,
+      });
+    });
+
+    setCropModalVisible(true);
+  };
+
+  const handleApplyCrop = async () => {
+    if (!cropImageUri) return;
+    setCroppingInProgress(true);
+    try {
+      const loadableUri = await getLoadableImageUri(cropImageUri);
+
+      Image.getSize(
+        loadableUri,
+        async (rawW, rawH) => {
+          try {
+            const actions: ImageManipulator.Action[] = [];
+
+            if (cropRotation !== 0) {
+              actions.push({ rotate: cropRotation });
+            }
+
+            const isRotated90or270 = cropRotation === 90 || cropRotation === 270;
+            const imgW = isRotated90or270 ? rawH : rawW;
+            const imgH = isRotated90or270 ? rawW : rawH;
+
+            const cW = containerDim.width || 360;
+            const cH = containerDim.height || 320;
+            const scale = Math.min(cW / imgW, cH / imgH);
+            const dispW = imgW * scale;
+            const dispH = imgH * scale;
+            const offX = (cW - dispW) / 2;
+            const offY = (cH - dispH) / 2;
+
+            let relX = Math.max(0, cropBox.x - offX);
+            let relY = Math.max(0, cropBox.y - offY);
+            let relW = Math.min(dispW, cropBox.width);
+            let relH = Math.min(dispH, cropBox.height);
+
+            let originX = Math.floor(relX / scale);
+            let originY = Math.floor(relY / scale);
+            let cropW = Math.floor(relW / scale);
+            let cropH = Math.floor(relH / scale);
+
+            originX = Math.max(0, Math.min(originX, imgW - 1));
+            originY = Math.max(0, Math.min(originY, imgH - 1));
+            cropW = Math.max(1, Math.min(cropW, imgW - originX));
+            cropH = Math.max(1, Math.min(cropH, imgH - originY));
+
+            actions.push({
+              crop: {
+                originX,
+                originY,
+                width: cropW,
+                height: cropH,
+              },
+            });
+
+            const manipResult = await ImageManipulator.manipulateAsync(
+              loadableUri,
+              actions,
+              { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+            );
+
+            const croppedUri = manipResult.uri;
+
+            if (cropTargetType === 'ai') {
+              setReferenceImageUri(croppedUri);
+              setAiRefImage(croppedUri);
+              Alert.alert('Success', 'Reference image cropped successfully!');
+            } else if (cropTargetType === 'platform' && cropTargetPlatform) {
+              const platformKey = cropTargetPlatform;
+              const accountId = cropTargetAccountId;
+              const key = `${platformKey}:${accountId || 'default'}`;
+              setUploadingPlatformImage((prev) => ({ ...prev, [key]: true, [platformKey]: true }));
+              try {
+                const uploadRes = await uploadPostImage(croppedUri);
+                const serverUrl =
+                  uploadRes?.picture ||
+                  uploadRes?.imageUrl ||
+                  uploadRes?.url ||
+                  uploadRes?.data?.picture ||
+                  uploadRes?.data?.imageUrl ||
+                  uploadRes?.data?.url ||
+                  croppedUri;
+
+                handlePlatformSpecificChange(platformKey, accountId, 'mediaUrl', serverUrl);
+                setPlatformOverrides((prev) => ({
+                  ...prev,
+                  [platformKey]: {
+                    ...prev[platformKey],
+                    image_url: serverUrl,
+                  },
+                }));
+              } finally {
+                setUploadingPlatformImage((prev) => ({ ...prev, [key]: false, [platformKey]: false }));
+              }
+            } else {
+              setUploadingImage(true);
+              try {
+                const uploadRes = await uploadPostImage(croppedUri);
+                const serverUrl =
+                  uploadRes?.picture ||
+                  uploadRes?.imageUrl ||
+                  uploadRes?.url ||
+                  uploadRes?.data?.picture ||
+                  uploadRes?.data?.imageUrl ||
+                  uploadRes?.data?.url ||
+                  croppedUri;
+                const serverPath =
+                  uploadRes?.picture ||
+                  uploadRes?.imagePath ||
+                  uploadRes?.url ||
+                  uploadRes?.data?.picture ||
+                  uploadRes?.data?.imagePath ||
+                  uploadRes?.data?.url ||
+                  croppedUri;
+
+                setImageUrl(serverUrl);
+                setImagePath(serverPath);
+                setErrors((prev) => ({ ...prev, imageUrl: '' }));
+              } finally {
+                setUploadingImage(false);
+              }
+            }
+
+            setCropModalVisible(false);
+          } catch (err: any) {
+            Alert.alert('Crop Error', err?.message || 'Failed to process crop.');
+          } finally {
+            setCroppingInProgress(false);
+          }
+        },
+        (error) => {
+          Alert.alert('Image Error', 'Could not load image dimensions for cropping.');
+          setCroppingInProgress(false);
+        }
+      );
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to crop image.');
+      setCroppingInProgress(false);
+    }
+  };
 
   // AI Marketing Image & Reference Media Analysis State
   const [aiMarketingGenerating, setAiMarketingGenerating] = useState(false);
@@ -202,9 +668,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -244,9 +710,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -308,8 +774,8 @@ export default function PostEditorScreen() {
             typeof postData.image_url === 'string' && postData.image_url.trim()
               ? postData.image_url
               : postData.generalContent?.media?.[0]?.url ||
-                postData.generalContent?.media?.[0]?.imagePath ||
-                '';
+              postData.generalContent?.media?.[0]?.imagePath ||
+              '';
           setImageUrl(initialImg);
           setImagePath(
             postData.image_path || postData.generalContent?.media?.[0]?.imagePath || initialImg
@@ -1356,12 +1822,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-                {
-                  type: 'image',
-                  url: imageUrl,
-                  imagePath: imagePath || imageUrl,
-                },
-              ]
+              {
+                type: 'image',
+                url: imageUrl,
+                imagePath: imagePath || imageUrl,
+              },
+            ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -1461,9 +1927,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -1482,9 +1948,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -1924,7 +2390,7 @@ export default function PostEditorScreen() {
                                   a.click();
                                   URL.revokeObjectURL(a.href);
                                 })
-                                .catch(() => {});
+                                .catch(() => { });
                             }
                           }}
                         >
@@ -2102,7 +2568,7 @@ export default function PostEditorScreen() {
                         <Feather name="target" size={18} color="#ffffff" />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={handleCropReferenceImage}
+                        onPress={() => openCropForExistingImage(referenceImageUri || aiRefImage, 'ai')}
                         style={{
                           padding: 6,
                           backgroundColor: '#1c243cff',
@@ -2403,8 +2869,12 @@ export default function PostEditorScreen() {
                 {imageUrl ? (
                   <Box style={styles.imagePreviewBox}>
                     <TouchableOpacity
-                      activeOpacity={0.9}
-                      onPress={() => setModalImageUrl(getImageUrl(imageUrl))}
+                      activeOpacity={genImgError ? 1 : 0.9}
+                      onPress={() => {
+                        if (!genImgError) {
+                          setModalImageUrl(getImageUrl(imageUrl));
+                        }
+                      }}
                     >
                       <Image
                         source={
@@ -2418,17 +2888,19 @@ export default function PostEditorScreen() {
                       />
                     </TouchableOpacity>
                     <HStack space="xs" style={styles.imageActionOverlay}>
-                      <TouchableOpacity
-                        style={styles.imgActionBtn}
-                        onPress={() => pickImage(true)}
-                        disabled={uploadingImage}
-                      >
-                        {uploadingImage ? (
-                          <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                          <Feather name="crop" size={14} color="#fff" />
-                        )}
-                      </TouchableOpacity>
+                      {!genImgError && (
+                        <TouchableOpacity
+                          style={styles.imgActionBtn}
+                          onPress={() => openCropForExistingImage(imageUrl, 'general')}
+                          disabled={uploadingImage}
+                        >
+                          {uploadingImage ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <Feather name="crop" size={14} color="#fff" />
+                          )}
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
                         style={[styles.imgActionBtn, { backgroundColor: '#dc2626' }]}
                         onPress={() => {
@@ -2603,7 +3075,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabBtnActive,
+                        styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -2612,7 +3084,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                            styles.subTabTextActive,
+                          styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -2668,9 +3140,9 @@ export default function PostEditorScreen() {
                             ? override.hashtags
                             : hashtagsInput
                               ? hashtagsInput
-                                  .split(',')
-                                  .map((t) => t.trim().replace(/^#/, ''))
-                                  .filter(Boolean)
+                                .split(',')
+                                .map((t) => t.trim().replace(/^#/, ''))
+                                .filter(Boolean)
                               : [],
                         mediaUrl:
                           override.image_url !== undefined
@@ -2694,9 +3166,9 @@ export default function PostEditorScreen() {
                               ? override.hashtags
                               : hashtagsInput
                                 ? hashtagsInput
-                                    .split(',')
-                                    .map((t) => t.trim().replace(/^#/, ''))
-                                    .filter(Boolean)
+                                  .split(',')
+                                  .map((t) => t.trim().replace(/^#/, ''))
+                                  .filter(Boolean)
                                 : [],
                           mediaUrl:
                             override.image_url !== undefined
@@ -3005,36 +3477,51 @@ export default function PostEditorScreen() {
 
                               {resolvedUri ? (
                                 <Box style={styles.imagePreviewBox}>
-                                  <Image
-                                    source={
-                                      hasImgError
-                                        ? require('@/assets/images/360_image.jpg')
-                                        : { uri: resolvedUri }
-                                    }
-                                    style={styles.uploadedImage}
-                                    resizeMode="cover"
-                                    onError={() =>
-                                      setPlatformImgErrors((prev) => ({
-                                        ...prev,
-                                        [uploadKey]: true,
-                                      }))
-                                    }
-                                  />
-
-                                  <HStack space="xs" style={styles.imageActionOverlay}>
-                                    <TouchableOpacity
-                                      style={styles.imgActionBtn}
-                                      onPress={() =>
-                                        pickPlatformImage(targetPlatform, true, accountId)
+                                  <TouchableOpacity
+                                    activeOpacity={hasImgError ? 1 : 0.9}
+                                    onPress={() => {
+                                      if (!hasImgError) {
+                                        setModalImageUrl(resolvedUri);
                                       }
-                                      disabled={isUploading}
-                                    >
-                                      {isUploading ? (
-                                        <ActivityIndicator size="small" color="#fff" />
-                                      ) : (
-                                        <Feather name="crop" size={14} color="#fff" />
-                                      )}
-                                    </TouchableOpacity>
+                                    }}
+                                  >
+                                    <Image
+                                      source={
+                                        hasImgError
+                                          ? require('@/assets/images/360_image.jpg')
+                                          : { uri: resolvedUri }
+                                      }
+                                      style={styles.uploadedImage}
+                                      resizeMode="cover"
+                                      onError={() =>
+                                        setPlatformImgErrors((prev) => ({
+                                          ...prev,
+                                          [uploadKey]: true,
+                                        }))
+                                      }
+                                    />
+                                  </TouchableOpacity>
+                                  <HStack space="xs" style={styles.imageActionOverlay}>
+                                    {!hasImgError && (
+                                      <TouchableOpacity
+                                        style={styles.imgActionBtn}
+                                        onPress={() =>
+                                          openCropForExistingImage(
+                                            resolvedUri,
+                                            'platform',
+                                            targetPlatform,
+                                            accountId
+                                          )
+                                        }
+                                        disabled={isUploading}
+                                      >
+                                        {isUploading ? (
+                                          <ActivityIndicator size="small" color="#fff" />
+                                        ) : (
+                                          <Feather name="crop" size={14} color="#fff" />
+                                        )}
+                                      </TouchableOpacity>
+                                    )}
                                     <TouchableOpacity
                                       style={[styles.imgActionBtn, { backgroundColor: '#dc2626' }]}
                                       onPress={() => {
@@ -3365,10 +3852,10 @@ export default function PostEditorScreen() {
                         const platformEntries = platformSpecificContent[network] || [];
                         const acctEntry = acct
                           ? platformEntries.find(
-                              (e: any) =>
-                                e.account_id ===
-                                (acct.account_id || acct.value || acct.id || acct._id)
-                            )
+                            (e: any) =>
+                              e.account_id ===
+                              (acct.account_id || acct.value || acct.id || acct._id)
+                          )
                           : platformEntries[0];
 
                         const override = platformOverrides[network] || {};
@@ -3394,10 +3881,10 @@ export default function PostEditorScreen() {
                           acctEntry?.hashtags && acctEntry.hashtags.length > 0
                             ? acctEntry.hashtags
                             : override.hashtags ||
-                              hashtagsInput
-                                .split(',')
-                                .map((t) => t.trim().replace(/^#/, ''))
-                                .filter(Boolean);
+                            hashtagsInput
+                              .split(',')
+                              .map((t) => t.trim().replace(/^#/, ''))
+                              .filter(Boolean);
 
                         const activeContentType =
                           acctEntry?.contentType ||
@@ -4176,6 +4663,403 @@ export default function PostEditorScreen() {
                   </Text>
                 </TouchableOpacity>
               </HStack>
+            </HStack>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Existing Image Crop Modal */}
+      <Modal
+        visible={cropModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setCropModalVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 16,
+          }}
+        >
+          <View
+            style={{
+              width: '95%',
+              maxWidth: 440,
+              backgroundColor: '#ffffff',
+              borderRadius: 16,
+              padding: 18,
+              maxHeight: '90%',
+            }}
+          >
+            {/* Modal Header */}
+            <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <HStack space="xs" style={{ alignItems: 'center' }}>
+                <Feather name="crop" size={18} color="#0b53f8" />
+                <Heading style={{ fontSize: 17, fontWeight: '700', color: '#0f172a' }}>
+                  Crop & Adjust Image
+                </Heading>
+              </HStack>
+              <TouchableOpacity
+                onPress={() => setCropModalVisible(false)}
+                style={{ padding: 6, backgroundColor: '#f1f5f9', borderRadius: 20 }}
+              >
+                <Feather name="x" size={18} color="#64748b" />
+              </TouchableOpacity>
+            </HStack>
+
+            {/* Image Preview Container */}
+            <View
+              onLayout={(e) => {
+                const { width, height } = e.nativeEvent.layout;
+                if (width > 0 && height > 0) {
+                  setContainerDim({ width, height });
+                }
+              }}
+              style={{
+                width: '100%',
+                height: 320,
+                backgroundColor: '#090d16',
+                borderRadius: 12,
+                overflow: 'hidden',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 14,
+                position: 'relative',
+              }}
+            >
+              {cropImageUri ? (
+                <Image
+                  source={{ uri: cropImageUri }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    transform: [{ rotate: `${cropRotation}deg` }],
+                  }}
+                  resizeMode="contain"
+                />
+              ) : null}
+
+              {/* Draggable & Resizable Custom Crop Overlay Box (8 Handles) */}
+              <View
+                style={{
+                  position: 'absolute',
+                  left: cropBox.x,
+                  top: cropBox.y,
+                  width: cropBox.width,
+                  height: cropBox.height,
+                  borderWidth: 2,
+                  borderColor: '#3b82f6',
+                  backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                }}
+                {...boxMovePan.panHandlers}
+              >
+                {/* Rule of Thirds Grid Lines */}
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: '33.33%',
+                    left: 0,
+                    right: 0,
+                    height: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                  }}
+                />
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: '66.66%',
+                    left: 0,
+                    right: 0,
+                    height: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                  }}
+                />
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    left: '33.33%',
+                    top: 0,
+                    bottom: 0,
+                    width: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                  }}
+                />
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    left: '66.66%',
+                    top: 0,
+                    bottom: 0,
+                    width: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                  }}
+                />
+
+                {/* --- 4 Edge Midpoint Handles --- */}
+                {/* Top Edge Handle */}
+                <View
+                  {...topEdgePan.panHandlers}
+                  style={{
+                    position: 'absolute',
+                    top: -9,
+                    left: '50%',
+                    marginLeft: -15,
+                    width: 30,
+                    height: 18,
+                    borderRadius: 4,
+                    backgroundColor: '#ffffff',
+                    borderWidth: 2,
+                    borderColor: '#3b82f6',
+                    elevation: 5,
+                  }}
+                />
+                {/* Bottom Edge Handle */}
+                <View
+                  {...bottomEdgePan.panHandlers}
+                  style={{
+                    position: 'absolute',
+                    bottom: -9,
+                    left: '50%',
+                    marginLeft: -15,
+                    width: 30,
+                    height: 18,
+                    borderRadius: 4,
+                    backgroundColor: '#ffffff',
+                    borderWidth: 2,
+                    borderColor: '#3b82f6',
+                    elevation: 5,
+                  }}
+                />
+                {/* Left Edge Handle */}
+                <View
+                  {...leftEdgePan.panHandlers}
+                  style={{
+                    position: 'absolute',
+                    left: -9,
+                    top: '50%',
+                    marginTop: -15,
+                    width: 18,
+                    height: 30,
+                    borderRadius: 4,
+                    backgroundColor: '#ffffff',
+                    borderWidth: 2,
+                    borderColor: '#3b82f6',
+                    elevation: 5,
+                  }}
+                />
+                {/* Right Edge Handle */}
+                <View
+                  {...rightEdgePan.panHandlers}
+                  style={{
+                    position: 'absolute',
+                    right: -9,
+                    top: '50%',
+                    marginTop: -15,
+                    width: 18,
+                    height: 30,
+                    borderRadius: 4,
+                    backgroundColor: '#ffffff',
+                    borderWidth: 2,
+                    borderColor: '#3b82f6',
+                    elevation: 5,
+                  }}
+                />
+
+                {/* --- 4 Corner Handles --- */}
+                {/* Top-Left Corner Handle */}
+                <View
+                  {...topLeftPan.panHandlers}
+                  style={{
+                    position: 'absolute',
+                    top: -10,
+                    left: -10,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: '#ffffff',
+                    borderWidth: 2,
+                    borderColor: '#3b82f6',
+                    elevation: 5,
+                  }}
+                />
+                {/* Top-Right Corner Handle */}
+                <View
+                  {...topRightPan.panHandlers}
+                  style={{
+                    position: 'absolute',
+                    top: -10,
+                    right: -10,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: '#ffffff',
+                    borderWidth: 2,
+                    borderColor: '#3b82f6',
+                    elevation: 5,
+                  }}
+                />
+                {/* Bottom-Left Corner Handle */}
+                <View
+                  {...bottomLeftPan.panHandlers}
+                  style={{
+                    position: 'absolute',
+                    bottom: -10,
+                    left: -10,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: '#ffffff',
+                    borderWidth: 2,
+                    borderColor: '#3b82f6',
+                    elevation: 5,
+                  }}
+                />
+                {/* Bottom-Right Corner Handle */}
+                <View
+                  {...bottomRightPan.panHandlers}
+                  style={{
+                    position: 'absolute',
+                    bottom: -10,
+                    right: -10,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: '#ffffff',
+                    borderWidth: 2,
+                    borderColor: '#3b82f6',
+                    elevation: 5,
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Aspect Ratio & Custom Controls */}
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 8 }}>
+              Select Aspect Ratio / Custom Mode:
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+              <HStack space="xs">
+                {(
+                  [
+                    { key: 'custom', label: 'Custom (Free)' },
+                    { key: '1:1', label: '1:1 Square' },
+                    { key: '4:5', label: '4:5 Portrait' },
+                    { key: '16:9', label: '16:9 Landscape' },
+                    { key: '9:16', label: '9:16 Reel/Story' },
+                    { key: 'original', label: 'Original' },
+                  ] as const
+                ).map((ratio) => {
+                  const isSelected = selectedCropAspect === ratio.key;
+                  return (
+                    <TouchableOpacity
+                      key={ratio.key}
+                      onPress={() => handleSelectAspect(ratio.key)}
+                      style={{
+                        paddingVertical: 6,
+                        paddingHorizontal: 12,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: isSelected ? '#0b53f8' : '#cbd5e1',
+                        backgroundColor: isSelected ? '#eff6ff' : '#f8fafc',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: isSelected ? '700' : '500',
+                          color: isSelected ? '#0b53f8' : '#475569',
+                        }}
+                      >
+                        {ratio.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </HStack>
+            </ScrollView>
+
+            {/* Rotate Controls */}
+            <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569' }}>Rotate Image:</Text>
+              <HStack space="xs">
+                <TouchableOpacity
+                  onPress={() => setCropRotation((prev) => (prev - 90 + 360) % 360)}
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    borderRadius: 8,
+                    backgroundColor: '#f1f5f9',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <Feather name="rotate-ccw" size={14} color="#475569" />
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#475569' }}>-90°</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setCropRotation((prev) => (prev + 90) % 360)}
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    borderRadius: 8,
+                    backgroundColor: '#f1f5f9',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <Feather name="rotate-cw" size={14} color="#475569" />
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#475569' }}>+90°</Text>
+                </TouchableOpacity>
+              </HStack>
+            </HStack>
+
+            {/* Modal Actions */}
+            <HStack style={{ justifyContent: 'flex-end' }} space="sm">
+              <TouchableOpacity
+                onPress={() => setCropModalVisible(false)}
+                style={{
+                  paddingVertical: 9,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
+                  backgroundColor: '#f1f5f9',
+                }}
+                disabled={croppingInProgress}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#475569' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleApplyCrop}
+                style={{
+                  paddingVertical: 9,
+                  paddingHorizontal: 18,
+                  borderRadius: 8,
+                  backgroundColor: '#0b53f8',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+                disabled={croppingInProgress}
+              >
+                {croppingInProgress ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Feather name="check" size={16} color="#ffffff" />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#ffffff' }}>
+                      Apply Crop & Save
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </HStack>
           </View>
         </View>

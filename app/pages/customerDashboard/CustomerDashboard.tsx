@@ -446,6 +446,21 @@ export default function CustomerDashboard() {
     social?.totalConnections ??
     platformsList.reduce((acc, p) => acc + (p.connectedAccounts || 0), 0);
 
+  const handleGoToGeneralSettings = () => {
+    const isCustomer = user?.loginType === 'customer' || !user?.role_id;
+    if (isCustomer) {
+      router.push({
+        pathname: '/pages/customerGeneralSetting/customer-general-setting',
+        params: { tab: 'setup', step: '1' },
+      });
+    } else {
+      router.push({
+        pathname: '/pages/generalSetting/general-settings',
+        params: { tab: 'setup', step: '1' },
+      });
+    }
+  };
+
   return (
     <Box style={styles.container}>
       {/* Dynamic Header Banner */}
@@ -661,6 +676,22 @@ export default function CustomerDashboard() {
                           </Text>
                         </VStack>
                       </HStack>
+                      <TouchableOpacity
+                        onPress={handleGoToGeneralSettings}
+                        style={{
+                          paddingVertical: 5,
+                          paddingHorizontal: 10,
+                          borderRadius: 6,
+                          borderWidth: 1,
+                          borderColor: meta.color || '#0b53f8',
+                          backgroundColor: 'transparent',
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: meta.color || '#0b53f8' }}>
+                          {isConnected ? 'Add Account' : 'Connect Account'}
+                        </Text>
+                      </TouchableOpacity>
                     </HStack>
 
                     {/* Sub Accounts (if any) */}
@@ -744,10 +775,25 @@ export default function CustomerDashboard() {
                   textAlign: 'center',
                   marginTop: 4,
                   paddingHorizontal: 20,
+                  marginBottom: 12,
                 }}
               >
                 Connect your social media accounts to start automating and publishing posts.
               </Text>
+              <TouchableOpacity
+                onPress={handleGoToGeneralSettings}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 16,
+                  borderRadius: 8,
+                  backgroundColor: '#0b53f8',
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#ffffff' }}>
+                  Add Account
+                </Text>
+              </TouchableOpacity>
             </Box>
           )}
         </VStack>
