@@ -1,6 +1,7 @@
 import { fetchWithAuth, API_BASE_URL } from '@/services/api';
 import { getSecureUserData } from '@/utils/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const BASE = `${API_BASE_URL}/generated-posts`;
 const SOCIAL_BASE = `${API_BASE_URL}/social-post`;
@@ -271,11 +272,27 @@ export const uploadPostImage = async (
     body = new FormData();
     const name = fileName || `post-${Date.now()}.jpg`;
     const type = mimeType || 'image/jpeg';
-    body.append('file', {
-      uri: fileUriOrFormData,
-      name,
-      type,
-    } as any);
+
+    if (Platform.OS === 'web') {
+      try {
+        const response = await fetch(fileUriOrFormData);
+        const blob = await response.blob();
+        const file = new File([blob], name, { type: blob.type || type });
+        body.append('file', file);
+      } catch {
+        body.append('file', {
+          uri: fileUriOrFormData,
+          name,
+          type,
+        } as any);
+      }
+    } else {
+      body.append('file', {
+        uri: fileUriOrFormData,
+        name,
+        type,
+      } as any);
+    }
   } else {
     body = fileUriOrFormData;
   }

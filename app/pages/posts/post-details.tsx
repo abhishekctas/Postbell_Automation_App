@@ -477,7 +477,7 @@ function AccountPostCard({
         </HStack>
 
         {/* Date & Open Link */}
-        <HStack space="xs" className="items-center" style={{ marginLeft: 8 }}>
+        <HStack space="xs" className="items-center" style={{ marginLeft: 8, justifyContent: 'space-between', flexDirection: 'row' }}>
           {formattedDate ? (
             <HStack space="xs" className="items-center" style={{ marginRight: 4 }}>
               <Feather name="calendar" size={12} color="#94a3b8" />
@@ -506,7 +506,7 @@ function AccountPostCard({
       ) : null}
 
       {/* ── Main body (Image + Caption + Hashtags + Metrics) ── */}
-      <Box style={{ padding: 14 }}>
+      <Box style={{ padding: 12 }}>
         {/* Media Preview */}
         {mediaUrl && !mediaError ? (
           <TouchableOpacity
@@ -752,17 +752,17 @@ export default function PostDetailsScreen() {
     const platforms =
       explicitPlatforms.length > 0
         ? (() => {
-            const present = new Set(
-              explicitPlatforms.map((p: any) => (p.platform || '').toLowerCase())
-            );
-            const merged = [...explicitPlatforms];
-            for (const f of fallbackPlatforms) {
-              if (!present.has((f.platform || '').toLowerCase())) {
-                merged.push(f);
-              }
+          const present = new Set(
+            explicitPlatforms.map((p: any) => (p.platform || '').toLowerCase())
+          );
+          const merged = [...explicitPlatforms];
+          for (const f of fallbackPlatforms) {
+            if (!present.has((f.platform || '').toLowerCase())) {
+              merged.push(f);
             }
-            return merged;
-          })()
+          }
+          return merged;
+        })()
         : fallbackPlatforms;
 
     const map = new Map<string, any[]>();
@@ -1200,7 +1200,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 16,
+    padding: 12,
     marginBottom: 14,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -1319,7 +1319,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f8fafc',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -1464,10 +1464,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   accountHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
@@ -1488,13 +1485,13 @@ const styles = StyleSheet.create({
   },
   miniStatusBadge: {
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 0,
     borderRadius: 4,
     borderWidth: 1,
     marginLeft: 6,
   },
   miniStatusBadgeText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
   },
   accountIdText: {
@@ -1510,7 +1507,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 9,
-    paddingVertical: 5,
+    paddingVertical: 2,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#e2e8f0',

@@ -24,9 +24,10 @@ import {
   deleteLogo,
   GeneralSettings,
 } from './general-settings.api';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 export default function GeneralAccessScreen() {
+  const { step } = useLocalSearchParams<{ tab?: string; step?: string }>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [companyName, setCompanyName] = useState('');
@@ -45,6 +46,15 @@ export default function GeneralAccessScreen() {
   const [aboutText, setAboutText] = useState('');
   const [copyright, setCopyright] = useState('');
   const [activeTab, setActiveTab] = useState(0);
+
+  useEffect(() => {
+    if (step !== undefined && step !== null) {
+      const stepNum = parseInt(String(step), 10);
+      if (!isNaN(stepNum)) {
+        setActiveTab(stepNum);
+      }
+    }
+  }, [step]);
   const [contactAddress, setContactAddress] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [emailAddress, setEmailAddress] = useState('');
