@@ -93,6 +93,16 @@ const PLATFORMS = [
     borderColor: '#fef3c7',
     isComingSoon: false,
   },
+  {
+    id: 'whatsapp',
+    name: 'WhatsApp',
+    description: 'Connect your WhatsApp account for story automation',
+    iconName: 'whatsapp',
+    color: '#25d366',
+    bgColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+    isComingSoon: false,
+  }
 ];
 
 export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps) {

@@ -1701,7 +1701,13 @@ export default function PostEditorScreen() {
         .filter(Boolean);
 
       const isDraft = targetStatus === 'draft';
-      const finalStatus = targetStatus || (isScheduled ? 'scheduled' : postStatus);
+      const finalStatus = isDraft
+        ? 'draft'
+        : targetStatus === 'published'
+          ? 'publishing'
+          : targetStatus === 'scheduled' || isScheduled
+            ? 'scheduled'
+            : postStatus || 'draft';
 
       // Group flat selectedAccounts -> { facebook: ['acc1'], instagram: ['acc2'] }
       const selectedAccountsObject: Record<string, string[]> = {};
@@ -1832,28 +1838,31 @@ export default function PostEditorScreen() {
         },
         platformSpecificContent: platformSpecificContentObj,
         post_status: finalStatus,
-        ...(isScheduled && {
+        ...((targetStatus === 'scheduled' || isScheduled) && {
           scheduled_at: scheduledDate.toISOString(),
           isScheduled: true,
         }),
       };
 
       if (isEditing && id) {
-        await updatePost(id, payload);
-        if (targetStatus === 'published') {
-          await publishPostNow(id);
+        const res = await updatePost(id, payload);
+        if (res && (res.success === false || (res.code && res.code !== 200 && res.code !== 201) || (res.statusCode && res.statusCode >= 400))) {
+          throw new Error(res.message || 'Failed to update post');
         }
-        Alert.alert('Success', 'Post updated successfully!');
+        Alert.alert('Success', 'Post updated successfully!', [
+          { text: 'OK', onPress: () => router.push('/pages/posts/posts') },
+        ]);
       } else {
         const created = await createPost(payload);
-        const newId = created?._id || created?.id || created?.data?._id;
-        if (targetStatus === 'published' && newId) {
-          await publishPostNow(newId);
+        if (created && (created.success === false || (created.code && created.code !== 200 && created.code !== 201) || (created.statusCode && created.statusCode >= 400))) {
+          throw new Error(created.message || 'Failed to create post');
         }
-        Alert.alert('Success', 'Post created successfully!');
+        Alert.alert('Success', 'Post created successfully!', [
+          { text: 'OK', onPress: () => router.push('/pages/posts/posts') },
+        ]);
       }
 
-      router.back();
+      router.push('/pages/posts/posts');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to save post.');
     } finally {

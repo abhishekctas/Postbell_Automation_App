@@ -651,71 +651,40 @@ export default function FestivalAutoPostScreen() {
   };
 
   const handleGenerateAI = async (provider: 'gemini' | 'openai') => {
-    if (!name.trim() || !category.trim()) {
-      Alert.alert(
-        'Validation Required',
-        'Please fill in both Festival Name and Category before generating AI content.'
-      );
-      return;
-    }
+    if (!name.trim() || !category.trim()) return;
 
     setGeneratingType(provider);
     try {
       const prompt = `Generate a festival post for ${name.trim()} (${category.trim()})`;
-      const referenceImage = localImageUri || imageUrl || undefined;
+      const payload = { prompt, referenceImageUri: localImageUri || undefined };
 
-      const res = await generateFestivalPostAI(provider, {
-        prompt,
-        referenceImageUri: referenceImage,
-      });
+      const res = await generateFestivalPostAI(provider, payload);
+      const aiPost = res?.data?.posts?.[0];
 
-      const posts = res?.data?.posts;
-      const aiPost =
-        Array.isArray(posts) && posts.length > 0
-          ? posts[0]
-          : Array.isArray(res?.data)
-            ? res.data[0]
-            : res?.data;
-
-      if (res?.success && aiPost) {
-        if (aiPost.caption) {
-          setCaption(aiPost.caption.trim());
+      if (res?.success && res?.data?.posts?.length > 0) {
+        if (aiPost) {
+          setCaption(aiPost.caption || caption);
+          setHashtags(
+            (aiPost.hashtags || []).map((tag: string) => tag.replace(/^#/, '').trim())
+          );
+          const aiImage = aiPost.image_url || aiPost.image || aiPost.imageUrl;
+          if (aiImage) {
+            setImageUrl(aiImage);
+            setLocalImageUri(null);
+          }
+          setTouched((prev) => ({
+            ...prev,
+            caption: true,
+            hashtags: true,
+            image: true,
+          }));
         }
-
-        if (aiPost.hashtags) {
-          const rawTags = Array.isArray(aiPost.hashtags)
-            ? aiPost.hashtags
-            : typeof aiPost.hashtags === 'string'
-              ? aiPost.hashtags.split(',')
-              : [];
-          setHashtags(rawTags.map((tag: string) => tag.replace(/^#/, '').trim()).filter(Boolean));
-        }
-
-        const aiImage = aiPost.image_url || aiPost.image || aiPost.imageUrl;
-        if (aiImage) {
-          setImageUrl(aiImage);
-          setLocalImageUri(null);
-        }
-
-        setTouched((prev) => ({
-          ...prev,
-          caption: true,
-          hashtags: true,
-          image: true,
-        }));
-      } else {
-        Alert.alert(
-          'AI Generation',
-          res?.message || 'No post content was returned by AI. Please try again.'
-        );
+      } else if (res?.message) {
+        Alert.alert('Info', res.message);
       }
-    } catch (e: any) {
-      console.error('AI Generation Error:', e);
-      Alert.alert(
-        'AI Generation Failed',
-        e?.message ||
-          'Failed to generate festival post content via AI. Please check your network or try again.'
-      );
+    } catch (err: any) {
+      console.error('AI generation failed:', err);
+      Alert.alert('AI Generation Failed', err?.message || 'AI generation failed');
     } finally {
       setGeneratingType(null);
     }
@@ -1468,8 +1437,8 @@ export default function FestivalAutoPostScreen() {
                         }}
                       >
                         {previewImageUri &&
-                        !modalImageLoadError &&
-                        !previewImageUri.includes('360_image') ? (
+                          !modalImageLoadError &&
+                          !previewImageUri.includes('360_image') ? (
                           <Image
                             source={{ uri: previewImageUri }}
                             style={styles.imagePreview}

@@ -34,16 +34,16 @@ export interface SetupWizardData {
   social_media_auth: Record<
     string,
     | {
-        connection_status?: string;
-        connected_account_name?: string;
-        auth_status?: string;
-        reconnect_status?: string;
-        account_id?: string;
-        username?: string;
-        page_id?: string;
-        page_name?: string;
-        [key: string]: any;
-      }
+      connection_status?: string;
+      connected_account_name?: string;
+      auth_status?: string;
+      reconnect_status?: string;
+      account_id?: string;
+      username?: string;
+      page_id?: string;
+      page_name?: string;
+      [key: string]: any;
+    }
     | any
   >;
   social_links: {
@@ -360,7 +360,7 @@ export default function CustomerSetupWizard() {
         await updateUser({ setup_completed: true });
         Alert.alert(
           '🎉 Setup Completed',
-          'Your workspace configuration has been activated successfully!'
+          'Setup Completed successfully!'
         );
         router.replace('/(tabs)');
       } else {

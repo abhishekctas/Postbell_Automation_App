@@ -2,20 +2,29 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ky, { KyInstance } from 'ky';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { getCurrentUserId } from '@/utils/storage';
 
 const getBaseUrl = () => {
-  const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri;
-  const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
-  if (isDev) {
-    if (hostUri) {
+  const envApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL;
+  let baseUrl = envApiUrl || 'http://localhost:4000/v1';
+
+  if (Platform.OS !== 'web' && (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1'))) {
+    const hostUri =
+      Constants.expoConfig?.hostUri ||
+      Constants.manifest?.hostUri ||
+      (Constants as any).manifest2?.extra?.expoGo?.developer?.tool;
+    if (hostUri && typeof hostUri === 'string') {
       const ip = hostUri.split(':')[0];
-      return `http://${ip}:4000/v1`;
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        return baseUrl.replace(/localhost|127\.0\.0\.1/g, ip);
+      }
     }
     if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:4000/v1';
+      return baseUrl.replace(/localhost|127\.0\.0\.1/g, '10.0.2.2');
     }
   }
-  return 'http://localhost:4000/v1';
+
+  return baseUrl;
 };
 
 export const API_BASE_URL = getBaseUrl();
@@ -85,11 +94,18 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 
   let token = await AsyncStorage.getItem('jwt_access_token');
   if (token) {
-    token = token.replace(/['"]+/g, '');
+    token = String(token).replace(/['"\r\n]+/g, '').trim();
   }
 
-  const { getCurrentUserId } = await import('@/utils/storage');
-  const loggedInUserId = await getCurrentUserId();
+  let loggedInUserId: string | null = null;
+  try {
+    loggedInUserId = await getCurrentUserId();
+    if (loggedInUserId) {
+      loggedInUserId = String(loggedInUserId).replace(/['"\r\n]+/g, '').trim();
+    }
+  } catch (e) {
+    console.warn('Could not retrieve loggedInUserId:', e);
+  }
 
   const authUrls = [
     '/auth/login',
@@ -117,6 +133,10 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
     '/delete-post-image',
     '/get-generated-posts',
     '/get-active-social-accounts-post',
+    '/ai/',
+    '/ai',
+    '/generate-post',
+    '/generate-marketing-image-from-reference',
   ];
 
   const isAuthUrl = authUrls.some((authUrl) => url.includes(authUrl));
@@ -124,13 +144,35 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 
   let finalUrl = url;
 
+  if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+    finalUrl = `${API_BASE_URL}${finalUrl.startsWith('/') ? '' : '/'}${finalUrl}`;
+  }
+
+  if (Platform.OS !== 'web') {
+    const hostUri =
+      Constants.expoConfig?.hostUri ||
+      Constants.manifest?.hostUri ||
+      (Constants as any).manifest2?.extra?.expoGo?.developer?.tool;
+    const devIp =
+      hostUri && typeof hostUri === 'string'
+        ? hostUri.split(':')[0]
+        : Platform.OS === 'android'
+          ? '10.0.2.2'
+          : null;
+    if (devIp && devIp !== 'localhost' && devIp !== '127.0.0.1') {
+      finalUrl = finalUrl.replace(/localhost|127\.0\.0\.1|192\.168\.\d+\.\d+/g, devIp);
+    } else if (Platform.OS === 'android' && (finalUrl.includes('localhost') || finalUrl.includes('127.0.0.1'))) {
+      finalUrl = finalUrl.replace(/localhost|127\.0\.0\.1/g, '10.0.2.2');
+    }
+  }
+
   if (loggedInUserId && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method) && !shouldSkipAppend) {
-    if (!url.includes(`/${loggedInUserId}`)) {
-      if (url.includes('?')) {
-        const [base, query] = url.split('?');
+    if (!finalUrl.includes(`/${loggedInUserId}`)) {
+      if (finalUrl.includes('?')) {
+        const [base, query] = finalUrl.split('?');
         finalUrl = `${base}/${loggedInUserId}?${query}`;
       } else {
-        finalUrl = `${url}/${loggedInUserId}`;
+        finalUrl = `${finalUrl}/${loggedInUserId}`;
       }
     }
   }
@@ -175,9 +217,59 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
       return { success: false, statusCode: 401, message: 'Unauthorized' };
     }
 
-    return await response.json();
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json();
+    }
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {
+        success: response.ok,
+        statusCode: response.status,
+        message: text || response.statusText,
+        data: null,
+      };
+    }
   } catch (err: any) {
     console.error('API Request Failed', { url: finalUrl, method, message: err?.message });
+
+    // Fallback retry for Android Emulator or Host IP mismatch
+    if (err?.message === 'Network request failed') {
+      const candidates = [
+        finalUrl.includes('10.0.2.2') ? null : finalUrl.replace(/http:\/\/[^/]+/, 'http://10.0.2.2:4000'),
+        finalUrl.includes('localhost') ? null : finalUrl.replace(/http:\/\/[^/]+/, 'http://localhost:4000'),
+      ].filter(Boolean) as string[];
+
+      for (const altUrl of candidates) {
+        try {
+          console.log('Retrying with alternate host IP:', altUrl);
+          const altResponse = await fetch(altUrl, config);
+          if (altResponse.status === 401) {
+            return { success: false, statusCode: 401, message: 'Unauthorized' };
+          }
+          const contentType = altResponse.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            return await altResponse.json();
+          }
+          const text = await altResponse.text();
+          try {
+            return JSON.parse(text);
+          } catch {
+            return {
+              success: altResponse.ok,
+              statusCode: altResponse.status,
+              message: text || altResponse.statusText,
+              data: null,
+            };
+          }
+        } catch {
+          // Alt retry failed, try next candidate
+        }
+      }
+    }
+
     return {
       success: false,
       statusCode: 503,
@@ -190,3 +282,4 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 }
 
 export default api;
+

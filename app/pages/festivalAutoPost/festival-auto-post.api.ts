@@ -10,7 +10,19 @@ export const hasError = (response: any): boolean => {
     return response.status < 200 || response.status >= 400;
   }
 
+  if (typeof response.statusCode === 'number') {
+    return response.statusCode < 200 || response.statusCode >= 400;
+  }
+
+  if (typeof response.code === 'number') {
+    return response.code < 200 || response.code >= 400;
+  }
+
   if (response.success === false) {
+    return true;
+  }
+
+  if (response.error && response.success !== true) {
     return true;
   }
 
@@ -314,14 +326,19 @@ export const generateFestivalPostAI = async (
     }
   }
 
-  const aiUrl = `${API_BASE_URL}/ai/generate-post/${provider}`;
+  const aiUrl = `/ai/generate-post/${provider}`;
   const response = await fetchWithAuth(aiUrl, {
     method: 'POST',
     body: formData,
   });
 
-  if (hasError(response) || response?.success === false) {
-    throw new Error(response?.message || 'Failed to generate content via AI');
+  if (hasError(response) || (response && response.success === false)) {
+    const errorMsg =
+      response?.message ||
+      response?.error ||
+      (typeof response?.data === 'string' ? response.data : null) ||
+      'Failed to generate content via AI';
+    throw new Error(errorMsg);
   }
 
   return response as { success: boolean; message: string; data?: any };
