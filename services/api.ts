@@ -1,11 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ky, { KyInstance } from 'ky';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { getCurrentUserId } from '@/utils/storage';
 
 const getBaseUrl = () => {
-  const envApiUrl = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL;
+  const envApiUrl = 'https://api.postbell.in/v1';
   let baseUrl = envApiUrl || 'http://localhost:4000/v1';
 
   if (Platform.OS !== 'web' && (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1'))) {
@@ -43,22 +42,15 @@ export const removeGlobalHeaders = (headerKeys: string[]) => {
 
 export const getGlobalHeaders = () => globalHeaders;
 
-export const api: KyInstance = ky.create({
-  prefixUrl: `${API_BASE_URL}/`,
-  hooks: {
-    beforeRequest: [
-      (request) => {
-        Object.entries(globalHeaders).forEach(([key, value]) => {
-          request.headers.set(key, value);
-        });
-      },
-    ],
-  },
-  retry: {
-    limit: 1,
-    methods: ['get', 'options', 'trace'],
-  },
-});
+export const api = {
+  get: (url: string, options?: RequestInit) => fetchWithAuth(url, { ...options, method: 'GET' }),
+  post: (url: string, options?: RequestInit) => fetchWithAuth(url, { ...options, method: 'POST' }),
+  put: (url: string, options?: RequestInit) => fetchWithAuth(url, { ...options, method: 'PUT' }),
+  delete: (url: string, options?: RequestInit) =>
+    fetchWithAuth(url, { ...options, method: 'DELETE' }),
+  patch: (url: string, options?: RequestInit) =>
+    fetchWithAuth(url, { ...options, method: 'PATCH' }),
+};
 
 // Auth API endpoints
 export const AUTH_ENDPOINTS = {
@@ -94,14 +86,18 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 
   let token = await AsyncStorage.getItem('jwt_access_token');
   if (token) {
-    token = String(token).replace(/['"\r\n]+/g, '').trim();
+    token = String(token)
+      .replace(/['"\r\n]+/g, '')
+      .trim();
   }
 
   let loggedInUserId: string | null = null;
   try {
     loggedInUserId = await getCurrentUserId();
     if (loggedInUserId) {
-      loggedInUserId = String(loggedInUserId).replace(/['"\r\n]+/g, '').trim();
+      loggedInUserId = String(loggedInUserId)
+        .replace(/['"\r\n]+/g, '')
+        .trim();
     }
   } catch (e) {
     console.warn('Could not retrieve loggedInUserId:', e);
@@ -161,7 +157,10 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
           : null;
     if (devIp && devIp !== 'localhost' && devIp !== '127.0.0.1') {
       finalUrl = finalUrl.replace(/localhost|127\.0\.0\.1|192\.168\.\d+\.\d+/g, devIp);
-    } else if (Platform.OS === 'android' && (finalUrl.includes('localhost') || finalUrl.includes('127.0.0.1'))) {
+    } else if (
+      Platform.OS === 'android' &&
+      (finalUrl.includes('localhost') || finalUrl.includes('127.0.0.1'))
+    ) {
       finalUrl = finalUrl.replace(/localhost|127\.0\.0\.1/g, '10.0.2.2');
     }
   }
@@ -238,8 +237,12 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
     // Fallback retry for Android Emulator or Host IP mismatch
     if (err?.message === 'Network request failed') {
       const candidates = [
-        finalUrl.includes('10.0.2.2') ? null : finalUrl.replace(/http:\/\/[^/]+/, 'http://10.0.2.2:4000'),
-        finalUrl.includes('localhost') ? null : finalUrl.replace(/http:\/\/[^/]+/, 'http://localhost:4000'),
+        finalUrl.includes('10.0.2.2')
+          ? null
+          : finalUrl.replace(/http:\/\/[^/]+/, 'http://10.0.2.2:4000'),
+        finalUrl.includes('localhost')
+          ? null
+          : finalUrl.replace(/http:\/\/[^/]+/, 'http://localhost:4000'),
       ].filter(Boolean) as string[];
 
       for (const altUrl of candidates) {
@@ -282,4 +285,3 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 }
 
 export default api;
-

@@ -477,7 +477,11 @@ function AccountPostCard({
         </HStack>
 
         {/* Date & Open Link */}
-        <HStack space="xs" className="items-center" style={{ marginLeft: 8, justifyContent: 'space-between', flexDirection: 'row' }}>
+        <HStack
+          space="xs"
+          className="items-center"
+          style={{ marginLeft: 8, justifyContent: 'space-between', flexDirection: 'row' }}
+        >
           {formattedDate ? (
             <HStack space="xs" className="items-center" style={{ marginRight: 4 }}>
               <Feather name="calendar" size={12} color="#94a3b8" />
@@ -752,17 +756,17 @@ export default function PostDetailsScreen() {
     const platforms =
       explicitPlatforms.length > 0
         ? (() => {
-          const present = new Set(
-            explicitPlatforms.map((p: any) => (p.platform || '').toLowerCase())
-          );
-          const merged = [...explicitPlatforms];
-          for (const f of fallbackPlatforms) {
-            if (!present.has((f.platform || '').toLowerCase())) {
-              merged.push(f);
+            const present = new Set(
+              explicitPlatforms.map((p: any) => (p.platform || '').toLowerCase())
+            );
+            const merged = [...explicitPlatforms];
+            for (const f of fallbackPlatforms) {
+              if (!present.has((f.platform || '').toLowerCase())) {
+                merged.push(f);
+              }
             }
-          }
-          return merged;
-        })()
+            return merged;
+          })()
         : fallbackPlatforms;
 
     const map = new Map<string, any[]>();
@@ -1395,7 +1399,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 10,
     marginRight: 8,
     borderWidth: 1.5,
@@ -1436,6 +1440,7 @@ const styles = StyleSheet.create({
   platformPillBadgeText: {
     fontSize: 11,
     fontWeight: '800',
+    lineHeight: 12,
   },
   platformPillBadgeTextActive: {
     color: '#ffffff',

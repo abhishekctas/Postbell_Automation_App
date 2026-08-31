@@ -121,7 +121,8 @@ export interface PaginatedPosts {
 const isApiError = (res: any) => {
   if (!res || typeof res !== 'object') return false;
   if (res.success === false) return true;
-  if (res.code && res.code !== 200 && res.code !== 201 && res.code !== '200' && res.code !== '201') return true;
+  if (res.code && res.code !== 200 && res.code !== 201 && res.code !== '200' && res.code !== '201')
+    return true;
   if (res.statusCode && Number(res.statusCode) >= 400) return true;
   if (res.status && typeof res.status === 'number' && res.status >= 400) return true;
   return false;

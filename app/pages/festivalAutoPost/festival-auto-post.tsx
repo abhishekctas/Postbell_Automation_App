@@ -664,9 +664,7 @@ export default function FestivalAutoPostScreen() {
       if (res?.success && res?.data?.posts?.length > 0) {
         if (aiPost) {
           setCaption(aiPost.caption || caption);
-          setHashtags(
-            (aiPost.hashtags || []).map((tag: string) => tag.replace(/^#/, '').trim())
-          );
+          setHashtags((aiPost.hashtags || []).map((tag: string) => tag.replace(/^#/, '').trim()));
           const aiImage = aiPost.image_url || aiPost.image || aiPost.imageUrl;
           if (aiImage) {
             setImageUrl(aiImage);
@@ -1437,8 +1435,8 @@ export default function FestivalAutoPostScreen() {
                         }}
                       >
                         {previewImageUri &&
-                          !modalImageLoadError &&
-                          !previewImageUri.includes('360_image') ? (
+                        !modalImageLoadError &&
+                        !previewImageUri.includes('360_image') ? (
                           <Image
                             source={{ uri: previewImageUri }}
                             style={styles.imagePreview}

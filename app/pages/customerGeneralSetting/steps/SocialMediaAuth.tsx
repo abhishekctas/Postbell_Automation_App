@@ -102,7 +102,7 @@ const PLATFORMS = [
     bgColor: '#f0fdf4',
     borderColor: '#bbf7d0',
     isComingSoon: false,
-  }
+  },
 ];
 
 export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps) {
@@ -116,16 +116,6 @@ export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps
 
   const authData = data.social_media_auth || {};
 
-  // Auto-refresh statuses on initial mount
-  useEffect(() => {
-    PLATFORMS.filter((p) => !p.isComingSoon).forEach((platform) => {
-      if (authData[platform.id]) {
-        void handleRefreshStatusSilently(platform.id);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleRefreshStatusSilently = async (platform: string) => {
     try {
       const res = await getConnectionStatus(platform);
@@ -137,10 +127,20 @@ export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps
           },
         });
       }
-    } catch (err) {
+    } catch {
       // Silent error on auto-refresh
     }
   };
+
+  // Auto-refresh statuses on initial mount
+  useEffect(() => {
+    PLATFORMS.filter((p) => !p.isComingSoon).forEach((platform) => {
+      if (authData[platform.id]) {
+        void handleRefreshStatusSilently(platform.id);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getPlatformAccounts = (platformId: string, platformData: any): any[] => {
     if (!platformData) return [];
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 5,
     borderRadius: 9,
     width: '100%',
   },

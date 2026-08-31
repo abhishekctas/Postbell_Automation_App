@@ -688,7 +688,13 @@ export default function CustomerDashboard() {
                         }}
                         activeOpacity={0.7}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: meta.color || '#0b53f8' }}>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '600',
+                            color: meta.color || '#0b53f8',
+                          }}
+                        >
                           {isConnected ? 'Add Account' : 'Connect Account'}
                         </Text>
                       </TouchableOpacity>

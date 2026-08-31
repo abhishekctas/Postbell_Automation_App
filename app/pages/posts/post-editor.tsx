@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ScrollView,
   TouchableOpacity,
@@ -12,7 +12,6 @@ import {
   Modal,
   View,
   PanResponder,
-  Button,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Box } from '@/components/ui/box';
@@ -30,7 +29,6 @@ import {
   getPost,
   createPost,
   updatePost,
-  publishPostNow,
   getAllSocialAccountsForPost,
   generateSocialMediaPost,
   generateMarketingImageFromReference,
@@ -157,185 +155,217 @@ export default function PostEditorScreen() {
   const curImgH = isRotated90or270 ? realImgDim.width : realImgDim.height;
 
   const currentScale =
-    curImgW && curImgH
-      ? Math.min(containerDim.width / curImgW, containerDim.height / curImgH)
-      : 1;
+    curImgW && curImgH ? Math.min(containerDim.width / curImgW, containerDim.height / curImgH) : 1;
   const currentDispW = curImgW ? curImgW * currentScale : containerDim.width;
   const currentDispH = curImgH ? curImgH * currentScale : containerDim.height;
   const currentOffX = (containerDim.width - currentDispW) / 2;
   const currentOffY = (containerDim.height - currentDispH) / 2;
 
   // PanResponders for Custom Interactive Crop Box (Whole Box & 8 Handles)
-  const boxMovePan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedCropAspect('custom');
-      },
-      onPanResponderMove: (_, gestureState) => {
-        setCropBox((prev) => {
-          const minX = currentOffX;
-          const maxX = Math.max(minX, currentOffX + currentDispW - prev.width);
-          const minY = currentOffY;
-          const maxY = Math.max(minY, currentOffY + currentDispH - prev.height);
+  const boxMovePan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedCropAspect('custom');
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setCropBox((prev) => {
+            const minX = currentOffX;
+            const maxX = Math.max(minX, currentOffX + currentDispW - prev.width);
+            const minY = currentOffY;
+            const maxY = Math.max(minY, currentOffY + currentDispH - prev.height);
 
-          const newX = Math.max(minX, Math.min(maxX, prev.x + gestureState.dx));
-          const newY = Math.max(minY, Math.min(maxY, prev.y + gestureState.dy));
+            const newX = Math.max(minX, Math.min(maxX, prev.x + gestureState.dx));
+            const newY = Math.max(minY, Math.min(maxY, prev.y + gestureState.dy));
 
-          return { ...prev, x: newX, y: newY };
-        });
-      },
-    })
-  ).current;
+            return { ...prev, x: newX, y: newY };
+          });
+        },
+      }),
+    [currentOffX, currentOffY, currentDispW, currentDispH]
+  );
 
-  const topLeftPan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedCropAspect('custom');
-      },
-      onPanResponderMove: (_, gestureState) => {
-        setCropBox((prev) => {
-          const newX = Math.max(currentOffX, Math.min(prev.x + prev.width - 40, prev.x + gestureState.dx));
-          const newY = Math.max(currentOffY, Math.min(prev.y + prev.height - 40, prev.y + gestureState.dy));
-          const newW = prev.width + (prev.x - newX);
-          const newH = prev.height + (prev.y - newY);
-          return { x: newX, y: newY, width: newW, height: newH };
-        });
-      },
-    })
-  ).current;
+  const topLeftPan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedCropAspect('custom');
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setCropBox((prev) => {
+            const newX = Math.max(
+              currentOffX,
+              Math.min(prev.x + prev.width - 40, prev.x + gestureState.dx)
+            );
+            const newY = Math.max(
+              currentOffY,
+              Math.min(prev.y + prev.height - 40, prev.y + gestureState.dy)
+            );
+            const newW = prev.width + (prev.x - newX);
+            const newH = prev.height + (prev.y - newY);
+            return { x: newX, y: newY, width: newW, height: newH };
+          });
+        },
+      }),
+    [currentOffX, currentOffY]
+  );
 
-  const topRightPan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedCropAspect('custom');
-      },
-      onPanResponderMove: (_, gestureState) => {
-        setCropBox((prev) => {
-          const maxW = currentOffX + currentDispW - prev.x;
-          const newY = Math.max(currentOffY, Math.min(prev.y + prev.height - 40, prev.y + gestureState.dy));
-          const newW = Math.max(40, Math.min(maxW, prev.width + gestureState.dx));
-          const newH = prev.height + (prev.y - newY);
-          return { ...prev, y: newY, width: newW, height: newH };
-        });
-      },
-    })
-  ).current;
+  const topRightPan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedCropAspect('custom');
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setCropBox((prev) => {
+            const maxW = currentOffX + currentDispW - prev.x;
+            const newY = Math.max(
+              currentOffY,
+              Math.min(prev.y + prev.height - 40, prev.y + gestureState.dy)
+            );
+            const newW = Math.max(40, Math.min(maxW, prev.width + gestureState.dx));
+            const newH = prev.height + (prev.y - newY);
+            return { ...prev, y: newY, width: newW, height: newH };
+          });
+        },
+      }),
+    [currentOffX, currentDispW, currentOffY]
+  );
 
-  const bottomLeftPan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedCropAspect('custom');
-      },
-      onPanResponderMove: (_, gestureState) => {
-        setCropBox((prev) => {
-          const newX = Math.max(currentOffX, Math.min(prev.x + prev.width - 40, prev.x + gestureState.dx));
-          const maxH = currentOffY + currentDispH - prev.y;
-          const newW = prev.width + (prev.x - newX);
-          const newH = Math.max(40, Math.min(maxH, prev.height + gestureState.dy));
-          return { ...prev, x: newX, width: newW, height: newH };
-        });
-      },
-    })
-  ).current;
+  const bottomLeftPan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedCropAspect('custom');
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setCropBox((prev) => {
+            const newX = Math.max(
+              currentOffX,
+              Math.min(prev.x + prev.width - 40, prev.x + gestureState.dx)
+            );
+            const maxH = currentOffY + currentDispH - prev.y;
+            const newW = prev.width + (prev.x - newX);
+            const newH = Math.max(40, Math.min(maxH, prev.height + gestureState.dy));
+            return { ...prev, x: newX, width: newW, height: newH };
+          });
+        },
+      }),
+    [currentOffX, currentOffY, currentDispH]
+  );
 
-  const bottomRightPan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedCropAspect('custom');
-      },
-      onPanResponderMove: (_, gestureState) => {
-        setCropBox((prev) => {
-          const maxW = currentOffX + currentDispW - prev.x;
-          const maxH = currentOffY + currentDispH - prev.y;
-          const newW = Math.max(40, Math.min(maxW, prev.width + gestureState.dx));
-          const newH = Math.max(40, Math.min(maxH, prev.height + gestureState.dy));
-          return { ...prev, width: newW, height: newH };
-        });
-      },
-    })
-  ).current;
+  const bottomRightPan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedCropAspect('custom');
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setCropBox((prev) => {
+            const maxW = currentOffX + currentDispW - prev.x;
+            const maxH = currentOffY + currentDispH - prev.y;
+            const newW = Math.max(40, Math.min(maxW, prev.width + gestureState.dx));
+            const newH = Math.max(40, Math.min(maxH, prev.height + gestureState.dy));
+            return { ...prev, width: newW, height: newH };
+          });
+        },
+      }),
+    [currentOffX, currentDispW, currentOffY, currentDispH]
+  );
 
-  const topEdgePan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedCropAspect('custom');
-      },
-      onPanResponderMove: (_, gestureState) => {
-        setCropBox((prev) => {
-          const newY = Math.max(currentOffY, Math.min(prev.y + prev.height - 40, prev.y + gestureState.dy));
-          const newH = prev.height + (prev.y - newY);
-          return { ...prev, y: newY, height: newH };
-        });
-      },
-    })
-  ).current;
+  const topEdgePan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedCropAspect('custom');
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setCropBox((prev) => {
+            const newY = Math.max(
+              currentOffY,
+              Math.min(prev.y + prev.height - 40, prev.y + gestureState.dy)
+            );
+            const newH = prev.height + (prev.y - newY);
+            return { ...prev, y: newY, height: newH };
+          });
+        },
+      }),
+    [currentOffY]
+  );
 
-  const bottomEdgePan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedCropAspect('custom');
-      },
-      onPanResponderMove: (_, gestureState) => {
-        setCropBox((prev) => {
-          const maxH = currentOffY + currentDispH - prev.y;
-          const newH = Math.max(40, Math.min(maxH, prev.height + gestureState.dy));
-          return { ...prev, height: newH };
-        });
-      },
-    })
-  ).current;
+  const bottomEdgePan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedCropAspect('custom');
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setCropBox((prev) => {
+            const maxH = currentOffY + currentDispH - prev.y;
+            const newH = Math.max(40, Math.min(maxH, prev.height + gestureState.dy));
+            return { ...prev, height: newH };
+          });
+        },
+      }),
+    [currentOffY, currentDispH]
+  );
 
-  const leftEdgePan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedCropAspect('custom');
-      },
-      onPanResponderMove: (_, gestureState) => {
-        setCropBox((prev) => {
-          const newX = Math.max(currentOffX, Math.min(prev.x + prev.width - 40, prev.x + gestureState.dx));
-          const newW = prev.width + (prev.x - newX);
-          return { ...prev, x: newX, width: newW };
-        });
-      },
-    })
-  ).current;
+  const leftEdgePan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedCropAspect('custom');
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setCropBox((prev) => {
+            const newX = Math.max(
+              currentOffX,
+              Math.min(prev.x + prev.width - 40, prev.x + gestureState.dx)
+            );
+            const newW = prev.width + (prev.x - newX);
+            return { ...prev, x: newX, width: newW };
+          });
+        },
+      }),
+    [currentOffX]
+  );
 
-  const rightEdgePan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedCropAspect('custom');
-      },
-      onPanResponderMove: (_, gestureState) => {
-        setCropBox((prev) => {
-          const maxW = currentOffX + currentDispW - prev.x;
-          const newW = Math.max(40, Math.min(maxW, prev.width + gestureState.dx));
-          return { ...prev, width: newW };
-        });
-      },
-    })
-  ).current;
+  const rightEdgePan = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedCropAspect('custom');
+        },
+        onPanResponderMove: (_, gestureState) => {
+          setCropBox((prev) => {
+            const maxW = currentOffX + currentDispW - prev.x;
+            const newW = Math.max(40, Math.min(maxW, prev.width + gestureState.dx));
+            return { ...prev, width: newW };
+          });
+        },
+      }),
+    [currentOffX, currentDispW]
+  );
 
-  const handleSelectAspect = (
-    aspect: 'custom' | '1:1' | '4:5' | '16:9' | '9:16' | 'original'
-  ) => {
+  const handleSelectAspect = (aspect: 'custom' | '1:1' | '4:5' | '16:9' | '9:16' | 'original') => {
     setSelectedCropAspect(aspect);
     const cW = containerDim.width || 360;
     const cH = containerDim.height || 320;
@@ -389,7 +419,10 @@ export default function PostEditorScreen() {
   const getLoadableImageUri = async (uri: string): Promise<string> => {
     if (!uri) return '';
     const fullUrl = getImageUrl(uri) || uri;
-    if (Platform.OS === 'web' && (fullUrl.startsWith('http://') || fullUrl.startsWith('https://'))) {
+    if (
+      Platform.OS === 'web' &&
+      (fullUrl.startsWith('http://') || fullUrl.startsWith('https://'))
+    ) {
       try {
         const res = await fetch(fullUrl, { mode: 'cors' });
         if (res.ok) {
@@ -502,11 +535,10 @@ export default function PostEditorScreen() {
               },
             });
 
-            const manipResult = await ImageManipulator.manipulateAsync(
-              loadableUri,
-              actions,
-              { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
-            );
+            const manipResult = await ImageManipulator.manipulateAsync(loadableUri, actions, {
+              compress: 0.85,
+              format: ImageManipulator.SaveFormat.JPEG,
+            });
 
             const croppedUri = manipResult.uri;
 
@@ -539,7 +571,11 @@ export default function PostEditorScreen() {
                   },
                 }));
               } finally {
-                setUploadingPlatformImage((prev) => ({ ...prev, [key]: false, [platformKey]: false }));
+                setUploadingPlatformImage((prev) => ({
+                  ...prev,
+                  [key]: false,
+                  [platformKey]: false,
+                }));
               }
             } else {
               setUploadingImage(true);
@@ -609,14 +645,6 @@ export default function PostEditorScreen() {
     width: 320,
     height: 280,
   });
-  const markCanvasLayoutRef = useRef<{ width: number; height: number }>({
-    width: 320,
-    height: 280,
-  });
-
-  useEffect(() => {
-    markCanvasLayoutRef.current = markCanvasLayout;
-  }, [markCanvasLayout]);
 
   // Content Type & Platform-Specific Overrides
   const [activePlatformTab, setActivePlatformTab] = useState<string>('general');
@@ -668,9 +696,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -710,9 +738,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -749,6 +777,25 @@ export default function PostEditorScreen() {
   const [genImgError, setGenImgError] = useState(false);
   const [platformImgErrors, setPlatformImgErrors] = useState<Record<string, boolean>>({});
 
+  const fetchAndSetSocialAccounts = async () => {
+    try {
+      const res = await getAllSocialAccountsForPost();
+      let accs: any[] = [];
+      if (Array.isArray(res)) {
+        accs = res;
+      } else if (Array.isArray(res?.data)) {
+        accs = res.data;
+      } else if (Array.isArray(res?.data?.data)) {
+        accs = res.data.data;
+      }
+      setSocialAccounts(accs);
+      return accs;
+    } catch (err) {
+      console.error('Failed to load social accounts:', err);
+      return [];
+    }
+  };
+
   // Fetch Post Details for Edit Mode & Fetch Social Accounts
   useEffect(() => {
     const init = async () => {
@@ -774,8 +821,8 @@ export default function PostEditorScreen() {
             typeof postData.image_url === 'string' && postData.image_url.trim()
               ? postData.image_url
               : postData.generalContent?.media?.[0]?.url ||
-              postData.generalContent?.media?.[0]?.imagePath ||
-              '';
+                postData.generalContent?.media?.[0]?.imagePath ||
+                '';
           setImageUrl(initialImg);
           setImagePath(
             postData.image_path || postData.generalContent?.media?.[0]?.imagePath || initialImg
@@ -1428,50 +1475,52 @@ export default function PostEditorScreen() {
   };
 
   // PanResponder for Interactive Touch Object Marking
-  const markPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        const w = markCanvasLayoutRef.current.width || 1;
-        const h = markCanvasLayoutRef.current.height || 1;
-        const x = Math.min(Math.max(locationX / w, 0), 1);
-        const y = Math.min(Math.max(locationY / h, 0), 1);
-        setCurrentMarkStroke([{ x, y }]);
-      },
-      onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        const w = markCanvasLayoutRef.current.width || 1;
-        const h = markCanvasLayoutRef.current.height || 1;
-        const x = Math.min(Math.max(locationX / w, 0), 1);
-        const y = Math.min(Math.max(locationY / h, 0), 1);
-        setCurrentMarkStroke((prev) => {
-          const last = prev[prev.length - 1];
-          if (last && Math.abs(last.x - x) < 0.003 && Math.abs(last.y - y) < 0.003) {
-            return prev;
-          }
-          return [...prev, { x, y }];
-        });
-      },
-      onPanResponderRelease: () => {
-        setCurrentMarkStroke((current) => {
-          if (current.length > 1) {
-            setMarkStrokes((prev) => [...prev, current]);
-          }
-          return [];
-        });
-      },
-      onPanResponderTerminate: () => {
-        setCurrentMarkStroke((current) => {
-          if (current.length > 1) {
-            setMarkStrokes((prev) => [...prev, current]);
-          }
-          return [];
-        });
-      },
-    })
-  ).current;
+  const markPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: (evt) => {
+          const { locationX, locationY } = evt.nativeEvent;
+          const w = markCanvasLayout.width || 1;
+          const h = markCanvasLayout.height || 1;
+          const x = Math.min(Math.max(locationX / w, 0), 1);
+          const y = Math.min(Math.max(locationY / h, 0), 1);
+          setCurrentMarkStroke([{ x, y }]);
+        },
+        onPanResponderMove: (evt) => {
+          const { locationX, locationY } = evt.nativeEvent;
+          const w = markCanvasLayout.width || 1;
+          const h = markCanvasLayout.height || 1;
+          const x = Math.min(Math.max(locationX / w, 0), 1);
+          const y = Math.min(Math.max(locationY / h, 0), 1);
+          setCurrentMarkStroke((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && Math.abs(last.x - x) < 0.003 && Math.abs(last.y - y) < 0.003) {
+              return prev;
+            }
+            return [...prev, { x, y }];
+          });
+        },
+        onPanResponderRelease: () => {
+          setCurrentMarkStroke((current) => {
+            if (current.length > 1) {
+              setMarkStrokes((prev) => [...prev, current]);
+            }
+            return [];
+          });
+        },
+        onPanResponderTerminate: () => {
+          setCurrentMarkStroke((current) => {
+            if (current.length > 1) {
+              setMarkStrokes((prev) => [...prev, current]);
+            }
+            return [];
+          });
+        },
+      }),
+    [markCanvasLayout, setCurrentMarkStroke, setMarkStrokes]
+  );
 
   const strokeToSvgPath = (stroke: { x: number; y: number }[]) =>
     stroke
@@ -1828,12 +1877,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-              {
-                type: 'image',
-                url: imageUrl,
-                imagePath: imagePath || imageUrl,
-              },
-            ]
+                {
+                  type: 'image',
+                  url: imageUrl,
+                  imagePath: imagePath || imageUrl,
+                },
+              ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -1846,7 +1895,12 @@ export default function PostEditorScreen() {
 
       if (isEditing && id) {
         const res = await updatePost(id, payload);
-        if (res && (res.success === false || (res.code && res.code !== 200 && res.code !== 201) || (res.statusCode && res.statusCode >= 400))) {
+        if (
+          res &&
+          (res.success === false ||
+            (res.code && res.code !== 200 && res.code !== 201) ||
+            (res.statusCode && res.statusCode >= 400))
+        ) {
           throw new Error(res.message || 'Failed to update post');
         }
         Alert.alert('Success', 'Post updated successfully!', [
@@ -1854,7 +1908,12 @@ export default function PostEditorScreen() {
         ]);
       } else {
         const created = await createPost(payload);
-        if (created && (created.success === false || (created.code && created.code !== 200 && created.code !== 201) || (created.statusCode && created.statusCode >= 400))) {
+        if (
+          created &&
+          (created.success === false ||
+            (created.code && created.code !== 200 && created.code !== 201) ||
+            (created.statusCode && created.statusCode >= 400))
+        ) {
           throw new Error(created.message || 'Failed to create post');
         }
         Alert.alert('Success', 'Post created successfully!', [
@@ -1883,25 +1942,6 @@ export default function PostEditorScreen() {
     )
       return true;
     return false;
-  };
-
-  const fetchAndSetSocialAccounts = async () => {
-    try {
-      const res = await getAllSocialAccountsForPost();
-      let accs: any[] = [];
-      if (Array.isArray(res)) {
-        accs = res;
-      } else if (Array.isArray(res?.data)) {
-        accs = res.data;
-      } else if (Array.isArray(res?.data?.data)) {
-        accs = res.data.data;
-      }
-      setSocialAccounts(accs);
-      return accs;
-    } catch (err) {
-      console.error('Failed to load social accounts:', err);
-      return [];
-    }
   };
 
   const openNetworksModal = async () => {
@@ -1936,9 +1976,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -1957,9 +1997,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -2399,7 +2439,7 @@ export default function PostEditorScreen() {
                                   a.click();
                                   URL.revokeObjectURL(a.href);
                                 })
-                                .catch(() => { });
+                                .catch(() => {});
                             }
                           }}
                         >
@@ -2577,7 +2617,9 @@ export default function PostEditorScreen() {
                         <Feather name="target" size={18} color="#ffffff" />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={() => openCropForExistingImage(referenceImageUri || aiRefImage, 'ai')}
+                        onPress={() =>
+                          openCropForExistingImage(referenceImageUri || aiRefImage, 'ai')
+                        }
                         style={{
                           padding: 6,
                           backgroundColor: '#1c243cff',
@@ -3084,7 +3126,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                        styles.subTabBtnActive,
+                          styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -3093,7 +3135,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabTextActive,
+                            styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -3149,9 +3191,9 @@ export default function PostEditorScreen() {
                             ? override.hashtags
                             : hashtagsInput
                               ? hashtagsInput
-                                .split(',')
-                                .map((t) => t.trim().replace(/^#/, ''))
-                                .filter(Boolean)
+                                  .split(',')
+                                  .map((t) => t.trim().replace(/^#/, ''))
+                                  .filter(Boolean)
                               : [],
                         mediaUrl:
                           override.image_url !== undefined
@@ -3175,9 +3217,9 @@ export default function PostEditorScreen() {
                               ? override.hashtags
                               : hashtagsInput
                                 ? hashtagsInput
-                                  .split(',')
-                                  .map((t) => t.trim().replace(/^#/, ''))
-                                  .filter(Boolean)
+                                    .split(',')
+                                    .map((t) => t.trim().replace(/^#/, ''))
+                                    .filter(Boolean)
                                 : [],
                           mediaUrl:
                             override.image_url !== undefined
@@ -3861,10 +3903,10 @@ export default function PostEditorScreen() {
                         const platformEntries = platformSpecificContent[network] || [];
                         const acctEntry = acct
                           ? platformEntries.find(
-                            (e: any) =>
-                              e.account_id ===
-                              (acct.account_id || acct.value || acct.id || acct._id)
-                          )
+                              (e: any) =>
+                                e.account_id ===
+                                (acct.account_id || acct.value || acct.id || acct._id)
+                            )
                           : platformEntries[0];
 
                         const override = platformOverrides[network] || {};
@@ -3890,10 +3932,10 @@ export default function PostEditorScreen() {
                           acctEntry?.hashtags && acctEntry.hashtags.length > 0
                             ? acctEntry.hashtags
                             : override.hashtags ||
-                            hashtagsInput
-                              .split(',')
-                              .map((t) => t.trim().replace(/^#/, ''))
-                              .filter(Boolean);
+                              hashtagsInput
+                                .split(',')
+                                .map((t) => t.trim().replace(/^#/, ''))
+                                .filter(Boolean);
 
                         const activeContentType =
                           acctEntry?.contentType ||
@@ -4704,7 +4746,9 @@ export default function PostEditorScreen() {
             }}
           >
             {/* Modal Header */}
-            <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <HStack
+              style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}
+            >
               <HStack space="xs" style={{ alignItems: 'center' }}>
                 <Feather name="crop" size={18} color="#0b53f8" />
                 <Heading style={{ fontSize: 17, fontWeight: '700', color: '#0f172a' }}>
@@ -4953,7 +4997,11 @@ export default function PostEditorScreen() {
             <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 8 }}>
               Select Aspect Ratio / Custom Mode:
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: 14 }}
+            >
               <HStack space="xs">
                 {(
                   [
@@ -4995,8 +5043,12 @@ export default function PostEditorScreen() {
             </ScrollView>
 
             {/* Rotate Controls */}
-            <HStack style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569' }}>Rotate Image:</Text>
+            <HStack
+              style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569' }}>
+                Rotate Image:
+              </Text>
               <HStack space="xs">
                 <TouchableOpacity
                   onPress={() => setCropRotation((prev) => (prev - 90 + 360) % 360)}
