@@ -1,5 +1,6 @@
+import 'react-native-gesture-handler';
 import '@/global.css';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
@@ -8,6 +9,12 @@ import { ThemeContext, ThemeProvider } from '@/context/ThemeContext';
 import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AuthProvider from '@/context/AuthProvider';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Prevent auto-hiding the splash screen before assets and fonts are loaded
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* ignore error if already prevented or in dev reload */
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,13 +27,21 @@ const queryClient = new QueryClient({
 
 const MainLayout = () => {
   const { colorMode }: any = useContext(ThemeContext);
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'dm-sans-regular': DMSans_400Regular,
     'dm-sans-medium': DMSans_500Medium,
     'dm-sans-bold': DMSans_700Bold,
   });
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {
+        /* ignore error if already hidden */
+      });
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 

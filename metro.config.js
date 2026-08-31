@@ -9,7 +9,10 @@ const defaultBlockList = Array.isArray(config.resolver.blockList)
     ? [config.resolver.blockList]
     : [];
 
-config.resolver.blockList = [...defaultBlockList, /.*\/android\/.*/, /.*\/ios\/.*/];
+const rootNativeDirRegex = new RegExp(
+  '^' + __dirname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/(android|ios)/.*'
+);
+config.resolver.blockList = [...defaultBlockList, rootNativeDirRegex];
 
 module.exports = withNativeWind(config, {
   input: './global.css',

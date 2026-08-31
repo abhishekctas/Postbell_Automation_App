@@ -118,10 +118,20 @@ export interface PaginatedPosts {
   };
 }
 
+const isApiError = (res: any) => {
+  if (!res || typeof res !== 'object') return false;
+  if (res.success === false) return true;
+  if (res.code && res.code !== 200 && res.code !== 201 && res.code !== '200' && res.code !== '201')
+    return true;
+  if (res.statusCode && Number(res.statusCode) >= 400) return true;
+  if (res.status && typeof res.status === 'number' && res.status >= 400) return true;
+  return false;
+};
+
 // === List Posts ===
 export const listPosts = async (params = ''): Promise<any> => {
   const res = await fetchWithAuth(`${BASE}/get-generated-posts?${params}`);
-  if (res && res.success === false) {
+  if (isApiError(res)) {
     throw new Error(res.message || 'Failed to fetch posts');
   }
   return res;
@@ -130,7 +140,7 @@ export const listPosts = async (params = ''): Promise<any> => {
 // === Get Single Post ===
 export const getPost = async (postId: string): Promise<Post> => {
   const res = await fetchWithAuth(`${BASE}/get-generated-post/${postId}`);
-  if (res && res.success === false) {
+  if (isApiError(res)) {
     throw new Error(res.message || 'Failed to fetch post details');
   }
   return res?.data || res;
@@ -139,7 +149,7 @@ export const getPost = async (postId: string): Promise<Post> => {
 // === Get Post Details (Social stats & platforms) ===
 export const getPostDetails = async (postId: string): Promise<PostDetails> => {
   const res = await fetchWithAuth(`${SOCIAL_BASE}/get-post-details/${postId}`);
-  if (res && res.success === false) {
+  if (isApiError(res)) {
     throw new Error(res.message || 'Failed to fetch post details');
   }
   return res?.data || res;
@@ -152,7 +162,7 @@ export const createPost = async (payload: Partial<Post>): Promise<any> => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (data && data.success === false) {
+  if (isApiError(data)) {
     throw new Error(data.message || 'Failed to create post');
   }
   return data;
@@ -165,7 +175,7 @@ export const updatePost = async (postId: string, payload: Partial<Post>): Promis
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (data && data.success === false) {
+  if (isApiError(data)) {
     throw new Error(data.message || 'Failed to update post');
   }
   return data;
@@ -176,7 +186,7 @@ export const deletePost = async (postId: string): Promise<void> => {
   const res = await fetchWithAuth(`${BASE}/delete-generated-post/${postId}`, {
     method: 'DELETE',
   });
-  if (res && res.success === false) {
+  if (isApiError(res)) {
     throw new Error(res.message || 'Failed to delete post');
   }
 };
@@ -186,7 +196,7 @@ export const publishPostNow = async (postId: string): Promise<any> => {
   const data = await fetchWithAuth(`${BASE}/publish-generated-post/${postId}`, {
     method: 'POST',
   });
-  if (data && data.success === false) {
+  if (isApiError(data)) {
     throw new Error(data.message || 'Failed to publish post');
   }
   return data;
@@ -325,7 +335,7 @@ export const generateSocialMediaPost = async (payload: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (res && res.success === false) {
+  if (isApiError(res)) {
     throw new Error(res.message || 'AI Post generation failed');
   }
   return res?.data || res;
@@ -384,7 +394,7 @@ export const generateMarketingImageFromReference = async (
     body: formData,
   });
 
-  if (res && res.success === false) {
+  if (isApiError(res)) {
     throw new Error(res.message || 'Failed to generate marketing image from reference');
   }
   return res?.data || res;
@@ -404,7 +414,7 @@ export const analyzeReferenceMedia = async (fileUri: string): Promise<any> => {
     body: formData,
   });
 
-  if (res && res.success === false) {
+  if (isApiError(res)) {
     throw new Error(res.message || 'Failed to analyze reference media');
   }
   return res?.data || res;

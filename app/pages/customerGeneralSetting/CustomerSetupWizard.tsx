@@ -358,10 +358,7 @@ export default function CustomerSetupWizard() {
       if (res?.success) {
         await AsyncStorage.removeItem('customerSetupDraft');
         await updateUser({ setup_completed: true });
-        Alert.alert(
-          '🎉 Setup Completed',
-          'Your workspace configuration has been activated successfully!'
-        );
+        Alert.alert('🎉 Setup Completed', 'Setup Completed successfully!');
         router.replace('/(tabs)');
       } else {
         throw new Error(res?.message || 'Failed to complete workspace setup');
@@ -583,7 +580,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 10,
     backgroundColor: '#f8fafc',
     borderWidth: 1,
@@ -616,6 +613,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     color: '#64748b',
+    lineHeight: 12,
   },
   stepNumberTextActive: {
     color: '#ffffff',
@@ -656,7 +654,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 6,
     borderRadius: 9,
     borderWidth: 1,
     borderColor: '#cbd5e1',
@@ -670,8 +668,8 @@ const styles = StyleSheet.create({
   saveDraftBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 9,
     borderWidth: 1,
     borderColor: '#cbd5e1',
@@ -686,8 +684,8 @@ const styles = StyleSheet.create({
   nextBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 9,
     backgroundColor: '#0b53f8',
   },
