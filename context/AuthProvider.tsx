@@ -139,10 +139,20 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         method: 'POST',
         body: JSON.stringify({ email, loginType: 'customer' }),
       });
-
       const status = response?.status || response?.statusCode || response?.code;
-      if (status >= 400 || response?.success === false) {
-        throw { status: status || 500, message: response?.message || 'Failed to request OTP' };
+      const message =
+        response?.message ||
+        response?.error ||
+        (typeof response === 'string' ? response : 'Failed to request OTP');
+
+      const isError =
+        (typeof status === 'number' && status >= 400) ||
+        (typeof status === 'string' && parseInt(status, 10) >= 400) ||
+        response?.success === false ||
+        (response && !response?.requestId && !response?.OTP && response?.success !== true);
+
+      if (isError) {
+        throw new Error(message);
       }
       return response;
     },
@@ -158,8 +168,19 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       });
 
       const status = response?.status || response?.statusCode || response?.code;
-      if (status >= 400 || response?.success === false) {
-        throw { status: status || 500, message: response?.message || 'Failed to resend OTP' };
+      const message =
+        response?.message ||
+        response?.error ||
+        (typeof response === 'string' ? response : 'Failed to resend OTP');
+
+      const isError =
+        (typeof status === 'number' && status >= 400) ||
+        (typeof status === 'string' && parseInt(status, 10) >= 400) ||
+        response?.success === false ||
+        (response && !response?.requestId && !response?.OTP && response?.success !== true);
+
+      if (isError) {
+        throw new Error(message);
       }
       return response;
     },
@@ -180,8 +201,19 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       });
 
       const status = data?.status || data?.statusCode || data?.code;
-      if (status >= 400 || data?.success === false || (!data?.success && data?.message)) {
-        throw new Error(data?.message || 'OTP verification failed');
+      const message =
+        data?.message ||
+        data?.error ||
+        (typeof data === 'string' ? data : 'OTP verification failed');
+
+      const isError =
+        (typeof status === 'number' && status >= 400) ||
+        (typeof status === 'string' && parseInt(status, 10) >= 400) ||
+        data?.success === false ||
+        (data && !data?.user && !data?.tokens && data?.success !== true);
+
+      if (isError) {
+        throw new Error(message);
       }
 
       if (data?.user && data?.tokens?.access?.token) {

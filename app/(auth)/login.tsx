@@ -79,11 +79,14 @@ export default function LoginScreen() {
     setIsSubmitting(true);
     try {
       const res = await requestOtp(email, loginType);
-      setRequestId(res?.requestId || res?.data?.requestId || '');
+      const newRequestId = res?.requestId || res?.data?.requestId || '';
+      setRequestId(newRequestId);
       setStep('otp');
-      setResendCooldown(60);
+      setResendCooldown(res?.resendAfter || 60);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to send OTP. Try again.');
+      console.log(err, "errRequestOTP");
+      const msg = err?.message || (typeof err === 'string' ? err : 'Failed to send OTP. Try again.');
+      Alert.alert('Error', msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +116,8 @@ export default function LoginScreen() {
         router.replace('/pages/customerGeneralSetting/customer-general-setting');
       }
     } catch (err: any) {
-      Alert.alert('Invalid OTP', err?.message || 'OTP verification failed.');
+      const msg = err?.message || (typeof err === 'string' ? err : 'OTP verification failed.');
+      Alert.alert('Invalid OTP', msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -125,12 +129,15 @@ export default function LoginScreen() {
     setIsSubmitting(true);
     try {
       const res = await resendOtp({ email, loginType, requestId });
-      setRequestId(res?.requestId || res?.data?.requestId || requestId);
+      const newRequestId = res?.requestId || res?.data?.requestId || requestId;
+      setRequestId(newRequestId);
       setOtp(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
-      setResendCooldown(60);
+      setResendCooldown(res?.resendAfter || 60);
+      Alert.alert('Success', res?.message || 'OTP resent successfully.');
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to resend OTP.');
+      const msg = err?.message || (typeof err === 'string' ? err : 'Failed to resend OTP.');
+      Alert.alert('Error', msg);
     } finally {
       setIsSubmitting(false);
     }
