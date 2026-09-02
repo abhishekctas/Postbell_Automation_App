@@ -38,6 +38,9 @@ import {
   Post,
   ReferenceDetectedObject,
 } from './posts.api';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Clipboard from 'expo-clipboard';
+import * as MediaLibrary from 'expo-media-library';
 
 const CONTENT_TYPES = [
   { value: 'media', label: 'Media', icon: 'image' },
@@ -103,6 +106,8 @@ export default function PostEditorScreen() {
   const [aiRefinePanelOpen, setAiRefinePanelOpen] = useState(false);
   const [aiRefinePrompt, setAiRefinePrompt] = useState('');
   const [aiRegeneratingImage, setAiRegeneratingImage] = useState(false);
+  const [aiDraftPostId, setAiDraftPostId] = useState<string | null>(null);
+  const [aiMergedIntoEdit, setAiMergedIntoEdit] = useState<boolean>(false);
   const [expandedHashtags, setExpandedHashtags] = useState<Record<string, boolean>>({});
 
   // Form State
@@ -131,7 +136,9 @@ export default function PostEditorScreen() {
   // Existing Image Crop Modal State
   const [cropModalVisible, setCropModalVisible] = useState(false);
   const [cropImageUri, setCropImageUri] = useState<string>('');
-  const [cropTargetType, setCropTargetType] = useState<'general' | 'platform' | 'ai'>('general');
+  const [cropTargetType, setCropTargetType] = useState<
+    'general' | 'platform' | 'ai' | 'manual_ref'
+  >('general');
   const [cropTargetPlatform, setCropTargetPlatform] = useState<string>('');
   const [cropTargetAccountId, setCropTargetAccountId] = useState<string>('');
   const [selectedCropAspect, setSelectedCropAspect] = useState<
@@ -450,7 +457,7 @@ export default function PostEditorScreen() {
 
   const openCropForExistingImage = async (
     uri: string,
-    target: 'general' | 'platform' | 'ai',
+    target: 'general' | 'platform' | 'ai' | 'manual_ref',
     platform?: string,
     accountId?: string
   ) => {
@@ -550,8 +557,12 @@ export default function PostEditorScreen() {
             const croppedUri = manipResult.uri;
 
             if (cropTargetType === 'ai') {
-              setReferenceImageUri(croppedUri);
               setAiRefImage(croppedUri);
+              resetAiReferenceAnalysis();
+              runAiReferenceAnalysis(croppedUri);
+              Alert.alert('Success', 'Reference image cropped successfully!');
+            } else if (cropTargetType === 'manual_ref') {
+              setReferenceImageUri(croppedUri);
               Alert.alert('Success', 'Reference image cropped successfully!');
             } else if (cropTargetType === 'platform' && cropTargetPlatform) {
               const platformKey = cropTargetPlatform;
@@ -711,9 +722,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -753,9 +764,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -836,8 +847,8 @@ export default function PostEditorScreen() {
             typeof postData.image_url === 'string' && postData.image_url.trim()
               ? postData.image_url
               : postData.generalContent?.media?.[0]?.url ||
-              postData.generalContent?.media?.[0]?.imagePath ||
-              '';
+                postData.generalContent?.media?.[0]?.imagePath ||
+                '';
           setImageUrl(initialImg);
           setImagePath(
             postData.image_path || postData.generalContent?.media?.[0]?.imagePath || initialImg
@@ -1192,7 +1203,7 @@ export default function PostEditorScreen() {
     }
     setErrors((prev) => ({ ...prev, aiPrompt: '' }));
 
-    const activeRefImage = aiRefImage || referenceImageUri;
+    const activeRefImage = aiRefImage;
     let selectedReferenceObjects: ReferenceDetectedObject[] = [];
 
     if (activeRefImage) {
@@ -1273,27 +1284,64 @@ export default function PostEditorScreen() {
     }
   };
 
-  // Apply AI Content into Form
+  // Apply AI Content into Form (Used when user clicks "Use" in AI Variant Modal)
   const applyAiContent = (postToApply?: Record<string, any>) => {
-    const target = postToApply || aiResult;
+    const target: any = postToApply || aiResult;
     if (!target) return;
-    if (target.title) setTitle(target.title);
-    if (target.caption) setCaption(target.caption);
-    if (target.hashtags && target.hashtags.length > 0) {
-      setHashtagsInput(
-        Array.isArray(target.hashtags)
-          ? target.hashtags.join(', ')
-          : String(target.hashtags)
-      );
+
+    const rawPlatform = String(target.platform || selectedPlatforms[0] || 'facebook').toLowerCase();
+    const platform = SOCIAL_PLATFORMS.some((p) => p.id === rawPlatform) ? rawPlatform : 'facebook';
+
+    const targetTitle = String(target.title || target.variant_name || title || 'AI Generated Post');
+    const targetCaption = String(target.caption || '');
+    const hashtags = Array.isArray(target.hashtags)
+      ? target.hashtags.map((t: string) => String(t).trim().replace(/^#/, ''))
+      : typeof target.hashtags === 'string'
+        ? target.hashtags.split(',').map((t: string) => t.trim().replace(/^#/, ''))
+        : [];
+
+    setTitle(targetTitle);
+    setCaption(targetCaption);
+    if (hashtags.length > 0) {
+      setHashtagsInput(hashtags.join(', '));
     }
-    const imgToUse = target.image_url || target.image || '';
+
+    const imgToUse = String(target.image_url || target.image || imageUrl || '').trim();
     if (imgToUse) {
       setImageUrl(imgToUse);
       setImagePath(imgToUse);
+      setErrors((prev) => ({ ...prev, imageUrl: '' }));
     }
+
+    if (target.company_name) setCompanyName(target.company_name);
+    if (target.company_website) setCompanyWebsite(target.company_website);
+    if (target.company_email) setCompanyEmail(target.company_email);
+    if (target.company_phone) setCompanyPhone(target.company_phone);
+
+    if (!selectedPlatforms.includes(platform)) {
+      setSelectedPlatforms([platform]);
+    }
+
+    // Populate platform specific entries for manual posting tab
+    handlePlatformSpecificChange(platform, '', 'caption', targetCaption);
+    if (imgToUse) {
+      handlePlatformSpecificChange(platform, '', 'mediaUrl', imgToUse);
+    }
+    if (hashtags.length > 0) {
+      handlePlatformSpecificChange(platform, '', 'hashtags', hashtags);
+    }
+
+    setAiMergedIntoEdit(true);
+    if (target._id || target.id) {
+      setAiDraftPostId(target._id || target.id);
+    }
+
     setAiVariantModalOpen(false);
     setActiveTab('manual');
-    Alert.alert('Applied!', 'AI content transferred to Manual Post Composer.');
+    Alert.alert(
+      'Applied to Manual Post!',
+      'AI content, image, and hashtags have been populated into the Manual Post tab.'
+    );
   };
 
   // AI Refine Content Handler (Refine / Regenerate)
@@ -1326,6 +1374,7 @@ export default function PostEditorScreen() {
         tone: 'professional',
         language: 'en',
         variants_count: 1,
+        reference_image: aiRefImage || undefined,
       });
       const postsList = Array.isArray(result?.posts)
         ? result.posts
@@ -1343,7 +1392,7 @@ export default function PostEditorScreen() {
       setAiVariantModalOpen(true);
       setAiRefinePanelOpen(false);
       setAiRefinePrompt('');
-      Alert.alert('Refined!', `Generated ${postsList.length} refined variations!`);
+      Alert.alert('Refined!', `Generated ${postsList.length} refined variation!`);
     } catch (err: any) {
       Alert.alert('Refine Error', err.message || 'Refinement failed.');
     } finally {
@@ -1364,7 +1413,7 @@ export default function PostEditorScreen() {
       );
       return;
     }
-    const activeRefImg = aiRefImage || referenceImageUri;
+    const activeRefImg = aiRefImage;
     setAiRegeneratingImage(true);
     try {
       let newImageUrl = '';
@@ -1379,7 +1428,12 @@ export default function PostEditorScreen() {
             aiReferenceManualObjects.length > 0 ? aiReferenceManualObjects : undefined,
         });
         newImageUrl =
-          res?.imageUrl || res?.url || res?.image_url || res?.data?.imageUrl || res?.data?.url || '';
+          res?.imageUrl ||
+          res?.url ||
+          res?.image_url ||
+          res?.data?.imageUrl ||
+          res?.data?.url ||
+          '';
       } else {
         const imagePrompt = `Generate a fresh, high-quality social media image for this post: "${activeCaption.slice(
           0,
@@ -1396,7 +1450,11 @@ export default function PostEditorScreen() {
             ? result.data.posts
             : [];
         newImageUrl =
-          postsList[0]?.image_url || postsList[0]?.image || result?.image_url || result?.image || '';
+          postsList[0]?.image_url ||
+          postsList[0]?.image ||
+          result?.image_url ||
+          result?.image ||
+          '';
       }
 
       if (newImageUrl) {
@@ -1448,34 +1506,44 @@ export default function PostEditorScreen() {
   };
 
   // Copy Content & Hashtags to Clipboard
-  const copyPostContent = (post: Record<string, any>) => {
-    const captionStr = String(post.caption || '');
+  const copyPostContent = async (post: Record<string, any>) => {
+    const caption = String(post.caption || '');
     const allHashtags = Array.isArray(post.hashtags)
       ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
-      : '';
-    const fullText = allHashtags ? `${captionStr}\n\n${allHashtags}` : captionStr;
+      : typeof post.hashtags === 'string'
+        ? post.hashtags
+            .split(',')
+            .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+            .join(' ')
+        : '';
+    const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard
-        .writeText(fullText)
-        .then(() => Alert.alert('Success', 'Content & hashtags copied to clipboard!'))
-        .catch(() => Alert.alert('Error', 'Failed to copy content.'));
-    } else {
-      Alert.alert('Content Copied', fullText);
+    try {
+      await Clipboard.setStringAsync(fullText);
+      Alert.alert('Success', 'Content & hashtags copied!');
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Error', 'Failed to copy content.');
     }
   };
 
   // Download Text File Only (.txt)
-  const downloadTextContent = (post: Record<string, any>, labelStr: string) => {
+  const downloadTextContent = async (post: Record<string, any>, label: string) => {
     try {
-      const captionStr = String(post.caption || '');
+      const caption = String(post.caption || '');
       const allHashtags = Array.isArray(post.hashtags)
         ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
-        : '';
-      const fullText = allHashtags ? `${captionStr}\n\n${allHashtags}` : captionStr;
-      const filenameBase = getBaseFilename(aiPrompt, labelStr);
+        : typeof post.hashtags === 'string'
+          ? post.hashtags
+              .split(',')
+              .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+              .join(' ')
+          : '';
+      const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
-      if (Platform.OS === 'web' || typeof window !== 'undefined') {
+      const filenameBase = getBaseFilename(aiPrompt, label);
+
+      if (Platform.OS === 'web' || typeof document !== 'undefined') {
         const txtBlob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
         const txtUrl = URL.createObjectURL(txtBlob);
         const txtLink = document.createElement('a');
@@ -1485,53 +1553,97 @@ export default function PostEditorScreen() {
         txtLink.click();
         document.body.removeChild(txtLink);
         URL.revokeObjectURL(txtUrl);
-        Alert.alert('Downloaded', 'Content (.txt) downloaded successfully!');
+      } else if (Platform.OS === 'android') {
+        // Ask the user to pick a destination folder (one-time per session, not a share sheet)
+        const permissions =
+          await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+
+        if (!permissions.granted) {
+          Alert.alert('Permission needed', 'Please allow folder access to save the file.');
+          return;
+        }
+
+        const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
+          permissions.directoryUri,
+          filenameBase,
+          'text/plain'
+        );
+
+        await FileSystem.writeAsStringAsync(fileUri, fullText, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
       } else {
-        Alert.alert('Content Ready', fullText);
+        // iOS has no direct-write API; write to cache as a fallback
+        const txtUri = `${FileSystem.cacheDirectory}${filenameBase}.txt`;
+        await FileSystem.writeAsStringAsync(txtUri, fullText, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
       }
-    } catch (err) {
+
+      Alert.alert('Success', `${label} caption downloaded successfully!`);
+    } catch (err: any) {
       console.error(err);
-      Alert.alert('Download Failed', 'Could not download content text file.');
+      Alert.alert('Error', `Failed to download text content.\n\n${err?.message || err}`);
     }
   };
 
-  // Download Single Post (Image + Text)
-  const downloadPost = async (post: Record<string, any>, labelStr: string) => {
-    const postId = String(post.id || post._id || labelStr);
+  // Download Single Post (Image + Text) - Exact Panel Implementation
+  const downloadPost = async (post: Record<string, any>, label: string) => {
+    const postId = String(post.id || post._id || label);
     if (downloadingPostIds.has(postId)) return;
 
-    setDownloadingPostIds((prev) => new Set(prev).add(postId));
+    setDownloadingPostIds((prev) => {
+      const next = new Set(prev);
+      next.add(postId);
+      return next;
+    });
 
     try {
-      const filenameBase = getBaseFilename(aiPrompt, labelStr);
-      const img = String(post.image_url || post.image || '').trim();
+      const filenameBase = getBaseFilename(aiPrompt, label);
 
       // 1. Download image if it exists
-      if (img && (Platform.OS === 'web' || typeof window !== 'undefined')) {
-        try {
-          const url = getImageUrl(img);
-          const r = await fetch(url);
-          if (r.ok) {
-            const blob = await r.blob();
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            const extension = blob.type === 'image/png' ? 'png' : 'jpg';
-            a.download = `${filenameBase}.${extension}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(a.href);
+      const img = String(post.image_url || post.image || post.imageUrl || '').trim();
+      let savedImageUri: string | null = null;
+
+      if (img) {
+        const url = getImageUrl(img) || img;
+        const extension = url.toLowerCase().includes('.png') ? 'png' : 'jpg';
+        const localUri = `${FileSystem.cacheDirectory}${filenameBase}.${extension}`;
+
+        const downloadResult = await FileSystem.downloadAsync(url, localUri);
+        if (downloadResult.status === 200) {
+          savedImageUri = downloadResult.uri;
+
+          // Save to device gallery
+          const { status } = await MediaLibrary.requestPermissionsAsync();
+          if (status === 'granted') {
+            await MediaLibrary.saveToLibraryAsync(savedImageUri);
           }
-        } catch (imgErr) {
-          console.error('Image download error:', imgErr);
         }
       }
 
-      // 2. Download caption + hashtags as .txt file
-      downloadTextContent(post, labelStr);
+      // 2. Build caption + hashtags text
+      const caption = String(post.caption || '');
+      const allHashtags = Array.isArray(post.hashtags)
+        ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
+        : typeof post.hashtags === 'string'
+          ? post.hashtags
+              .split(',')
+              .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+              .join(' ')
+          : '';
+      const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
+
+      // 3. Write text file (text can't go to MediaLibrary)
+      const txtUri = `${FileSystem.cacheDirectory}${filenameBase}.txt`;
+      await FileSystem.writeAsStringAsync(txtUri, fullText, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      Alert.alert('Success', `Successfully downloaded ${label}!`);
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', `Failed to download ${labelStr}. Please try again.`);
+      Alert.alert('Error', `Failed to download ${label}. Please try again.`);
     } finally {
       setDownloadingPostIds((prev) => {
         const next = new Set(prev);
@@ -1549,56 +1661,51 @@ export default function PostEditorScreen() {
     try {
       const listToDownload =
         aiGeneratedPosts.length > 0 ? aiGeneratedPosts : aiResult ? [aiResult] : [];
+
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+
       for (let i = 0; i < listToDownload.length; i++) {
         const post = listToDownload[i];
-        const labelStr = String(post.variant_name || `Option ${i + 1}`);
-        const filenameBase = getBaseFilename(aiPrompt, labelStr);
+        const label = String(post.variant_name || `Option ${i + 1}`);
+        const filenameBase = getBaseFilename(aiPrompt, label);
 
         // 1. Download image if it exists
-        const img = String(post.image_url || post.image || '').trim();
-        if (img && (Platform.OS === 'web' || typeof window !== 'undefined')) {
-          try {
-            const url = getImageUrl(img);
-            const r = await fetch(url);
-            if (r.ok) {
-              const blob = await r.blob();
-              const a = document.createElement('a');
-              a.href = URL.createObjectURL(blob);
-              const extension = blob.type === 'image/png' ? 'png' : 'jpg';
-              a.download = `${filenameBase}.${extension}`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(a.href);
-            }
-          } catch (imgErr) {
-            console.error('Image download error:', imgErr);
+        const img = String(post.image_url || post.image || post.imageUrl || '').trim();
+        if (img) {
+          const url = getImageUrl(img) || img;
+          const extension = url.toLowerCase().includes('.png') ? 'png' : 'jpg';
+          const localUri = `${FileSystem.cacheDirectory}${filenameBase}.${extension}`;
+
+          const downloadResult = await FileSystem.downloadAsync(url, localUri);
+          if (downloadResult.status === 200 && status === 'granted') {
+            await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
           }
         }
 
-        // 2. Download text file
-        const captionStr = String(post.caption || '');
+        // 2. Write caption + hashtags as .txt file (saved to cache; not shared individually in bulk mode)
+        const caption = String(post.caption || '');
         const allHashtags = Array.isArray(post.hashtags)
           ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
-          : '';
-        const fullText = allHashtags ? `${captionStr}\n\n${allHashtags}` : captionStr;
+          : typeof post.hashtags === 'string'
+            ? post.hashtags
+                .split(',')
+                .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+                .join(' ')
+            : '';
+        const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
-        if (Platform.OS === 'web' || typeof window !== 'undefined') {
-          const txtBlob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
-          const txtUrl = URL.createObjectURL(txtBlob);
-          const txtLink = document.createElement('a');
-          txtLink.href = txtUrl;
-          txtLink.download = `${filenameBase}.txt`;
-          document.body.appendChild(txtLink);
-          txtLink.click();
-          document.body.removeChild(txtLink);
-          URL.revokeObjectURL(txtUrl);
-        }
+        const txtUri = `${FileSystem.cacheDirectory}${filenameBase}.txt`;
+        await FileSystem.writeAsStringAsync(txtUri, fullText, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
 
         await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
-      Alert.alert('Success', 'All variations downloaded successfully!');
+      Alert.alert(
+        'Success',
+        'All variations downloaded successfully! Images saved to gallery, captions saved to app storage.'
+      );
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'Failed to download all variations.');
@@ -1646,8 +1753,12 @@ export default function PostEditorScreen() {
     }
   };
 
+  // Mark Object Image URI State
+  const [markObjectImageUri, setMarkObjectImageUri] = useState<string>('');
+
   // Reference Image Picker Handler
-  const pickReferenceImage = async () => {
+  const pickReferenceImage = async (target?: 'ai' | 'manual') => {
+    const t = target || activeTab;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
@@ -1657,10 +1768,13 @@ export default function PostEditorScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
-        setReferenceImageUri(uri);
-        setAiRefImage(uri);
-        resetAiReferenceAnalysis();
-        runAiReferenceAnalysis(uri);
+        if (t === 'ai') {
+          setAiRefImage(uri);
+          resetAiReferenceAnalysis();
+          runAiReferenceAnalysis(uri);
+        } else {
+          setReferenceImageUri(uri);
+        }
       }
     } catch {
       Alert.alert('Error', 'Failed to pick reference image from gallery.');
@@ -1668,7 +1782,8 @@ export default function PostEditorScreen() {
   };
 
   // Reference Image Camera Capture Handler
-  const takeReferenceImage = async () => {
+  const takeReferenceImage = async (target?: 'ai' | 'manual') => {
+    const t = target || activeTab;
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
@@ -1686,10 +1801,13 @@ export default function PostEditorScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
-        setReferenceImageUri(uri);
-        setAiRefImage(uri);
-        resetAiReferenceAnalysis();
-        runAiReferenceAnalysis(uri);
+        if (t === 'ai') {
+          setAiRefImage(uri);
+          resetAiReferenceAnalysis();
+          runAiReferenceAnalysis(uri);
+        } else {
+          setReferenceImageUri(uri);
+        }
       }
     } catch {
       Alert.alert('Error', 'Failed to capture reference image from camera.');
@@ -1697,10 +1815,11 @@ export default function PostEditorScreen() {
   };
 
   // Image Source Picker for Reference Image (Gallery / Camera)
-  const showReferenceImagePicker = () => {
+  const showReferenceImagePicker = (target?: 'ai' | 'manual') => {
+    const t = target || activeTab;
     Alert.alert('Select Reference Image Source', 'Choose an option', [
-      { text: 'Gallery', onPress: () => pickReferenceImage() },
-      { text: 'Camera', onPress: () => takeReferenceImage() },
+      { text: 'Gallery', onPress: () => pickReferenceImage(t) },
+      { text: 'Camera', onPress: () => takeReferenceImage(t) },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -1762,12 +1881,18 @@ export default function PostEditorScreen() {
       .join(' ');
 
   // Clear Reference Image & Associated Data
-  const handleClearReferenceImage = () => {
-    setReferenceImageUri('');
-    setAiRefImage('');
-    setAiMarketingImageUrl('');
-    setAiReferencePrompt('');
-    resetAiReferenceAnalysis();
+  const handleClearReferenceImage = (target?: 'ai' | 'manual') => {
+    const t = target || activeTab;
+    if (t === 'ai') {
+      setAiRefImage('');
+      setAiMarketingImageUrl('');
+      setAiReferencePrompt('');
+      resetAiReferenceAnalysis();
+    } else {
+      setReferenceImageUri('');
+      setAiMarketingImageUrl('');
+      setReferenceImagePrompt('');
+    }
     setMarkStrokes([]);
     setCurrentMarkStroke([]);
     setMarkObjectLabel('');
@@ -1775,12 +1900,13 @@ export default function PostEditorScreen() {
   };
 
   // Open Object Marking Modal
-  const openMarkObjectModal = () => {
-    const targetUri = referenceImageUri || aiRefImage;
+  const openMarkObjectModal = (explicitUri?: string) => {
+    const targetUri = explicitUri || (activeTab === 'ai' ? aiRefImage : referenceImageUri);
     if (!targetUri) {
       Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
       return;
     }
+    setMarkObjectImageUri(targetUri);
     setMarkStrokes([]);
     setCurrentMarkStroke([]);
     setMarkObjectLabel('');
@@ -1835,8 +1961,9 @@ export default function PostEditorScreen() {
   };
 
   // Crop Reference Image Handler
-  const handleCropReferenceImage = async () => {
-    const targetUri = referenceImageUri || aiRefImage;
+  const handleCropReferenceImage = async (target?: 'ai' | 'manual') => {
+    const t = target || activeTab;
+    const targetUri = t === 'ai' ? aiRefImage : referenceImageUri;
     if (!targetUri) {
       Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
       return;
@@ -1851,10 +1978,13 @@ export default function PostEditorScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const croppedUri = result.assets[0].uri;
-        setReferenceImageUri(croppedUri);
-        setAiRefImage(croppedUri);
-        resetAiReferenceAnalysis();
-        runAiReferenceAnalysis(croppedUri);
+        if (t === 'ai') {
+          setAiRefImage(croppedUri);
+          resetAiReferenceAnalysis();
+          runAiReferenceAnalysis(croppedUri);
+        } else {
+          setReferenceImageUri(croppedUri);
+        }
         Alert.alert('Success', 'Reference image cropped successfully!');
       }
     } catch {
@@ -1864,7 +1994,7 @@ export default function PostEditorScreen() {
 
   // AI Marketing Image from Reference Handler
   const handleGenerateAiMarketingImage = async (customUri?: string): Promise<void> => {
-    const imgUri = customUri || referenceImageUri || aiRefImage;
+    const imgUri = customUri || referenceImageUri;
     if (!imgUri) {
       Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
       return;
@@ -2111,12 +2241,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-              {
-                type: 'image',
-                url: imageUrl,
-                imagePath: imagePath || imageUrl,
-              },
-            ]
+                {
+                  type: 'image',
+                  url: imageUrl,
+                  imagePath: imagePath || imageUrl,
+                },
+              ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -2210,9 +2340,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -2231,9 +2361,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -2507,15 +2637,12 @@ export default function PostEditorScreen() {
                   </Text>
                 </Text>
 
-                {aiRefImage || referenceImageUri ? (
+                {aiRefImage ? (
                   <VStack space="sm" style={{ marginTop: 6 }}>
                     <Box style={styles.imagePreviewBox}>
-                      <Image
-                        source={{ uri: aiRefImage || referenceImageUri }}
-                        style={styles.uploadedImage}
-                      />
+                      <Image source={{ uri: aiRefImage }} style={styles.uploadedImage} />
                       <TouchableOpacity
-                        onPress={handleClearReferenceImage}
+                        onPress={() => handleClearReferenceImage('ai')}
                         style={styles.removeImgBtn}
                       >
                         <Feather name="trash-2" size={16} color="#fff" />
@@ -2529,7 +2656,7 @@ export default function PostEditorScreen() {
                           styles.actionIconBtn,
                           { backgroundColor: '#f0f9ff', borderColor: '#0284c7' },
                         ]}
-                        onPress={openMarkObjectModal}
+                        onPress={() => openMarkObjectModal(aiRefImage)}
                       >
                         <Feather name="target" size={14} color="#0284c7" />
                         <Text style={[styles.actionIconBtnText, { color: '#0284c7' }]}>
@@ -2542,7 +2669,7 @@ export default function PostEditorScreen() {
                           styles.actionIconBtn,
                           { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' },
                         ]}
-                        onPress={handleCropReferenceImage}
+                        onPress={() => handleCropReferenceImage('ai')}
                       >
                         <Feather name="crop" size={14} color="#475569" />
                         <Text style={[styles.actionIconBtnText, { color: '#475569' }]}>
@@ -2555,12 +2682,10 @@ export default function PostEditorScreen() {
                           styles.actionIconBtn,
                           { backgroundColor: '#fef2f2', borderColor: '#ef4444' },
                         ]}
-                        onPress={handleClearReferenceImage}
+                        onPress={() => handleClearReferenceImage('ai')}
                       >
                         <Feather name="trash-2" size={14} color="#ef4444" />
-                        <Text style={[styles.actionIconBtnText, { color: '#ef4444' }]}>
-                          Remove
-                        </Text>
+                        <Text style={[styles.actionIconBtnText, { color: '#ef4444' }]}>Remove</Text>
                       </TouchableOpacity>
                     </HStack>
 
@@ -2636,7 +2761,9 @@ export default function PostEditorScreen() {
                               <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '600' }}>
                                 {obj.label}
                               </Text>
-                              <TouchableOpacity onPress={() => handleRemoveManualObjectMark(obj.id)}>
+                              <TouchableOpacity
+                                onPress={() => handleRemoveManualObjectMark(obj.id)}
+                              >
                                 <Feather name="x" size={13} color="#ffffff" />
                               </TouchableOpacity>
                             </Box>
@@ -2701,7 +2828,10 @@ export default function PostEditorScreen() {
                     )}
                   </VStack>
                 ) : (
-                  <TouchableOpacity style={styles.uploadBox} onPress={showReferenceImagePicker}>
+                  <TouchableOpacity
+                    style={styles.uploadBox}
+                    onPress={() => showReferenceImagePicker('ai')}
+                  >
                     <Feather name="image" size={24} color="#0052d4" />
                     <Text style={styles.uploadText}>Upload Reference Image</Text>
                     <Text
@@ -2806,7 +2936,7 @@ export default function PostEditorScreen() {
                                   a.click();
                                   URL.revokeObjectURL(a.href);
                                 })
-                                .catch(() => { });
+                                .catch(() => {});
                             }
                           }}
                         >
@@ -2905,6 +3035,192 @@ export default function PostEditorScreen() {
               </Box>
             )}
 
+            {/* AI Refinement Banner Card (Not satisfied? Refine with AI) */}
+            {(aiMergedIntoEdit || aiDraftPostId || aiResult || aiGeneratedPosts.length > 0) && (
+              <Box
+                style={{
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: '#e9d5ff',
+                  backgroundColor: '#faf5ff',
+                  overflow: 'hidden',
+                  marginBottom: 4,
+                }}
+              >
+                <Box
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    backgroundColor: '#f3e8ff',
+                    borderBottomWidth: aiRefinePanelOpen ? 1 : 0,
+                    borderBottomColor: '#e9d5ff',
+                  }}
+                >
+                  <HStack
+                    space="xs"
+                    className="items-center gap-2"
+                    style={{ flex: 1, minWidth: 180 }}
+                  >
+                    <Box
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        backgroundColor: '#e9d5ff',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Ionicons name="bulb-outline" size={18} color="#7c3aed" />
+                    </Box>
+                    <VStack style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#581c87' }}>
+                        Not satisfied? Refine with AI
+                      </Text>
+                      <Text style={{ fontSize: 11, color: '#7e22ce' }}>
+                        Edit prompt, enhance content, or change image
+                      </Text>
+                    </VStack>
+                  </HStack>
+
+                  <HStack space="xs" className="items-center gap-2">
+                    <TouchableOpacity
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 12,
+                        backgroundColor: aiRefinePanelOpen ? '#7c3aed' : '#ffffff',
+                        borderWidth: 1,
+                        borderColor: '#7c3aed',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                      onPress={() => setAiRefinePanelOpen(!aiRefinePanelOpen)}
+                      activeOpacity={0.8}
+                    >
+                      <Feather
+                        name={aiRefinePanelOpen ? 'chevron-up' : 'sliders'}
+                        size={13}
+                        color={aiRefinePanelOpen ? '#ffffff' : '#7c3aed'}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: '700',
+                          color: aiRefinePanelOpen ? '#ffffff' : '#7c3aed',
+                        }}
+                      >
+                        Refine Prompt
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 12,
+                        backgroundColor: '#ffffff',
+                        borderWidth: 1,
+                        borderColor: '#7c3aed',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                      onPress={handleAiRegenerateImage}
+                      disabled={aiRegeneratingImage || aiGenerating}
+                      activeOpacity={0.8}
+                    >
+                      {aiRegeneratingImage ? (
+                        <ActivityIndicator size="small" color="#7c3aed" />
+                      ) : (
+                        <Feather name="image" size={13} color="#7c3aed" />
+                      )}
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#7c3aed' }}>
+                        {aiRegeneratingImage ? 'Generating...' : 'Change Image'}
+                      </Text>
+                    </TouchableOpacity>
+                  </HStack>
+                </Box>
+
+                {aiRefinePanelOpen && (
+                  <Box style={{ padding: 14, backgroundColor: '#faf5ff' }}>
+                    <Text
+                      style={{ fontSize: 12, color: '#6b21a8', fontWeight: '600', marginBottom: 6 }}
+                    >
+                      Describe how you want to improve the content
+                    </Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          fontSize: 13,
+                          backgroundColor: '#ffffff',
+                          borderColor: '#d8b4fe',
+                          minHeight: 60,
+                          textAlignVertical: 'top',
+                        },
+                      ]}
+                      value={aiRefinePrompt}
+                      onChangeText={setAiRefinePrompt}
+                      placeholder="e.g. Make the caption more engaging, add a call-to-action, use a friendlier tone..."
+                      placeholderTextColor="#a855f7"
+                      multiline
+                    />
+                    <HStack className="mt-3 justify-end gap-2">
+                      <TouchableOpacity
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 10,
+                          backgroundColor: '#ffffff',
+                          borderWidth: 1,
+                          borderColor: '#cbd5e1',
+                        }}
+                        onPress={() => {
+                          setAiRefinePanelOpen(false);
+                          setAiRefinePrompt('');
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b' }}>
+                          Cancel
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={{
+                          paddingHorizontal: 16,
+                          paddingVertical: 6,
+                          borderRadius: 10,
+                          backgroundColor: '#7c3aed',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                          opacity: aiGenerating || !aiRefinePrompt.trim() ? 0.6 : 1,
+                        }}
+                        onPress={handleAiRefine}
+                        disabled={aiGenerating || !aiRefinePrompt.trim()}
+                      >
+                        {aiGenerating ? (
+                          <ActivityIndicator size="small" color="#ffffff" />
+                        ) : (
+                          <Feather name="refresh-cw" size={13} color="#ffffff" />
+                        )}
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#ffffff' }}>
+                          {aiGenerating ? 'Refining...' : 'Regenerate'}
+                        </Text>
+                      </TouchableOpacity>
+                    </HStack>
+                  </Box>
+                )}
+              </Box>
+            )}
+
             {/* 1. AI Image Generator from Reference Card */}
             <Box style={styles.card}>
               <HStack className="mb-2 items-center justify-between">
@@ -2914,8 +3230,8 @@ export default function PostEditorScreen() {
                     AI Image Generator from Reference
                   </Heading>
                 </HStack>
-                {referenceImageUri || aiRefImage ? (
-                  <TouchableOpacity onPress={handleClearReferenceImage}>
+                {referenceImageUri ? (
+                  <TouchableOpacity onPress={() => handleClearReferenceImage('manual')}>
                     <Text style={{ color: '#dc2626', fontSize: 12, fontWeight: '600' }}>Clear</Text>
                   </TouchableOpacity>
                 ) : null}
@@ -2925,13 +3241,13 @@ export default function PostEditorScreen() {
                 with cinematic lighting and professional composition.
               </Text>
 
-              {!(referenceImageUri || aiRefImage) ? (
+              {!referenceImageUri ? (
                 <TouchableOpacity
                   style={[
                     styles.uploadBox,
                     { borderStyle: 'dashed', marginTop: 12, backgroundColor: '#f8fafc' },
                   ]}
-                  onPress={showReferenceImagePicker}
+                  onPress={() => showReferenceImagePicker('manual')}
                 >
                   <HStack space="xs" className="items-center justify-center">
                     <Feather name="upload" size={22} color="#2563eb" />
@@ -2954,7 +3270,7 @@ export default function PostEditorScreen() {
                   {/* Reference Image Preview & Action Tools */}
                   <Box style={styles.imagePreviewBox}>
                     <Image
-                      source={{ uri: referenceImageUri || aiRefImage }}
+                      source={{ uri: referenceImageUri }}
                       style={styles.uploadedImage}
                       resizeMode="cover"
                     />
@@ -2970,7 +3286,7 @@ export default function PostEditorScreen() {
                       }}
                     >
                       <TouchableOpacity
-                        onPress={openMarkObjectModal}
+                        onPress={() => openMarkObjectModal(referenceImageUri)}
                         style={{
                           padding: 6,
                           backgroundColor: '#60a5fa',
@@ -2984,9 +3300,7 @@ export default function PostEditorScreen() {
                         <Feather name="target" size={18} color="#ffffff" />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={() =>
-                          openCropForExistingImage(referenceImageUri || aiRefImage, 'ai')
-                        }
+                        onPress={() => openCropForExistingImage(referenceImageUri, 'manual_ref')}
                         style={{
                           padding: 6,
                           backgroundColor: '#1c243cff',
@@ -3000,7 +3314,7 @@ export default function PostEditorScreen() {
                         <Feather name="crop" size={18} color="#ffffff" />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={handleClearReferenceImage}
+                        onPress={() => handleClearReferenceImage('manual')}
                         style={{
                           padding: 6,
                           backgroundColor: '#f87171',
@@ -3114,7 +3428,7 @@ export default function PostEditorScreen() {
                   {/* Generate AI Marketing Image Button */}
                   <TouchableOpacity
                     style={[styles.primaryBtn, { backgroundColor: '#7c3aed' }]}
-                    onPress={() => handleGenerateAiMarketingImage(referenceImageUri || aiRefImage)}
+                    onPress={() => handleGenerateAiMarketingImage(referenceImageUri)}
                     disabled={aiMarketingGenerating}
                   >
                     {aiMarketingGenerating ? (
@@ -3493,7 +3807,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                        styles.subTabBtnActive,
+                          styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -3502,7 +3816,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabTextActive,
+                            styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -3558,9 +3872,9 @@ export default function PostEditorScreen() {
                             ? override.hashtags
                             : hashtagsInput
                               ? hashtagsInput
-                                .split(',')
-                                .map((t) => t.trim().replace(/^#/, ''))
-                                .filter(Boolean)
+                                  .split(',')
+                                  .map((t) => t.trim().replace(/^#/, ''))
+                                  .filter(Boolean)
                               : [],
                         mediaUrl:
                           override.image_url !== undefined
@@ -3584,9 +3898,9 @@ export default function PostEditorScreen() {
                               ? override.hashtags
                               : hashtagsInput
                                 ? hashtagsInput
-                                  .split(',')
-                                  .map((t) => t.trim().replace(/^#/, ''))
-                                  .filter(Boolean)
+                                    .split(',')
+                                    .map((t) => t.trim().replace(/^#/, ''))
+                                    .filter(Boolean)
                                 : [],
                           mediaUrl:
                             override.image_url !== undefined
@@ -4270,10 +4584,10 @@ export default function PostEditorScreen() {
                         const platformEntries = platformSpecificContent[network] || [];
                         const acctEntry = acct
                           ? platformEntries.find(
-                            (e: any) =>
-                              e.account_id ===
-                              (acct.account_id || acct.value || acct.id || acct._id)
-                          )
+                              (e: any) =>
+                                e.account_id ===
+                                (acct.account_id || acct.value || acct.id || acct._id)
+                            )
                           : platformEntries[0];
 
                         const override = platformOverrides[network] || {};
@@ -4299,10 +4613,10 @@ export default function PostEditorScreen() {
                           acctEntry?.hashtags && acctEntry.hashtags.length > 0
                             ? acctEntry.hashtags
                             : override.hashtags ||
-                            hashtagsInput
-                              .split(',')
-                              .map((t) => t.trim().replace(/^#/, ''))
-                              .filter(Boolean);
+                              hashtagsInput
+                                .split(',')
+                                .map((t) => t.trim().replace(/^#/, ''))
+                                .filter(Boolean);
 
                         const activeContentType =
                           acctEntry?.contentType ||
@@ -4977,7 +5291,9 @@ export default function PostEditorScreen() {
               {...markPanResponder.panHandlers}
             >
               <Image
-                source={{ uri: referenceImageUri || aiRefImage }}
+                source={{
+                  uri: markObjectImageUri || (activeTab === 'ai' ? aiRefImage : referenceImageUri),
+                }}
                 style={{ width: '100%', height: '100%' }}
                 resizeMode="contain"
               />
@@ -5506,26 +5822,31 @@ export default function PostEditorScreen() {
             backgroundColor: 'rgba(15, 23, 42, 0.75)',
             justifyContent: 'center',
             alignItems: 'center',
-            padding: 16,
+            padding: 12,
           }}
         >
           <View
             style={{
               width: '100%',
-              maxWidth: 500,
+              maxWidth: 540,
+              height: 600,
               backgroundColor: '#ffffff',
               borderRadius: 20,
               overflow: 'hidden',
-              maxHeight: '90%',
               display: 'flex',
               flexDirection: 'column',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.25,
+              shadowRadius: 20,
+              elevation: 10,
             }}
           >
             {/* Modal Header */}
             <Box
               style={{
-                paddingHorizontal: 20,
-                paddingVertical: 16,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
                 backgroundColor: '#f8fafc',
                 borderBottomWidth: 1,
                 borderBottomColor: '#e2e8f0',
@@ -5534,25 +5855,26 @@ export default function PostEditorScreen() {
                 justifyContent: 'space-between',
               }}
             >
-              <HStack space="xs" className="items-center gap-2">
+              <HStack space="xs" className="items-center gap-2.5" style={{ flex: 1 }}>
                 <Box
                   style={{
-                    width: 34,
-                    height: 34,
                     borderRadius: 10,
                     backgroundColor: '#eff6ff',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Ionicons name="sparkles" size={18} color="#2563eb" />
+                  <Ionicons name="sparkles" size={20} color="#2563eb" />
                 </Box>
-                <VStack>
+                <VStack style={{ flex: 1 }}>
                   <Heading size="sm" style={{ color: '#0f172a', fontWeight: '800', fontSize: 16 }}>
                     Choose AI Variant
                   </Heading>
-                  <Text style={{ fontSize: 11, color: '#64748b' }}>
-                    Pick a variation to apply to composer, download, or refine.
+                  <Text
+                    style={{ fontSize: 11, color: '#64748b', lineHeight: 16 }}
+                    numberOfLines={1}
+                  >
+                    Pick a variation to load into Manual Post, download, or refine.
                   </Text>
                 </VStack>
               </HStack>
@@ -5586,7 +5908,7 @@ export default function PostEditorScreen() {
                 )}
 
                 <TouchableOpacity
-                  style={{ padding: 4, backgroundColor: '#f1f5f9', borderRadius: 20 }}
+                  style={{ padding: 6, backgroundColor: '#f1f5f9', borderRadius: 20 }}
                   onPress={() => setAiVariantModalOpen(false)}
                 >
                   <Feather name="x" size={18} color="#475569" />
@@ -5595,13 +5917,17 @@ export default function PostEditorScreen() {
             </Box>
 
             {/* Modal Body / Variants List */}
-            <ScrollView style={{ padding: 16, flex: 1 }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ padding: 12, flex: 1 }} showsVerticalScrollIndicator={false}>
               {(aiGeneratedPosts.length > 0 ? aiGeneratedPosts : aiResult ? [aiResult] : []).map(
                 (postItem, index) => {
                   const label = String(postItem.variant_name || `Option ${index + 1}`);
                   const itemCap = String(postItem.caption || '');
                   const itemImg = String(postItem.image_url || postItem.image || '').trim();
-                  const itemHashtags = Array.isArray(postItem.hashtags) ? postItem.hashtags : [];
+                  const itemHashtags = Array.isArray(postItem.hashtags)
+                    ? postItem.hashtags
+                    : typeof postItem.hashtags === 'string'
+                      ? postItem.hashtags.split(',').map((t: string) => t.trim())
+                      : [];
                   const itemPostId = String(postItem.id || postItem._id || label);
                   const isDownloading = downloadingPostIds.has(itemPostId);
                   const isExpanded = !!expandedHashtags[itemPostId];
@@ -5614,8 +5940,8 @@ export default function PostEditorScreen() {
                         borderRadius: 16,
                         borderWidth: 1,
                         borderColor: '#e2e8f0',
-                        padding: 14,
-                        marginBottom: 12,
+                        padding: 12,
+                        // marginBottom: 12,
                         shadowColor: '#000',
                         shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.05,
@@ -5628,21 +5954,21 @@ export default function PostEditorScreen() {
                         <Box
                           style={{
                             width: '100%',
-                            height: 180,
+                            height: 190,
                             borderRadius: 12,
                             overflow: 'hidden',
                             position: 'relative',
                             backgroundColor: '#f1f5f9',
-                            marginBottom: 10,
+                            marginBottom: 12,
                           }}
                         >
                           <TouchableOpacity
                             activeOpacity={0.9}
                             style={{ width: '100%', height: '100%' }}
-                            onPress={() => setModalImageUrl(getImageUrl(itemImg))}
+                            onPress={() => setModalImageUrl(getImageUrl(itemImg) || itemImg)}
                           >
                             <Image
-                              source={{ uri: getImageUrl(itemImg) }}
+                              source={{ uri: getImageUrl(itemImg) || itemImg }}
                               style={{ width: '100%', height: '100%' }}
                               resizeMode="cover"
                             />
@@ -5656,7 +5982,8 @@ export default function PostEditorScreen() {
                               right: 8,
                               backgroundColor: 'rgba(15, 23, 42, 0.75)',
                               borderRadius: 20,
-                              padding: 7,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
                               flexDirection: 'row',
                               alignItems: 'center',
                               gap: 4,
@@ -5664,6 +5991,9 @@ export default function PostEditorScreen() {
                             onPress={() => downloadPost(postItem, label)}
                           >
                             <Feather name="download" size={13} color="#ffffff" />
+                            <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '600' }}>
+                              Save Image
+                            </Text>
                           </TouchableOpacity>
                         </Box>
                       ) : null}
@@ -5733,7 +6063,7 @@ export default function PostEditorScreen() {
                                   <Text
                                     style={{ fontSize: 11, color: '#475569', fontWeight: '500' }}
                                   >
-                                    #{tag.replace(/^#/, '')}
+                                    #{String(tag).replace(/^#/, '')}
                                   </Text>
                                 </Box>
                               )
@@ -5775,7 +6105,9 @@ export default function PostEditorScreen() {
                           onPress={() => copyPostContent(postItem)}
                         >
                           <Feather name="copy" size={13} color="#475569" />
-                          <Text style={[styles.actionIconBtnText, { fontSize: 11 }]}>Copy Text</Text>
+                          <Text style={[styles.actionIconBtnText, { fontSize: 11 }]}>
+                            Copy Text
+                          </Text>
                         </TouchableOpacity>
 
                         {/* Download Text (.txt) Button */}
@@ -5787,7 +6119,9 @@ export default function PostEditorScreen() {
                           onPress={() => downloadTextContent(postItem, label)}
                         >
                           <Feather name="file-text" size={13} color="#0284c7" />
-                          <Text style={[styles.actionIconBtnText, { color: '#0284c7', fontSize: 11 }]}>
+                          <Text
+                            style={[styles.actionIconBtnText, { color: '#0284c7', fontSize: 11 }]}
+                          >
                             .txt
                           </Text>
                         </TouchableOpacity>
@@ -5812,12 +6146,14 @@ export default function PostEditorScreen() {
                           ) : (
                             <Feather name="download" size={13} color="#16a34a" />
                           )}
-                          <Text style={[styles.actionIconBtnText, { color: '#16a34a', fontSize: 11 }]}>
+                          <Text
+                            style={[styles.actionIconBtnText, { color: '#16a34a', fontSize: 11 }]}
+                          >
                             Download Post
                           </Text>
                         </TouchableOpacity>
 
-                        {/* Use / Apply Button */}
+                        {/* Use / Apply Button (Transfers content to Manual Post tab) */}
                         <TouchableOpacity
                           style={{
                             backgroundColor: '#2563eb',
@@ -5842,18 +6178,20 @@ export default function PostEditorScreen() {
               )}
             </ScrollView>
 
-            {/* Refine / Regenerate Panel inside Modal */}
+            {/* Refine / Regenerate Expandable Panel */}
             {aiRefinePanelOpen && (
               <Box
                 style={{
-                  padding: 16,
+                  padding: 12,
                   backgroundColor: '#fffbeb',
                   borderTopWidth: 1,
                   borderTopColor: '#fef3c7',
                 }}
               >
-                <Text style={{ fontSize: 12, color: '#92400e', fontWeight: '600', marginBottom: 6 }}>
-                  💡 Tell AI what to change (tone, length, offer, or style):
+                <Text
+                  style={{ fontSize: 12, color: '#92400e', fontWeight: '700', marginBottom: 6 }}
+                >
+                  💡 Tell AI how to refine (tone, length, offer, or style):
                 </Text>
                 <TextInput
                   style={[
@@ -5862,12 +6200,12 @@ export default function PostEditorScreen() {
                       fontSize: 13,
                       backgroundColor: '#ffffff',
                       borderColor: '#fde68a',
-                      minHeight: 50,
+                      minHeight: 52,
                     },
                   ]}
                   value={aiRefinePrompt}
                   onChangeText={setAiRefinePrompt}
-                  placeholder='e.g. "Make it shorter and punchier", "Use a more professional tone"'
+                  placeholder='e.g. "Make it shorter and punchier", "Add a limited-time weekend offer"'
                   placeholderTextColor="#a16207"
                   multiline
                 />
@@ -5916,58 +6254,84 @@ export default function PostEditorScreen() {
                       <Feather name="refresh-cw" size={13} color="#ffffff" />
                     )}
                     <Text style={{ fontSize: 12, fontWeight: '700', color: '#ffffff' }}>
-                      {aiGenerating ? 'Regenerating...' : 'Regenerate'}
+                      {aiGenerating ? 'Refining...' : 'Regenerate'}
                     </Text>
                   </TouchableOpacity>
                 </HStack>
               </Box>
             )}
 
-            {/* Modal Footer Actions */}
+            {/* Modal Footer / Refine Section Bar */}
             <Box
               style={{
                 paddingHorizontal: 16,
-                paddingVertical: 12,
-                backgroundColor: '#f8fafc',
+                paddingVertical: 10,
+                backgroundColor: '#fffbeb',
                 borderTopWidth: 1,
-                borderTopColor: '#e2e8f0',
+                borderTopColor: '#fef3c7',
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 8,
               }}
             >
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  paddingVertical: 6,
-                }}
-                onPress={() => setAiRefinePanelOpen(!aiRefinePanelOpen)}
+              <HStack
+                space="xs"
+                className="items-center gap-1.5"
+                style={{ flex: 1, minWidth: 200 }}
               >
-                <Feather
-                  name={aiRefinePanelOpen ? 'chevron-down' : 'sliders'}
-                  size={14}
-                  color="#d97706"
-                />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#d97706' }}>
-                  {aiRefinePanelOpen ? 'Hide Refine' : 'Refine / Regenerate'}
+                <Ionicons name="bulb-outline" size={16} color="#d97706" />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#92400e' }}>
+                  Not satisfied? Refine with AI
                 </Text>
-              </TouchableOpacity>
+              </HStack>
 
-              <TouchableOpacity
-                style={{
-                  paddingHorizontal: 18,
-                  paddingVertical: 8,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: '#cbd5e1',
-                  backgroundColor: '#ffffff',
-                }}
-                onPress={() => setAiVariantModalOpen(false)}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569' }}>Close</Text>
-              </TouchableOpacity>
+              <HStack space="xs" className="items-center gap-2">
+                <TouchableOpacity
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 12,
+                    backgroundColor: aiRefinePanelOpen ? '#d97706' : '#ffffff',
+                    borderWidth: 1,
+                    borderColor: '#d97706',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                  onPress={() => setAiRefinePanelOpen(!aiRefinePanelOpen)}
+                >
+                  <Feather
+                    name={aiRefinePanelOpen ? 'chevron-down' : 'sliders'}
+                    size={13}
+                    color={aiRefinePanelOpen ? '#ffffff' : '#d97706'}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: '700',
+                      color: aiRefinePanelOpen ? '#ffffff' : '#d97706',
+                    }}
+                  >
+                    {aiRefinePanelOpen ? 'Hide Refine' : 'Refine / Regenerate'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: '#cbd5e1',
+                    backgroundColor: '#ffffff',
+                  }}
+                  onPress={() => setAiVariantModalOpen(false)}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#475569' }}>Close</Text>
+                </TouchableOpacity>
+              </HStack>
             </Box>
           </View>
         </View>
@@ -6130,6 +6494,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
+    marginBottom: 50,
   },
   cardTitle: {
     color: '#0f172a',
