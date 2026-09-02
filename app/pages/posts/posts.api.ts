@@ -323,6 +323,11 @@ export const generateSocialMediaPost = async (payload: {
   provider?: string;
   platform?: string;
   tone?: string;
+  language?: string;
+  variants_count?: number;
+  reference_image?: any;
+  reference_prompt?: string;
+  reference_objects?: ReferenceDetectedObject[] | string;
 }): Promise<any> => {
   const path =
     payload.provider === 'gemini'
@@ -330,6 +335,51 @@ export const generateSocialMediaPost = async (payload: {
       : payload.provider === 'openai'
         ? 'generate-post/openai'
         : 'generate-post';
+
+  if (payload.reference_image) {
+    const formData = new FormData();
+    formData.append('prompt', payload.prompt || '');
+    if (payload.platform) formData.append('platform', payload.platform);
+    if (payload.tone) formData.append('tone', payload.tone);
+    if (payload.language) formData.append('language', payload.language);
+    if (payload.variants_count !== undefined) {
+      formData.append('variants_count', String(payload.variants_count));
+    }
+    if (payload.reference_prompt) {
+      formData.append('reference_prompt', payload.reference_prompt);
+    }
+    if (payload.reference_objects) {
+      formData.append(
+        'reference_objects',
+        typeof payload.reference_objects === 'string'
+          ? payload.reference_objects
+          : JSON.stringify(payload.reference_objects)
+      );
+    }
+
+    if (typeof payload.reference_image === 'string') {
+      const filename = payload.reference_image.split('/').pop() || `ref-${Date.now()}.jpg`;
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      formData.append('reference_image', {
+        uri: payload.reference_image,
+        name: filename,
+        type,
+      } as any);
+    } else {
+      formData.append('reference_image', payload.reference_image);
+    }
+
+    const res = await fetchWithAuth(`${AI_BASE}/${path}`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (isApiError(res)) {
+      throw new Error(res.message || 'AI Post generation failed');
+    }
+    return res?.data || res;
+  }
+
   const res = await fetchWithAuth(`${AI_BASE}/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -64,7 +64,7 @@ const getInitialScheduledDate = () => {
 };
 
 export default function PostEditorScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, tab } = useLocalSearchParams<{ id?: string; tab?: string }>();
   const router = useRouter();
 
   const isEditing = Boolean(id);
@@ -76,7 +76,9 @@ export default function PostEditorScreen() {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ai' | 'manual'>('manual');
+  const [activeTab, setActiveTab] = useState<'ai' | 'manual'>(
+    tab === 'ai' ? 'ai' : tab === 'manual' ? 'manual' : isEditing ? 'manual' : 'ai'
+  );
   const [previewTab, setPreviewTab] = useState<string>('all');
 
   // AI Auto Post State
@@ -97,6 +99,11 @@ export default function PostEditorScreen() {
   const [aiGeneratedPosts, setAiGeneratedPosts] = useState<any[]>([]);
   const [downloadingPostIds, setDownloadingPostIds] = useState<Set<string>>(new Set());
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [aiVariantModalOpen, setAiVariantModalOpen] = useState(false);
+  const [aiRefinePanelOpen, setAiRefinePanelOpen] = useState(false);
+  const [aiRefinePrompt, setAiRefinePrompt] = useState('');
+  const [aiRegeneratingImage, setAiRegeneratingImage] = useState(false);
+  const [expandedHashtags, setExpandedHashtags] = useState<Record<string, boolean>>({});
 
   // Form State
   const [title, setTitle] = useState('');
@@ -628,12 +635,20 @@ export default function PostEditorScreen() {
   const [aiMarketingGenerating, setAiMarketingGenerating] = useState(false);
   const [aiMarketingImageUrl, setAiMarketingImageUrl] = useState('');
   const [aiAnalyzingRef, setAiAnalyzingRef] = useState(false);
+  const [aiRefAnalysisStatus, setAiRefAnalysisStatus] = useState<
+    'idle' | 'loading' | 'ready' | 'error'
+  >('idle');
   const [aiRefAnalysisSummary, setAiRefAnalysisSummary] = useState('');
   const [referenceImageUri, setReferenceImageUri] = useState<string>('');
   const [referenceImagePrompt, setReferenceImagePrompt] = useState<string>('');
+  const [aiReferencePrompt, setAiReferencePrompt] = useState<string>('');
   const [referenceImageProvider, setReferenceImageProvider] = useState<
     'auto' | 'gemini' | 'openai'
   >('auto');
+  const [aiReferenceDetectedObjects, setAiReferenceDetectedObjects] = useState<
+    ReferenceDetectedObject[]
+  >([]);
+  const [aiReferenceSelectedObjectIds, setAiReferenceSelectedObjectIds] = useState<string[]>([]);
   const [aiReferenceManualObjects, setAiReferenceManualObjects] = useState<
     ReferenceDetectedObject[]
   >([]);
@@ -696,9 +711,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -738,9 +753,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -821,8 +836,8 @@ export default function PostEditorScreen() {
             typeof postData.image_url === 'string' && postData.image_url.trim()
               ? postData.image_url
               : postData.generalContent?.media?.[0]?.url ||
-                postData.generalContent?.media?.[0]?.imagePath ||
-                '';
+              postData.generalContent?.media?.[0]?.imagePath ||
+              '';
           setImageUrl(initialImg);
           setImagePath(
             postData.image_path || postData.generalContent?.media?.[0]?.imagePath || initialImg
@@ -1166,18 +1181,57 @@ export default function PostEditorScreen() {
 
   // AI Generation Handler
   const handleGenerateAi = async () => {
-    if (!aiPrompt.trim()) {
+    const trimmedPrompt = aiPrompt.trim();
+    if (!trimmedPrompt) {
       setErrors((prev) => ({ ...prev, aiPrompt: 'Prompt is required to generate AI post.' }));
+      Alert.alert(
+        'Prompt Required',
+        'Please enter a prompt describing the post you want to generate.'
+      );
       return;
     }
     setErrors((prev) => ({ ...prev, aiPrompt: '' }));
+
+    const activeRefImage = aiRefImage || referenceImageUri;
+    let selectedReferenceObjects: ReferenceDetectedObject[] = [];
+
+    if (activeRefImage) {
+      selectedReferenceObjects =
+        aiReferenceManualObjects.length > 0
+          ? aiReferenceManualObjects
+          : aiReferenceDetectedObjects.filter((obj) =>
+              aiReferenceSelectedObjectIds.includes(obj.id)
+            );
+
+      if (selectedReferenceObjects.length === 0) {
+        Alert.alert(
+          'Object Selection Required',
+          'Please select or mark at least one object before generating.'
+        );
+        return;
+      }
+    }
+
     setAiGenerating(true);
     try {
-      const res = await generateSocialMediaPost({
-        prompt: aiPrompt,
+      const payload: any = {
+        prompt: trimmedPrompt,
         provider: aiProvider,
         platform: selectedPlatforms[0] || 'facebook',
-      });
+        tone: 'professional',
+        language: 'en',
+        variants_count: 1,
+      };
+
+      if (activeRefImage) {
+        payload.reference_image = activeRefImage;
+        if (aiReferencePrompt.trim()) {
+          payload.reference_prompt = aiReferencePrompt.trim();
+        }
+        payload.reference_objects = selectedReferenceObjects;
+      }
+
+      const res = await generateSocialMediaPost(payload);
       const postsList = Array.isArray(res?.posts)
         ? res.posts
         : Array.isArray(res?.data?.posts)
@@ -1186,7 +1240,12 @@ export default function PostEditorScreen() {
             ? res
             : [];
       const generatedPost = postsList[0] || res?.posts?.[0] || res?.data?.posts?.[0] || res;
-      const genTitle = generatedPost?.title || aiPrompt;
+
+      if (!generatedPost || (postsList.length === 0 && !res)) {
+        throw new Error('No content generated. Try again.');
+      }
+
+      const genTitle = generatedPost?.title || trimmedPrompt;
       const genCaption = generatedPost?.caption || generatedPost?.post_content || '';
       const genHashtags = generatedPost?.hashtags || [];
       const genImageUrl = generatedPost?.image_url || generatedPost?.image || '';
@@ -1206,6 +1265,7 @@ export default function PostEditorScreen() {
       } else {
         setAiGeneratedPosts([mainResult]);
       }
+      setAiVariantModalOpen(true);
     } catch (err: any) {
       Alert.alert('AI Generation Error', err.message || 'Failed to generate post using AI.');
     } finally {
@@ -1220,15 +1280,143 @@ export default function PostEditorScreen() {
     if (target.title) setTitle(target.title);
     if (target.caption) setCaption(target.caption);
     if (target.hashtags && target.hashtags.length > 0) {
-      setHashtagsInput(target.hashtags.join(', '));
+      setHashtagsInput(
+        Array.isArray(target.hashtags)
+          ? target.hashtags.join(', ')
+          : String(target.hashtags)
+      );
     }
     const imgToUse = target.image_url || target.image || '';
     if (imgToUse) {
       setImageUrl(imgToUse);
       setImagePath(imgToUse);
     }
+    setAiVariantModalOpen(false);
     setActiveTab('manual');
-    Alert.alert('Applied!', 'AI content has been transferred to the Manual Post Composer.');
+    Alert.alert('Applied!', 'AI content transferred to Manual Post Composer.');
+  };
+
+  // AI Refine Content Handler (Refine / Regenerate)
+  const handleAiRefine = async () => {
+    const trimmed = aiRefinePrompt.trim();
+    if (!trimmed) {
+      Alert.alert('Refine Prompt Required', 'Please describe how you want to refine the content.');
+      return;
+    }
+    const existingCaption =
+      caption || (aiGeneratedPosts.length > 0 ? String(aiGeneratedPosts[0].caption || '') : '');
+    const previousPrompt = aiPrompt.trim();
+    const contextCaption = existingCaption || (aiResult ? String(aiResult.caption || '') : '');
+
+    const refinedPrompt = contextCaption
+      ? `Improve this social media post based on the following feedback: "${trimmed}"\n\nOriginal caption: "${contextCaption.slice(
+          0,
+          300
+        )}"\n\nProvide an enhanced version with better engagement.`
+      : `${
+          previousPrompt ? `Original request: "${previousPrompt}". ` : ''
+        }User feedback: "${trimmed}". Generate a social media post based on this.`;
+
+    setAiGenerating(true);
+    try {
+      const result = await generateSocialMediaPost({
+        prompt: refinedPrompt,
+        provider: aiProvider,
+        platform: selectedPlatforms[0] || 'facebook',
+        tone: 'professional',
+        language: 'en',
+        variants_count: 1,
+      });
+      const postsList = Array.isArray(result?.posts)
+        ? result.posts
+        : Array.isArray(result?.data?.posts)
+          ? result.data.posts
+          : Array.isArray(result)
+            ? result
+            : [];
+      if (postsList.length === 0) {
+        throw new Error('No refined content generated. Try a different approach.');
+      }
+
+      setAiGeneratedPosts(postsList);
+      setAiResult(postsList[0]);
+      setAiVariantModalOpen(true);
+      setAiRefinePanelOpen(false);
+      setAiRefinePrompt('');
+      Alert.alert('Refined!', `Generated ${postsList.length} refined variations!`);
+    } catch (err: any) {
+      Alert.alert('Refine Error', err.message || 'Refinement failed.');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  // AI Image-Only Regeneration Handler
+  const handleAiRegenerateImage = async () => {
+    const activeCaption =
+      caption ||
+      (aiGeneratedPosts.length > 0 ? String(aiGeneratedPosts[0].caption || '') : '') ||
+      aiPrompt;
+    if (!activeCaption.trim()) {
+      Alert.alert(
+        'Caption Required',
+        'No caption available. Please add content before regenerating image.'
+      );
+      return;
+    }
+    const activeRefImg = aiRefImage || referenceImageUri;
+    setAiRegeneratingImage(true);
+    try {
+      let newImageUrl = '';
+      if (activeRefImg) {
+        const res = await generateMarketingImageFromReference(activeRefImg, {
+          prompt: `Generate a fresh branded social image for: ${activeCaption.slice(0, 200)}`,
+          provider: aiProvider,
+          company_name: companyName,
+          company_website: companyWebsite,
+          company_email: companyEmail,
+          reference_objects:
+            aiReferenceManualObjects.length > 0 ? aiReferenceManualObjects : undefined,
+        });
+        newImageUrl =
+          res?.imageUrl || res?.url || res?.image_url || res?.data?.imageUrl || res?.data?.url || '';
+      } else {
+        const imagePrompt = `Generate a fresh, high-quality social media image for this post: "${activeCaption.slice(
+          0,
+          200
+        )}"`;
+        const result = await generateSocialMediaPost({
+          prompt: imagePrompt,
+          provider: aiProvider,
+          platform: selectedPlatforms[0] || 'facebook',
+        });
+        const postsList = Array.isArray(result?.posts)
+          ? result.posts
+          : Array.isArray(result?.data?.posts)
+            ? result.data.posts
+            : [];
+        newImageUrl =
+          postsList[0]?.image_url || postsList[0]?.image || result?.image_url || result?.image || '';
+      }
+
+      if (newImageUrl) {
+        setAiGeneratedPosts((prev) =>
+          prev.map((p, idx) =>
+            idx === 0 ? { ...p, image_url: newImageUrl, image: newImageUrl } : p
+          )
+        );
+        setAiResult((prev) => (prev ? { ...prev, image_url: newImageUrl } : null));
+        setImageUrl(newImageUrl);
+        setImagePath(newImageUrl);
+        Alert.alert('Success', 'New image generated successfully!');
+      } else {
+        Alert.alert('Warning', 'AI did not return a new image. Try refining your prompt.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Image regeneration failed.');
+    } finally {
+      setAiRegeneratingImage(false);
+    }
   };
 
   // Download Filename Helper (Matches control-panel reference)
@@ -1419,6 +1607,45 @@ export default function PostEditorScreen() {
     }
   };
 
+  const resetAiReferenceAnalysis = () => {
+    setAiReferenceDetectedObjects([]);
+    setAiReferenceSelectedObjectIds([]);
+    setAiReferenceManualObjects([]);
+    setAiRefAnalysisSummary('');
+    setAiRefAnalysisStatus('idle');
+  };
+
+  const runAiReferenceAnalysis = async (fileUri: string) => {
+    if (!fileUri) return;
+    try {
+      setAiRefAnalysisStatus('loading');
+      setAiAnalyzingRef(true);
+      const result = await analyzeReferenceMedia(fileUri);
+      const detectedObjects: ReferenceDetectedObject[] =
+        result?.detected_objects || result?.data?.detected_objects || [];
+      const summary: string = result?.summary || result?.data?.summary || '';
+
+      setAiReferenceDetectedObjects(detectedObjects);
+      setAiReferenceSelectedObjectIds(detectedObjects.map((obj) => obj.id));
+      setAiRefAnalysisSummary(summary);
+      setAiRefAnalysisStatus(detectedObjects.length > 0 ? 'ready' : 'error');
+
+      if (detectedObjects.length === 0) {
+        Alert.alert(
+          'Notice',
+          'No clear objects were detected. Please upload a sharper reference image.'
+        );
+      }
+    } catch (error: any) {
+      setAiRefAnalysisStatus('error');
+      setAiReferenceDetectedObjects([]);
+      setAiReferenceSelectedObjectIds([]);
+      setAiRefAnalysisSummary('');
+    } finally {
+      setAiAnalyzingRef(false);
+    }
+  };
+
   // Reference Image Picker Handler
   const pickReferenceImage = async () => {
     try {
@@ -1432,6 +1659,8 @@ export default function PostEditorScreen() {
         const uri = result.assets[0].uri;
         setReferenceImageUri(uri);
         setAiRefImage(uri);
+        resetAiReferenceAnalysis();
+        runAiReferenceAnalysis(uri);
       }
     } catch {
       Alert.alert('Error', 'Failed to pick reference image from gallery.');
@@ -1459,6 +1688,8 @@ export default function PostEditorScreen() {
         const uri = result.assets[0].uri;
         setReferenceImageUri(uri);
         setAiRefImage(uri);
+        resetAiReferenceAnalysis();
+        runAiReferenceAnalysis(uri);
       }
     } catch {
       Alert.alert('Error', 'Failed to capture reference image from camera.');
@@ -1535,7 +1766,8 @@ export default function PostEditorScreen() {
     setReferenceImageUri('');
     setAiRefImage('');
     setAiMarketingImageUrl('');
-    setAiReferenceManualObjects([]);
+    setAiReferencePrompt('');
+    resetAiReferenceAnalysis();
     setMarkStrokes([]);
     setCurrentMarkStroke([]);
     setMarkObjectLabel('');
@@ -1621,6 +1853,8 @@ export default function PostEditorScreen() {
         const croppedUri = result.assets[0].uri;
         setReferenceImageUri(croppedUri);
         setAiRefImage(croppedUri);
+        resetAiReferenceAnalysis();
+        runAiReferenceAnalysis(croppedUri);
         Alert.alert('Success', 'Reference image cropped successfully!');
       }
     } catch {
@@ -1877,12 +2111,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-                {
-                  type: 'image',
-                  url: imageUrl,
-                  imagePath: imagePath || imageUrl,
-                },
-              ]
+              {
+                type: 'image',
+                url: imageUrl,
+                imagePath: imagePath || imageUrl,
+              },
+            ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -1976,9 +2210,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -1997,9 +2231,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -2267,70 +2501,101 @@ export default function PostEditorScreen() {
               {/* Reference Image Attachment */}
               <VStack style={{ marginTop: 14 }}>
                 <Text style={styles.inputLabel}>
-                  Optional Reference Image (AI Marketing Image Generator)
+                  Reference Image{' '}
+                  <Text style={{ fontWeight: '400', color: '#64748b' }}>
+                    (Optional but Recommended)
+                  </Text>
                 </Text>
-                {aiRefImage ? (
-                  <Box style={styles.imagePreviewBox}>
-                    <Image source={{ uri: aiRefImage }} style={styles.uploadedImage} />
-                    <TouchableOpacity onPress={() => setAiRefImage('')} style={styles.removeImgBtn}>
-                      <Feather name="trash-2" size={16} color="#fff" />
-                    </TouchableOpacity>
-                  </Box>
-                ) : (
-                  <TouchableOpacity style={styles.uploadBox} onPress={showReferenceImagePicker}>
-                    <Feather name="image" size={24} color="#0052d4" />
-                    <Text style={styles.uploadText}>Attach Reference Image</Text>
-                  </TouchableOpacity>
-                )}
 
-                {aiRefImage ? (
-                  <VStack space="xs" style={{ marginTop: 10 }}>
-                    <HStack space="xs">
+                {aiRefImage || referenceImageUri ? (
+                  <VStack space="sm" style={{ marginTop: 6 }}>
+                    <Box style={styles.imagePreviewBox}>
+                      <Image
+                        source={{ uri: aiRefImage || referenceImageUri }}
+                        style={styles.uploadedImage}
+                      />
                       <TouchableOpacity
-                        style={[styles.primaryBtn, { backgroundColor: '#0284c7', flex: 1 }]}
-                        onPress={handleAnalyzeReferenceMedia}
-                        disabled={aiAnalyzingRef}
+                        onPress={handleClearReferenceImage}
+                        style={styles.removeImgBtn}
                       >
-                        {aiAnalyzingRef ? (
-                          <ActivityIndicator color="#fff" size="small" />
-                        ) : (
-                          <>
-                            <Feather
-                              name="search"
-                              size={14}
-                              color="#fff"
-                              style={{ marginRight: 4 }}
-                            />
-                            <Text style={[styles.primaryBtnText, { fontSize: 12 }]}>
-                              Analyze Media
-                            </Text>
-                          </>
-                        )}
+                        <Feather name="trash-2" size={16} color="#fff" />
+                      </TouchableOpacity>
+                    </Box>
+
+                    {/* Action Buttons: Mark Object, Crop Image, Remove */}
+                    <HStack space="xs" className="mt-2 flex-wrap gap-2">
+                      <TouchableOpacity
+                        style={[
+                          styles.actionIconBtn,
+                          { backgroundColor: '#f0f9ff', borderColor: '#0284c7' },
+                        ]}
+                        onPress={openMarkObjectModal}
+                      >
+                        <Feather name="target" size={14} color="#0284c7" />
+                        <Text style={[styles.actionIconBtnText, { color: '#0284c7' }]}>
+                          Mark Object
+                        </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.primaryBtn, { backgroundColor: '#1f1e22ff', flex: 1 }]}
-                        onPress={() => handleGenerateAiMarketingImage()}
-                        disabled={aiMarketingGenerating}
+                        style={[
+                          styles.actionIconBtn,
+                          { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' },
+                        ]}
+                        onPress={handleCropReferenceImage}
                       >
-                        {aiMarketingGenerating ? (
-                          <ActivityIndicator color="#fff" size="small" />
-                        ) : (
-                          <>
-                            <Feather
-                              name="image"
-                              size={14}
-                              color="#fff"
-                              style={{ marginRight: 4 }}
-                            />
-                            <Text style={[styles.primaryBtnText, { fontSize: 12 }]}>
-                              Generate AI Image
-                            </Text>
-                          </>
-                        )}
+                        <Feather name="crop" size={14} color="#475569" />
+                        <Text style={[styles.actionIconBtnText, { color: '#475569' }]}>
+                          Crop Image
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.actionIconBtn,
+                          { backgroundColor: '#fef2f2', borderColor: '#ef4444' },
+                        ]}
+                        onPress={handleClearReferenceImage}
+                      >
+                        <Feather name="trash-2" size={14} color="#ef4444" />
+                        <Text style={[styles.actionIconBtnText, { color: '#ef4444' }]}>
+                          Remove
+                        </Text>
                       </TouchableOpacity>
                     </HStack>
 
+                    {/* Reference Style Guidance Input */}
+                    <VStack style={{ marginTop: 10 }}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: '600',
+                          color: '#334155',
+                          marginBottom: 4,
+                        }}
+                      >
+                        Reference Style Guidance (Optional)
+                      </Text>
+                      <TextInput
+                        style={[styles.input, { fontSize: 13, backgroundColor: '#f8fafc' }]}
+                        value={aiReferencePrompt}
+                        onChangeText={setAiReferencePrompt}
+                        placeholder="e.g. Place the product in a luxury lifestyle setting with soft natural lighting"
+                        placeholderTextColor="#94a3b8"
+                      />
+                    </VStack>
+
+                    {/* Analysis Loading Indicator */}
+                    {aiRefAnalysisStatus === 'loading' && (
+                      <HStack space="xs" className="mt-2 items-center">
+                        <ActivityIndicator size="small" color="#0052d4" />
+                        <Text style={{ fontSize: 12, color: '#64748b', marginLeft: 4 }}>
+                          Detecting selectable objects...
+                        </Text>
+                      </HStack>
+                    )}
+
+                    {/* Analysis Summary */}
                     {aiRefAnalysisSummary ? (
                       <Box
                         style={{
@@ -2339,16 +2604,118 @@ export default function PostEditorScreen() {
                           borderRadius: 6,
                           borderWidth: 1,
                           borderColor: '#bae6fd',
-                          marginTop: 4,
+                          marginTop: 6,
                         }}
                       >
-                        <Text style={{ fontSize: 11, color: '#0369a1', fontWeight: '600' }}>
-                          🔍 Analysis Summary: {aiRefAnalysisSummary}
+                        <Text style={{ fontSize: 12, color: '#0369a1', fontWeight: '500' }}>
+                          {aiRefAnalysisSummary}
                         </Text>
                       </Box>
                     ) : null}
+
+                    {/* Manually Marked Objects List */}
+                    {aiReferenceManualObjects.length > 0 && (
+                      <VStack style={{ marginTop: 8 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }}>
+                          Manually marked objects
+                        </Text>
+                        <HStack space="xs" className="mt-1 flex-wrap gap-1">
+                          {aiReferenceManualObjects.map((obj) => (
+                            <Box
+                              key={obj.id}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: '#7c3aed',
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 16,
+                                gap: 6,
+                              }}
+                            >
+                              <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '600' }}>
+                                {obj.label}
+                              </Text>
+                              <TouchableOpacity onPress={() => handleRemoveManualObjectMark(obj.id)}>
+                                <Feather name="x" size={13} color="#ffffff" />
+                              </TouchableOpacity>
+                            </Box>
+                          ))}
+                        </HStack>
+                        <Text style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                          Manual marks override auto-detected objects during generation.
+                        </Text>
+                      </VStack>
+                    )}
+
+                    {/* Auto-detected Objects List */}
+                    {aiReferenceDetectedObjects.length > 0 && (
+                      <VStack style={{ marginTop: 8 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }}>
+                          Auto-detected objects
+                        </Text>
+                        <HStack space="xs" className="mt-1 flex-wrap gap-1">
+                          {aiReferenceDetectedObjects.map((obj) => {
+                            const isSelected = aiReferenceSelectedObjectIds.includes(obj.id);
+                            const confStr =
+                              typeof obj.confidence === 'number'
+                                ? ` (${Math.round(obj.confidence * 100)}%)`
+                                : '';
+                            return (
+                              <TouchableOpacity
+                                key={obj.id}
+                                style={{
+                                  paddingHorizontal: 10,
+                                  paddingVertical: 5,
+                                  borderRadius: 16,
+                                  borderWidth: 1,
+                                  borderColor: isSelected ? '#2563eb' : '#cbd5e1',
+                                  backgroundColor: isSelected ? '#2563eb' : '#f8fafc',
+                                }}
+                                onPress={() =>
+                                  setAiReferenceSelectedObjectIds((current) =>
+                                    isSelected
+                                      ? current.filter((id) => id !== obj.id)
+                                      : [...current, obj.id]
+                                  )
+                                }
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: '600',
+                                    color: isSelected ? '#ffffff' : '#334155',
+                                  }}
+                                >
+                                  {obj.label}
+                                  {confStr}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </HStack>
+                        <Text style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                          These are used only when no manual marks exist.
+                        </Text>
+                      </VStack>
+                    )}
                   </VStack>
-                ) : null}
+                ) : (
+                  <TouchableOpacity style={styles.uploadBox} onPress={showReferenceImagePicker}>
+                    <Feather name="image" size={24} color="#0052d4" />
+                    <Text style={styles.uploadText}>Upload Reference Image</Text>
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        color: '#94a3b8',
+                        marginTop: 4,
+                        textAlign: 'center',
+                      }}
+                    >
+                      Upload a product photo to help AI generate more accurate branded images
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </VStack>
 
               {/* Generate Button */}
@@ -2439,7 +2806,7 @@ export default function PostEditorScreen() {
                                   a.click();
                                   URL.revokeObjectURL(a.href);
                                 })
-                                .catch(() => {});
+                                .catch(() => { });
                             }
                           }}
                         >
@@ -3126,7 +3493,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabBtnActive,
+                        styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -3135,7 +3502,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                            styles.subTabTextActive,
+                          styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -3191,9 +3558,9 @@ export default function PostEditorScreen() {
                             ? override.hashtags
                             : hashtagsInput
                               ? hashtagsInput
-                                  .split(',')
-                                  .map((t) => t.trim().replace(/^#/, ''))
-                                  .filter(Boolean)
+                                .split(',')
+                                .map((t) => t.trim().replace(/^#/, ''))
+                                .filter(Boolean)
                               : [],
                         mediaUrl:
                           override.image_url !== undefined
@@ -3217,9 +3584,9 @@ export default function PostEditorScreen() {
                               ? override.hashtags
                               : hashtagsInput
                                 ? hashtagsInput
-                                    .split(',')
-                                    .map((t) => t.trim().replace(/^#/, ''))
-                                    .filter(Boolean)
+                                  .split(',')
+                                  .map((t) => t.trim().replace(/^#/, ''))
+                                  .filter(Boolean)
                                 : [],
                           mediaUrl:
                             override.image_url !== undefined
@@ -3903,10 +4270,10 @@ export default function PostEditorScreen() {
                         const platformEntries = platformSpecificContent[network] || [];
                         const acctEntry = acct
                           ? platformEntries.find(
-                              (e: any) =>
-                                e.account_id ===
-                                (acct.account_id || acct.value || acct.id || acct._id)
-                            )
+                            (e: any) =>
+                              e.account_id ===
+                              (acct.account_id || acct.value || acct.id || acct._id)
+                          )
                           : platformEntries[0];
 
                         const override = platformOverrides[network] || {};
@@ -3932,10 +4299,10 @@ export default function PostEditorScreen() {
                           acctEntry?.hashtags && acctEntry.hashtags.length > 0
                             ? acctEntry.hashtags
                             : override.hashtags ||
-                              hashtagsInput
-                                .split(',')
-                                .map((t) => t.trim().replace(/^#/, ''))
-                                .filter(Boolean);
+                            hashtagsInput
+                              .split(',')
+                              .map((t) => t.trim().replace(/^#/, ''))
+                              .filter(Boolean);
 
                         const activeContentType =
                           acctEntry?.contentType ||
@@ -5122,6 +5489,486 @@ export default function PostEditorScreen() {
                 )}
               </TouchableOpacity>
             </HStack>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AI Variant Modal (Popup) */}
+      <Modal
+        visible={aiVariantModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setAiVariantModalOpen(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 16,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 500,
+              backgroundColor: '#ffffff',
+              borderRadius: 20,
+              overflow: 'hidden',
+              maxHeight: '90%',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {/* Modal Header */}
+            <Box
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 16,
+                backgroundColor: '#f8fafc',
+                borderBottomWidth: 1,
+                borderBottomColor: '#e2e8f0',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <HStack space="xs" className="items-center gap-2">
+                <Box
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 10,
+                    backgroundColor: '#eff6ff',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="sparkles" size={18} color="#2563eb" />
+                </Box>
+                <VStack>
+                  <Heading size="sm" style={{ color: '#0f172a', fontWeight: '800', fontSize: 16 }}>
+                    Choose AI Variant
+                  </Heading>
+                  <Text style={{ fontSize: 11, color: '#64748b' }}>
+                    Pick a variation to apply to composer, download, or refine.
+                  </Text>
+                </VStack>
+              </HStack>
+
+              <HStack space="xs" className="items-center gap-2">
+                {aiGeneratedPosts.length > 1 && (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#f0fdf4',
+                      borderWidth: 1,
+                      borderColor: '#16a34a',
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 14,
+                      gap: 4,
+                    }}
+                    onPress={downloadAllPosts}
+                    disabled={downloadingAll}
+                  >
+                    {downloadingAll ? (
+                      <ActivityIndicator size="small" color="#16a34a" />
+                    ) : (
+                      <Feather name="download" size={13} color="#16a34a" />
+                    )}
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#16a34a' }}>
+                      {downloadingAll ? 'Downloading...' : 'Download All'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={{ padding: 4, backgroundColor: '#f1f5f9', borderRadius: 20 }}
+                  onPress={() => setAiVariantModalOpen(false)}
+                >
+                  <Feather name="x" size={18} color="#475569" />
+                </TouchableOpacity>
+              </HStack>
+            </Box>
+
+            {/* Modal Body / Variants List */}
+            <ScrollView style={{ padding: 16, flex: 1 }} showsVerticalScrollIndicator={false}>
+              {(aiGeneratedPosts.length > 0 ? aiGeneratedPosts : aiResult ? [aiResult] : []).map(
+                (postItem, index) => {
+                  const label = String(postItem.variant_name || `Option ${index + 1}`);
+                  const itemCap = String(postItem.caption || '');
+                  const itemImg = String(postItem.image_url || postItem.image || '').trim();
+                  const itemHashtags = Array.isArray(postItem.hashtags) ? postItem.hashtags : [];
+                  const itemPostId = String(postItem.id || postItem._id || label);
+                  const isDownloading = downloadingPostIds.has(itemPostId);
+                  const isExpanded = !!expandedHashtags[itemPostId];
+
+                  return (
+                    <Box
+                      key={itemPostId + index}
+                      style={{
+                        backgroundColor: '#ffffff',
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: '#e2e8f0',
+                        padding: 14,
+                        marginBottom: 12,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 6,
+                        elevation: 2,
+                      }}
+                    >
+                      {/* Image Preview with overlay download */}
+                      {itemImg ? (
+                        <Box
+                          style={{
+                            width: '100%',
+                            height: 180,
+                            borderRadius: 12,
+                            overflow: 'hidden',
+                            position: 'relative',
+                            backgroundColor: '#f1f5f9',
+                            marginBottom: 10,
+                          }}
+                        >
+                          <TouchableOpacity
+                            activeOpacity={0.9}
+                            style={{ width: '100%', height: '100%' }}
+                            onPress={() => setModalImageUrl(getImageUrl(itemImg))}
+                          >
+                            <Image
+                              source={{ uri: getImageUrl(itemImg) }}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode="cover"
+                            />
+                          </TouchableOpacity>
+
+                          {/* Quick Download Overlay Button */}
+                          <TouchableOpacity
+                            style={{
+                              position: 'absolute',
+                              bottom: 8,
+                              right: 8,
+                              backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                              borderRadius: 20,
+                              padding: 7,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                            onPress={() => downloadPost(postItem, label)}
+                          >
+                            <Feather name="download" size={13} color="#ffffff" />
+                          </TouchableOpacity>
+                        </Box>
+                      ) : null}
+
+                      {/* Header Badge */}
+                      <HStack className="mb-2 items-center justify-between">
+                        <Box
+                          style={{
+                            backgroundColor: '#eff6ff',
+                            paddingHorizontal: 10,
+                            paddingVertical: 3,
+                            borderRadius: 12,
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563eb' }}>
+                            ✨ {label}
+                          </Text>
+                        </Box>
+                        {postItem.platform ? (
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: '600',
+                              color: '#64748b',
+                              textTransform: 'capitalize',
+                            }}
+                          >
+                            {postItem.platform}
+                          </Text>
+                        ) : null}
+                      </HStack>
+
+                      {/* Title & Caption */}
+                      {postItem.title ? (
+                        <Text
+                          style={{
+                            fontWeight: '700',
+                            color: '#0f172a',
+                            fontSize: 14,
+                            marginBottom: 4,
+                          }}
+                        >
+                          {postItem.title}
+                        </Text>
+                      ) : null}
+                      <Text style={{ color: '#334155', fontSize: 13, lineHeight: 20 }}>
+                        {itemCap}
+                      </Text>
+
+                      {/* Hashtags */}
+                      {itemHashtags.length > 0 && (
+                        <VStack style={{ marginTop: 8 }}>
+                          <HStack space="xs" className="flex-wrap gap-1">
+                            {(isExpanded ? itemHashtags : itemHashtags.slice(0, 8)).map(
+                              (tag: string, idx: number) => (
+                                <Box
+                                  key={idx}
+                                  style={{
+                                    backgroundColor: '#f8fafc',
+                                    borderWidth: 1,
+                                    borderColor: '#e2e8f0',
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 2,
+                                    borderRadius: 12,
+                                  }}
+                                >
+                                  <Text
+                                    style={{ fontSize: 11, color: '#475569', fontWeight: '500' }}
+                                  >
+                                    #{tag.replace(/^#/, '')}
+                                  </Text>
+                                </Box>
+                              )
+                            )}
+                            {itemHashtags.length > 8 && (
+                              <TouchableOpacity
+                                onPress={() =>
+                                  setExpandedHashtags((prev) => ({
+                                    ...prev,
+                                    [itemPostId]: !prev[itemPostId],
+                                  }))
+                                }
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 11,
+                                    color: '#2563eb',
+                                    fontWeight: '700',
+                                    alignSelf: 'center',
+                                    paddingHorizontal: 4,
+                                  }}
+                                >
+                                  {isExpanded ? 'Show Less' : `+${itemHashtags.length - 8} more`}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                          </HStack>
+                        </VStack>
+                      )}
+
+                      {/* Per-card Toolbar Actions */}
+                      <HStack className="mt-3 flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                        {/* Copy Text Button */}
+                        <TouchableOpacity
+                          style={[
+                            styles.actionIconBtn,
+                            { paddingHorizontal: 10, paddingVertical: 6 },
+                          ]}
+                          onPress={() => copyPostContent(postItem)}
+                        >
+                          <Feather name="copy" size={13} color="#475569" />
+                          <Text style={[styles.actionIconBtnText, { fontSize: 11 }]}>Copy Text</Text>
+                        </TouchableOpacity>
+
+                        {/* Download Text (.txt) Button */}
+                        <TouchableOpacity
+                          style={[
+                            styles.actionIconBtn,
+                            { paddingHorizontal: 10, paddingVertical: 6 },
+                          ]}
+                          onPress={() => downloadTextContent(postItem, label)}
+                        >
+                          <Feather name="file-text" size={13} color="#0284c7" />
+                          <Text style={[styles.actionIconBtnText, { color: '#0284c7', fontSize: 11 }]}>
+                            .txt
+                          </Text>
+                        </TouchableOpacity>
+
+                        {/* Download Post (Image + Text) Button */}
+                        <TouchableOpacity
+                          style={[
+                            styles.actionIconBtn,
+                            {
+                              borderColor: '#16a34a',
+                              backgroundColor: '#f0fdf4',
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                            },
+                            (downloadingAll || isDownloading) && { opacity: 0.6 },
+                          ]}
+                          disabled={downloadingAll || isDownloading}
+                          onPress={() => downloadPost(postItem, label)}
+                        >
+                          {isDownloading ? (
+                            <ActivityIndicator size="small" color="#16a34a" />
+                          ) : (
+                            <Feather name="download" size={13} color="#16a34a" />
+                          )}
+                          <Text style={[styles.actionIconBtnText, { color: '#16a34a', fontSize: 11 }]}>
+                            Download Post
+                          </Text>
+                        </TouchableOpacity>
+
+                        {/* Use / Apply Button */}
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: '#2563eb',
+                            paddingHorizontal: 14,
+                            paddingVertical: 6,
+                            borderRadius: 14,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                          onPress={() => applyAiContent(postItem)}
+                        >
+                          <Feather name="check-circle" size={13} color="#ffffff" />
+                          <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>
+                            Use
+                          </Text>
+                        </TouchableOpacity>
+                      </HStack>
+                    </Box>
+                  );
+                }
+              )}
+            </ScrollView>
+
+            {/* Refine / Regenerate Panel inside Modal */}
+            {aiRefinePanelOpen && (
+              <Box
+                style={{
+                  padding: 16,
+                  backgroundColor: '#fffbeb',
+                  borderTopWidth: 1,
+                  borderTopColor: '#fef3c7',
+                }}
+              >
+                <Text style={{ fontSize: 12, color: '#92400e', fontWeight: '600', marginBottom: 6 }}>
+                  💡 Tell AI what to change (tone, length, offer, or style):
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      fontSize: 13,
+                      backgroundColor: '#ffffff',
+                      borderColor: '#fde68a',
+                      minHeight: 50,
+                    },
+                  ]}
+                  value={aiRefinePrompt}
+                  onChangeText={setAiRefinePrompt}
+                  placeholder='e.g. "Make it shorter and punchier", "Use a more professional tone"'
+                  placeholderTextColor="#a16207"
+                  multiline
+                />
+                <HStack className="mt-3 justify-end gap-2">
+                  <TouchableOpacity
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: '#d97706',
+                      backgroundColor: '#ffffff',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                    onPress={handleAiRegenerateImage}
+                    disabled={aiRegeneratingImage || aiGenerating}
+                  >
+                    {aiRegeneratingImage ? (
+                      <ActivityIndicator size="small" color="#d97706" />
+                    ) : (
+                      <Feather name="image" size={13} color="#d97706" />
+                    )}
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#d97706' }}>
+                      {aiRegeneratingImage ? 'Generating...' : 'New Image Only'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 14,
+                      backgroundColor: '#d97706',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                    onPress={handleAiRefine}
+                    disabled={aiGenerating || !aiRefinePrompt.trim()}
+                  >
+                    {aiGenerating ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <Feather name="refresh-cw" size={13} color="#ffffff" />
+                    )}
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#ffffff' }}>
+                      {aiGenerating ? 'Regenerating...' : 'Regenerate'}
+                    </Text>
+                  </TouchableOpacity>
+                </HStack>
+              </Box>
+            )}
+
+            {/* Modal Footer Actions */}
+            <Box
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                backgroundColor: '#f8fafc',
+                borderTopWidth: 1,
+                borderTopColor: '#e2e8f0',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingVertical: 6,
+                }}
+                onPress={() => setAiRefinePanelOpen(!aiRefinePanelOpen)}
+              >
+                <Feather
+                  name={aiRefinePanelOpen ? 'chevron-down' : 'sliders'}
+                  size={14}
+                  color="#d97706"
+                />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#d97706' }}>
+                  {aiRefinePanelOpen ? 'Hide Refine' : 'Refine / Regenerate'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 18,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: '#cbd5e1',
+                  backgroundColor: '#ffffff',
+                }}
+                onPress={() => setAiVariantModalOpen(false)}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569' }}>Close</Text>
+              </TouchableOpacity>
+            </Box>
           </View>
         </View>
       </Modal>

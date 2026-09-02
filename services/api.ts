@@ -4,8 +4,8 @@ import Constants from 'expo-constants';
 import { getCurrentUserId } from '@/utils/storage';
 
 const getBaseUrl = () => {
-  const envApiUrl = 'https://api.postbell.in/v1';
-  let baseUrl = envApiUrl || 'http://localhost:4000/v1';
+  const envApiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/v1';
+  let baseUrl = envApiUrl;
 
   if (Platform.OS !== 'web' && (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1'))) {
     const hostUri =
@@ -218,11 +218,23 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      return await response.json();
+      const json = await response.json();
+      if (!response.ok && json && typeof json === 'object') {
+        if (!json.status && !json.statusCode && !json.code) {
+          json.statusCode = response.status;
+        }
+      }
+      return json;
     }
     const text = await response.text();
     try {
-      return JSON.parse(text);
+      const json = JSON.parse(text);
+      if (!response.ok && json && typeof json === 'object') {
+        if (!json.status && !json.statusCode && !json.code) {
+          json.statusCode = response.status;
+        }
+      }
+      return json;
     } catch {
       return {
         success: response.ok,
@@ -254,11 +266,23 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
           }
           const contentType = altResponse.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
-            return await altResponse.json();
+            const json = await altResponse.json();
+            if (!altResponse.ok && json && typeof json === 'object') {
+              if (!json.status && !json.statusCode && !json.code) {
+                json.statusCode = altResponse.status;
+              }
+            }
+            return json;
           }
           const text = await altResponse.text();
           try {
-            return JSON.parse(text);
+            const json = JSON.parse(text);
+            if (!altResponse.ok && json && typeof json === 'object') {
+              if (!json.status && !json.statusCode && !json.code) {
+                json.statusCode = altResponse.status;
+              }
+            }
+            return json;
           } catch {
             return {
               success: altResponse.ok,
