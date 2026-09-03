@@ -722,9 +722,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -764,9 +764,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -847,8 +847,8 @@ export default function PostEditorScreen() {
             typeof postData.image_url === 'string' && postData.image_url.trim()
               ? postData.image_url
               : postData.generalContent?.media?.[0]?.url ||
-                postData.generalContent?.media?.[0]?.imagePath ||
-                '';
+              postData.generalContent?.media?.[0]?.imagePath ||
+              '';
           setImageUrl(initialImg);
           setImagePath(
             postData.image_path || postData.generalContent?.media?.[0]?.imagePath || initialImg
@@ -1211,8 +1211,8 @@ export default function PostEditorScreen() {
         aiReferenceManualObjects.length > 0
           ? aiReferenceManualObjects
           : aiReferenceDetectedObjects.filter((obj) =>
-              aiReferenceSelectedObjectIds.includes(obj.id)
-            );
+            aiReferenceSelectedObjectIds.includes(obj.id)
+          );
 
       if (selectedReferenceObjects.length === 0) {
         Alert.alert(
@@ -1332,12 +1332,36 @@ export default function PostEditorScreen() {
     }
 
     setAiMergedIntoEdit(true);
-    if (target._id || target.id) {
-      setAiDraftPostId(target._id || target.id);
+    const targetId = target._id || target.id;
+    if (targetId) {
+      setAiDraftPostId(targetId);
+    }
+
+    // Create post draft in backend matching panel implementation
+    if (!isEditing && targetId) {
+      const payload = {
+        caption: targetCaption,
+        hashtags,
+        image_url: imgToUse,
+        company_name: target.company_name || companyName || '',
+        company_email: target.company_email || companyEmail || '',
+        company_phone: target.company_phone || companyPhone || '',
+        company_website: target.company_website || companyWebsite || '',
+        platform: platform,
+        tone: target.tone || 'professional',
+        language: target.language || 'en',
+        post_status: 'published',
+        variant_name: target.variant_name || target.title || '',
+        generation_batch_id: target.generation_batch_id || '',
+      };
+      createPost(payload).catch(() => {});
     }
 
     setAiVariantModalOpen(false);
     setActiveTab('manual');
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }, 100);
     Alert.alert(
       'Applied to Manual Post!',
       'AI content, image, and hashtags have been populated into the Manual Post tab.'
@@ -1358,12 +1382,11 @@ export default function PostEditorScreen() {
 
     const refinedPrompt = contextCaption
       ? `Improve this social media post based on the following feedback: "${trimmed}"\n\nOriginal caption: "${contextCaption.slice(
-          0,
-          300
-        )}"\n\nProvide an enhanced version with better engagement.`
-      : `${
-          previousPrompt ? `Original request: "${previousPrompt}". ` : ''
-        }User feedback: "${trimmed}". Generate a social media post based on this.`;
+        0,
+        300
+      )}"\n\nProvide an enhanced version with better engagement.`
+      : `${previousPrompt ? `Original request: "${previousPrompt}". ` : ''
+      }User feedback: "${trimmed}". Generate a social media post based on this.`;
 
     setAiGenerating(true);
     try {
@@ -1374,7 +1397,6 @@ export default function PostEditorScreen() {
         tone: 'professional',
         language: 'en',
         variants_count: 1,
-        reference_image: aiRefImage || undefined,
       });
       const postsList = Array.isArray(result?.posts)
         ? result.posts
@@ -1512,9 +1534,9 @@ export default function PostEditorScreen() {
       ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
       : typeof post.hashtags === 'string'
         ? post.hashtags
-            .split(',')
-            .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
-            .join(' ')
+          .split(',')
+          .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+          .join(' ')
         : '';
     const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
@@ -1535,9 +1557,9 @@ export default function PostEditorScreen() {
         ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
         : typeof post.hashtags === 'string'
           ? post.hashtags
-              .split(',')
-              .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
-              .join(' ')
+            .split(',')
+            .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+            .join(' ')
           : '';
       const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
@@ -1628,9 +1650,9 @@ export default function PostEditorScreen() {
         ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
         : typeof post.hashtags === 'string'
           ? post.hashtags
-              .split(',')
-              .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
-              .join(' ')
+            .split(',')
+            .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+            .join(' ')
           : '';
       const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
@@ -1688,9 +1710,9 @@ export default function PostEditorScreen() {
           ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
           : typeof post.hashtags === 'string'
             ? post.hashtags
-                .split(',')
-                .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
-                .join(' ')
+              .split(',')
+              .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+              .join(' ')
             : '';
         const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
@@ -2241,12 +2263,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-                {
-                  type: 'image',
-                  url: imageUrl,
-                  imagePath: imagePath || imageUrl,
-                },
-              ]
+              {
+                type: 'image',
+                url: imageUrl,
+                imagePath: imagePath || imageUrl,
+              },
+            ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -2340,9 +2362,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -2361,9 +2383,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                        .split(',')
-                        .map((t) => t.trim().replace(/^#/, ''))
-                        .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim().replace(/^#/, ''))
+                      .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -2669,7 +2691,7 @@ export default function PostEditorScreen() {
                           styles.actionIconBtn,
                           { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' },
                         ]}
-                        onPress={() => handleCropReferenceImage('ai')}
+                        onPress={() => openCropForExistingImage(aiRefImage, 'ai')}
                       >
                         <Feather name="crop" size={14} color="#475569" />
                         <Text style={[styles.actionIconBtnText, { color: '#475569' }]}>
@@ -2936,7 +2958,7 @@ export default function PostEditorScreen() {
                                   a.click();
                                   URL.revokeObjectURL(a.href);
                                 })
-                                .catch(() => {});
+                                .catch(() => { });
                             }
                           }}
                         >
@@ -3807,7 +3829,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabBtnActive,
+                        styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -3816,7 +3838,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                            styles.subTabTextActive,
+                          styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -3872,9 +3894,9 @@ export default function PostEditorScreen() {
                             ? override.hashtags
                             : hashtagsInput
                               ? hashtagsInput
-                                  .split(',')
-                                  .map((t) => t.trim().replace(/^#/, ''))
-                                  .filter(Boolean)
+                                .split(',')
+                                .map((t) => t.trim().replace(/^#/, ''))
+                                .filter(Boolean)
                               : [],
                         mediaUrl:
                           override.image_url !== undefined
@@ -3898,9 +3920,9 @@ export default function PostEditorScreen() {
                               ? override.hashtags
                               : hashtagsInput
                                 ? hashtagsInput
-                                    .split(',')
-                                    .map((t) => t.trim().replace(/^#/, ''))
-                                    .filter(Boolean)
+                                  .split(',')
+                                  .map((t) => t.trim().replace(/^#/, ''))
+                                  .filter(Boolean)
                                 : [],
                           mediaUrl:
                             override.image_url !== undefined
@@ -4584,10 +4606,10 @@ export default function PostEditorScreen() {
                         const platformEntries = platformSpecificContent[network] || [];
                         const acctEntry = acct
                           ? platformEntries.find(
-                              (e: any) =>
-                                e.account_id ===
-                                (acct.account_id || acct.value || acct.id || acct._id)
-                            )
+                            (e: any) =>
+                              e.account_id ===
+                              (acct.account_id || acct.value || acct.id || acct._id)
+                          )
                           : platformEntries[0];
 
                         const override = platformOverrides[network] || {};
@@ -4613,10 +4635,10 @@ export default function PostEditorScreen() {
                           acctEntry?.hashtags && acctEntry.hashtags.length > 0
                             ? acctEntry.hashtags
                             : override.hashtags ||
-                              hashtagsInput
-                                .split(',')
-                                .map((t) => t.trim().replace(/^#/, ''))
-                                .filter(Boolean);
+                            hashtagsInput
+                              .split(',')
+                              .map((t) => t.trim().replace(/^#/, ''))
+                              .filter(Boolean);
 
                         const activeContentType =
                           acctEntry?.contentType ||

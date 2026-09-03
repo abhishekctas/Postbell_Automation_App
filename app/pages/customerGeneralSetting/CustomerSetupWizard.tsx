@@ -30,6 +30,7 @@ export interface SetupWizardData {
   company_email: string;
   company_phone: string;
   company_logo: string;
+  company_logo_file?: any;
   company_logo_preview?: string;
   social_media_auth: Record<
     string,
@@ -334,7 +335,7 @@ export default function CustomerSetupWizard() {
     setIsSaving(true);
     try {
       // Local cache
-      const { company_logo_preview, ...dataToSave } = setupData as any;
+      const { company_logo_file, company_logo_preview, ...dataToSave } = setupData as any;
       await AsyncStorage.setItem('customerSetupDraft', JSON.stringify(dataToSave));
 
       // Server progress
