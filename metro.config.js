@@ -15,14 +15,9 @@ const rootNativeDirRegex = new RegExp(
   '^' + __dirname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/(android|ios)/.*'
 );
 
-config.resolver.blockList = [
-  ...defaultBlockList,
-  rootNativeDirRegex,
-  nativeBuildDirsRegex,
-];
+config.resolver.blockList = [...defaultBlockList, rootNativeDirRegex, nativeBuildDirsRegex];
 
 module.exports = withNativeWind(config, {
   input: './global.css',
   inlineRem: 16,
 });
-

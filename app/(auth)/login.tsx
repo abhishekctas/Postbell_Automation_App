@@ -84,8 +84,8 @@ export default function LoginScreen() {
       setStep('otp');
       setResendCooldown(res?.resendAfter || 60);
     } catch (err: any) {
-      console.log(err, "errRequestOTP");
-      const msg = err?.message || (typeof err === 'string' ? err : 'Failed to send OTP. Try again.');
+      const msg =
+        err?.message || (typeof err === 'string' ? err : 'Failed to send OTP. Try again.');
       Alert.alert('Error', msg);
     } finally {
       setIsSubmitting(false);
