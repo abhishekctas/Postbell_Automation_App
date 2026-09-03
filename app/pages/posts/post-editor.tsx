@@ -1332,12 +1332,36 @@ export default function PostEditorScreen() {
     }
 
     setAiMergedIntoEdit(true);
-    if (target._id || target.id) {
-      setAiDraftPostId(target._id || target.id);
+    const targetId = target._id || target.id;
+    if (targetId) {
+      setAiDraftPostId(targetId);
+    }
+
+    // Create post draft in backend matching panel implementation
+    if (!isEditing && targetId) {
+      const payload = {
+        caption: targetCaption,
+        hashtags,
+        image_url: imgToUse,
+        company_name: target.company_name || companyName || '',
+        company_email: target.company_email || companyEmail || '',
+        company_phone: target.company_phone || companyPhone || '',
+        company_website: target.company_website || companyWebsite || '',
+        platform: platform,
+        tone: target.tone || 'professional',
+        language: target.language || 'en',
+        post_status: 'published',
+        variant_name: target.variant_name || target.title || '',
+        generation_batch_id: target.generation_batch_id || '',
+      };
+      createPost(payload).catch(() => {});
     }
 
     setAiVariantModalOpen(false);
     setActiveTab('manual');
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }, 100);
     Alert.alert(
       'Applied to Manual Post!',
       'AI content, image, and hashtags have been populated into the Manual Post tab.'
@@ -1373,7 +1397,6 @@ export default function PostEditorScreen() {
         tone: 'professional',
         language: 'en',
         variants_count: 1,
-        reference_image: aiRefImage || undefined,
       });
       const postsList = Array.isArray(result?.posts)
         ? result.posts
@@ -2668,7 +2691,7 @@ export default function PostEditorScreen() {
                           styles.actionIconBtn,
                           { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' },
                         ]}
-                        onPress={() => handleCropReferenceImage('ai')}
+                        onPress={() => openCropForExistingImage(aiRefImage, 'ai')}
                       >
                         <Feather name="crop" size={14} color="#475569" />
                         <Text style={[styles.actionIconBtnText, { color: '#475569' }]}>
