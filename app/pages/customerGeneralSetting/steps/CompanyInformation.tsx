@@ -45,8 +45,12 @@ export default function CompanyInformation({
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const uri = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
-        handleChange('company_logo', uri);
+        const fileObj = {
+          uri: asset.uri,
+          name: asset.fileName || asset.uri.split('/').pop() || 'company_logo.jpg',
+          type: asset.mimeType || 'image/jpeg',
+        };
+        handleChange('company_logo_file', fileObj);
         handleChange('company_logo_preview', asset.uri);
       }
     } catch (err: any) {
@@ -57,11 +61,13 @@ export default function CompanyInformation({
   const handleRemoveLogo = () => {
     handleChange('company_logo', '');
     handleChange('company_logo_preview', '');
+    handleChange('company_logo_file', null);
   };
 
   const handleAiLogoSelected = (filename: string, previewUrl: string) => {
     handleChange('company_logo', filename);
     handleChange('company_logo_preview', previewUrl);
+    handleChange('company_logo_file', null);
   };
 
   const logoPreview =

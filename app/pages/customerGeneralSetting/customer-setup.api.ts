@@ -80,17 +80,35 @@ export const getCustomerConfig = async (): Promise<any> => {
 };
 
 /**
+ * Build FormData from setupData.
+ * - Appends company_logo as a file if company_logo_file exists.
+ * - Strips local-only preview fields before sending.
+ * - Sends remaining data as JSON string in a 'data' field.
+ */
+const buildFormData = (data: any): FormData => {
+  const formData = new FormData();
+
+  if (data?.company_logo_file) {
+    formData.append('company_logo', data.company_logo_file as any);
+  }
+
+  const { company_logo_file, company_logo_preview, ...rest } = data || {};
+  formData.append('data', JSON.stringify(rest));
+
+  return formData;
+};
+
+/**
  * Save current step progress
  */
 export const saveCurrentStep = async (step: number, data: any): Promise<any> => {
   try {
-    const payload = {
-      step,
-      ...data,
-    };
+    const formData = buildFormData(data);
+    formData.append('step', String(step));
+
     const response = await fetchWithAuth(`${CUSTOMER_SETUP_BASE}/save-customer-configuration`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: formData,
     });
     return response;
   } catch (error: any) {
@@ -106,9 +124,10 @@ export const saveCurrentStep = async (step: number, data: any): Promise<any> => 
  */
 export const updateCustomerConfig = async (data: any): Promise<any> => {
   try {
+    const formData = buildFormData(data);
     const response = await fetchWithAuth(`${CUSTOMER_SETUP_BASE}/save-customer-configuration`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: formData,
     });
     return response;
   } catch (error: any) {
@@ -124,9 +143,10 @@ export const updateCustomerConfig = async (data: any): Promise<any> => {
  */
 export const activeWorkspace = async (data: any): Promise<any> => {
   try {
+    const formData = buildFormData(data);
     const response = await fetchWithAuth(`${CUSTOMER_SETUP_BASE}/complete-customer-setup`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: formData,
     });
     return response;
   } catch (error: any) {
