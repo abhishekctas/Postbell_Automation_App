@@ -1214,13 +1214,13 @@ export default function PostEditorScreen() {
             aiReferenceSelectedObjectIds.includes(obj.id)
           );
 
-      if (selectedReferenceObjects.length === 0) {
-        Alert.alert(
-          'Object Selection Required',
-          'Please select or mark at least one object before generating.'
-        );
-        return;
-      }
+      // if (selectedReferenceObjects.length === 0) {
+      //   Alert.alert(
+      //     'Object Selection Required',
+      //     'Please select or mark at least one object before generating.'
+      //   );
+      //   return;
+      // }
     }
 
     setAiGenerating(true);
@@ -1318,18 +1318,7 @@ export default function PostEditorScreen() {
     if (target.company_email) setCompanyEmail(target.company_email);
     if (target.company_phone) setCompanyPhone(target.company_phone);
 
-    if (!selectedPlatforms.includes(platform)) {
-      setSelectedPlatforms([platform]);
-    }
-
-    // Populate platform specific entries for manual posting tab
-    handlePlatformSpecificChange(platform, '', 'caption', targetCaption);
-    if (imgToUse) {
-      handlePlatformSpecificChange(platform, '', 'mediaUrl', imgToUse);
-    }
-    if (hashtags.length > 0) {
-      handlePlatformSpecificChange(platform, '', 'hashtags', hashtags);
-    }
+    setSelectedPlatforms([]);
 
     setAiMergedIntoEdit(true);
     const targetId = target._id || target.id;
@@ -1354,7 +1343,7 @@ export default function PostEditorScreen() {
         variant_name: target.variant_name || target.title || '',
         generation_batch_id: target.generation_batch_id || '',
       };
-      createPost(payload).catch(() => {});
+      createPost(payload).catch(() => { });
     }
 
     setAiVariantModalOpen(false);
@@ -1759,12 +1748,12 @@ export default function PostEditorScreen() {
       setAiRefAnalysisSummary(summary);
       setAiRefAnalysisStatus(detectedObjects.length > 0 ? 'ready' : 'error');
 
-      if (detectedObjects.length === 0) {
-        Alert.alert(
-          'Notice',
-          'No clear objects were detected. Please upload a sharper reference image.'
-        );
-      }
+      // if (detectedObjects.length === 0) {
+      //   Alert.alert(
+      //     'Notice',
+      //     'No clear objects were detected. Please upload a sharper reference image.'
+      //   );
+      // }
     } catch (error: any) {
       setAiRefAnalysisStatus('error');
       setAiReferenceDetectedObjects([]);
