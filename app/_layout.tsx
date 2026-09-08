@@ -11,6 +11,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AuthProvider from '@/context/AuthProvider';
 import * as SplashScreen from 'expo-splash-screen';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 // Prevent auto-hiding the splash screen before assets and fonts are loaded
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* ignore error if already prevented or in dev reload */
@@ -58,7 +60,9 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <MainLayout />
+          <SafeAreaProvider>
+            <MainLayout />
+          </SafeAreaProvider>
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>

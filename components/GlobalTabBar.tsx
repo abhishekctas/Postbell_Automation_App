@@ -271,7 +271,14 @@ export default function GlobalTabBar() {
           style={[
             styles.tabBarContainer,
             {
-              bottom: Platform.OS === 'ios' ? insets.bottom / 2 + 8 : 4,
+              bottom:
+                Platform.OS === 'ios'
+                  ? insets.bottom > 0
+                    ? insets.bottom / 2 + 8
+                    : 12
+                  : insets.bottom > 0
+                    ? insets.bottom + 4
+                    : 6,
               paddingBottom: Platform.OS === 'ios' ? insets.bottom / 2 : 0,
             },
           ]}
