@@ -133,6 +133,13 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
     '/ai',
     '/generate-post',
     '/generate-marketing-image-from-reference',
+    '/create-generated-post',
+    '/update-generated-post',
+    '/delete-generated-post',
+    '/publish-generated-post',
+    '/get-generated-post',
+    '/generated-posts',
+    '/social-post',
   ];
 
   const isAuthUrl = authUrls.some((authUrl) => url.includes(authUrl));
@@ -244,14 +251,21 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
       };
     }
   } catch (err: any) {
-    console.error('API Request Failed', { url: finalUrl, method, message: err?.message });
-
     // Fallback retry for Android Emulator or Host IP mismatch
     if (err?.message === 'Network request failed') {
+      const hostUri =
+        Constants.expoConfig?.hostUri ||
+        Constants.manifest?.hostUri ||
+        (Constants as any).manifest2?.extra?.expoGo?.developer?.tool;
+      const hostIp = hostUri && typeof hostUri === 'string' ? hostUri.split(':')[0] : null;
+
       const candidates = [
         finalUrl.includes('10.0.2.2')
           ? null
           : finalUrl.replace(/http:\/\/[^/]+/, 'http://10.0.2.2:4000'),
+        hostIp && !finalUrl.includes(hostIp)
+          ? finalUrl.replace(/http:\/\/[^/]+/, `http://${hostIp}:4000`)
+          : null,
         finalUrl.includes('localhost')
           ? null
           : finalUrl.replace(/http:\/\/[^/]+/, 'http://localhost:4000'),
@@ -260,7 +274,15 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
       for (const altUrl of candidates) {
         try {
           console.log('Retrying with alternate host IP:', altUrl);
-          const altResponse = await fetch(altUrl, config);
+          let altConfig = config;
+          if (options.body && typeof options.body === 'object' && (options.body as any)._parts) {
+            const freshFormData = new FormData();
+            (options.body as any)._parts.forEach(([key, val]: [string, any]) => {
+              freshFormData.append(key, val);
+            });
+            altConfig = { ...config, body: freshFormData };
+          }
+          const altResponse = await fetch(altUrl, altConfig);
           if (altResponse.status === 401) {
             return { success: false, statusCode: 401, message: 'Unauthorized' };
           }
@@ -296,6 +318,8 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
         }
       }
     }
+
+    console.error('API Request Failed', { url: finalUrl, method, message: err?.message });
 
     return {
       success: false,

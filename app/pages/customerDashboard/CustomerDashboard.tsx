@@ -649,7 +649,7 @@ export default function CustomerDashboard() {
                 return (
                   <View
                     key={plat.platform || platIdx}
-                    style={[styles.card, styles.shadowCard, { paddingVertical: 14 }]}
+                    style={[styles.card, styles.shadowCard, { paddingVertical: 10 }]}
                   >
                     <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                       <HStack space="sm" style={{ alignItems: 'center' }}>
@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 48,
-    paddingBottom: 24,
+    paddingBottom: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     position: 'relative',
@@ -1121,7 +1121,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
@@ -1133,7 +1134,7 @@ const styles = StyleSheet.create({
   statCardTop: {
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   statIconContainer: {
     width: 32,

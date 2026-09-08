@@ -1137,7 +1137,7 @@ export default function PostDetailsScreen() {
 // ─── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   headerGradient: {
-    paddingBottom: 4,
+    paddingBottom: 0,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     overflow: 'hidden',

@@ -79,9 +79,10 @@ export default function PostEditorScreen() {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ai' | 'manual'>(
-    tab === 'ai' ? 'ai' : tab === 'manual' ? 'manual' : isEditing ? 'manual' : 'ai'
+  const [savingAction, setSavingAction] = useState<'draft' | 'published' | 'scheduled' | null>(
+    null
   );
+  const [activeTab, setActiveTab] = useState<'ai' | 'manual'>(tab === 'ai' ? 'ai' : 'manual');
   const [previewTab, setPreviewTab] = useState<string>('all');
 
   // AI Auto Post State
@@ -722,9 +723,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -764,9 +765,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               mediaUrl:
                 override.image_url !== undefined ? override.image_url : imageUrl || imagePath || '',
@@ -847,8 +848,8 @@ export default function PostEditorScreen() {
             typeof postData.image_url === 'string' && postData.image_url.trim()
               ? postData.image_url
               : postData.generalContent?.media?.[0]?.url ||
-              postData.generalContent?.media?.[0]?.imagePath ||
-              '';
+                postData.generalContent?.media?.[0]?.imagePath ||
+                '';
           setImageUrl(initialImg);
           setImagePath(
             postData.image_path || postData.generalContent?.media?.[0]?.imagePath || initialImg
@@ -1211,16 +1212,16 @@ export default function PostEditorScreen() {
         aiReferenceManualObjects.length > 0
           ? aiReferenceManualObjects
           : aiReferenceDetectedObjects.filter((obj) =>
-            aiReferenceSelectedObjectIds.includes(obj.id)
-          );
+              aiReferenceSelectedObjectIds.includes(obj.id)
+            );
 
-      if (selectedReferenceObjects.length === 0) {
-        Alert.alert(
-          'Object Selection Required',
-          'Please select or mark at least one object before generating.'
-        );
-        return;
-      }
+      // if (selectedReferenceObjects.length === 0) {
+      //   Alert.alert(
+      //     'Object Selection Required',
+      //     'Please select or mark at least one object before generating.'
+      //   );
+      //   return;
+      // }
     }
 
     setAiGenerating(true);
@@ -1318,18 +1319,7 @@ export default function PostEditorScreen() {
     if (target.company_email) setCompanyEmail(target.company_email);
     if (target.company_phone) setCompanyPhone(target.company_phone);
 
-    if (!selectedPlatforms.includes(platform)) {
-      setSelectedPlatforms([platform]);
-    }
-
-    // Populate platform specific entries for manual posting tab
-    handlePlatformSpecificChange(platform, '', 'caption', targetCaption);
-    if (imgToUse) {
-      handlePlatformSpecificChange(platform, '', 'mediaUrl', imgToUse);
-    }
-    if (hashtags.length > 0) {
-      handlePlatformSpecificChange(platform, '', 'hashtags', hashtags);
-    }
+    setSelectedPlatforms([]);
 
     setAiMergedIntoEdit(true);
     const targetId = target._id || target.id;
@@ -1350,14 +1340,23 @@ export default function PostEditorScreen() {
         platform: platform,
         tone: target.tone || 'professional',
         language: target.language || 'en',
-        post_status: 'published',
+        post_status: 'draft',
+        isDraft: true,
         variant_name: target.variant_name || target.title || '',
         generation_batch_id: target.generation_batch_id || '',
       };
-      createPost(payload).catch(() => {});
+      createPost(payload)
+        .then((created) => {
+          const createdId = created?._id || created?.id || created?.data?._id || created?.data?.id;
+          if (createdId) {
+            setAiDraftPostId(createdId);
+          }
+        })
+        .catch(() => {});
     }
 
     setAiVariantModalOpen(false);
+    setErrors({});
     setActiveTab('manual');
     setTimeout(() => {
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
@@ -1382,11 +1381,12 @@ export default function PostEditorScreen() {
 
     const refinedPrompt = contextCaption
       ? `Improve this social media post based on the following feedback: "${trimmed}"\n\nOriginal caption: "${contextCaption.slice(
-        0,
-        300
-      )}"\n\nProvide an enhanced version with better engagement.`
-      : `${previousPrompt ? `Original request: "${previousPrompt}". ` : ''
-      }User feedback: "${trimmed}". Generate a social media post based on this.`;
+          0,
+          300
+        )}"\n\nProvide an enhanced version with better engagement.`
+      : `${
+          previousPrompt ? `Original request: "${previousPrompt}". ` : ''
+        }User feedback: "${trimmed}". Generate a social media post based on this.`;
 
     setAiGenerating(true);
     try {
@@ -1534,9 +1534,9 @@ export default function PostEditorScreen() {
       ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
       : typeof post.hashtags === 'string'
         ? post.hashtags
-          .split(',')
-          .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
-          .join(' ')
+            .split(',')
+            .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+            .join(' ')
         : '';
     const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
@@ -1557,9 +1557,9 @@ export default function PostEditorScreen() {
         ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
         : typeof post.hashtags === 'string'
           ? post.hashtags
-            .split(',')
-            .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
-            .join(' ')
+              .split(',')
+              .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+              .join(' ')
           : '';
       const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
@@ -1650,9 +1650,9 @@ export default function PostEditorScreen() {
         ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
         : typeof post.hashtags === 'string'
           ? post.hashtags
-            .split(',')
-            .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
-            .join(' ')
+              .split(',')
+              .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+              .join(' ')
           : '';
       const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
@@ -1710,9 +1710,9 @@ export default function PostEditorScreen() {
           ? post.hashtags.map((t: string) => `#${t.replace(/^#/, '')}`).join(' ')
           : typeof post.hashtags === 'string'
             ? post.hashtags
-              .split(',')
-              .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
-              .join(' ')
+                .split(',')
+                .map((t: string) => `#${t.trim().replace(/^#/, '')}`)
+                .join(' ')
             : '';
         const fullText = allHashtags ? `${caption}\n\n${allHashtags}` : caption;
 
@@ -1759,12 +1759,12 @@ export default function PostEditorScreen() {
       setAiRefAnalysisSummary(summary);
       setAiRefAnalysisStatus(detectedObjects.length > 0 ? 'ready' : 'error');
 
-      if (detectedObjects.length === 0) {
-        Alert.alert(
-          'Notice',
-          'No clear objects were detected. Please upload a sharper reference image.'
-        );
-      }
+      // if (detectedObjects.length === 0) {
+      //   Alert.alert(
+      //     'Notice',
+      //     'No clear objects were detected. Please upload a sharper reference image.'
+      //   );
+      // }
     } catch (error: any) {
       setAiRefAnalysisStatus('error');
       setAiReferenceDetectedObjects([]);
@@ -1983,36 +1983,36 @@ export default function PostEditorScreen() {
   };
 
   // Crop Reference Image Handler
-  const handleCropReferenceImage = async (target?: 'ai' | 'manual') => {
-    const t = target || activeTab;
-    const targetUri = t === 'ai' ? aiRefImage : referenceImageUri;
-    if (!targetUri) {
-      Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
-      return;
-    }
+  // const handleCropReferenceImage = async (target?: 'ai' | 'manual') => {
+  //   const t = target || activeTab;
+  //   const targetUri = t === 'ai' ? aiRefImage : referenceImageUri;
+  //   if (!targetUri) {
+  //     Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
+  //     return;
+  //   }
 
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.9,
-      });
+  //   try {
+  //     const result = await ImagePicker.launchImageLibraryAsync({
+  //       mediaTypes: (ImagePicker as any).MediaType?.Images || ImagePicker.MediaTypeOptions.Images,
+  //       allowsEditing: true,
+  //       quality: 0.9,
+  //     });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const croppedUri = result.assets[0].uri;
-        if (t === 'ai') {
-          setAiRefImage(croppedUri);
-          resetAiReferenceAnalysis();
-          runAiReferenceAnalysis(croppedUri);
-        } else {
-          setReferenceImageUri(croppedUri);
-        }
-        Alert.alert('Success', 'Reference image cropped successfully!');
-      }
-    } catch {
-      Alert.alert('Error', 'Failed to crop reference image.');
-    }
-  };
+  //     if (!result.canceled && result.assets && result.assets.length > 0) {
+  //       const croppedUri = result.assets[0].uri;
+  //       if (t === 'ai') {
+  //         setAiRefImage(croppedUri);
+  //         resetAiReferenceAnalysis();
+  //         runAiReferenceAnalysis(croppedUri);
+  //       } else {
+  //         setReferenceImageUri(croppedUri);
+  //       }
+  //       Alert.alert('Success', 'Reference image cropped successfully!');
+  //     }
+  //   } catch {
+  //     Alert.alert('Error', 'Failed to crop reference image.');
+  //   }
+  // };
 
   // AI Marketing Image from Reference Handler
   const handleGenerateAiMarketingImage = async (customUri?: string): Promise<void> => {
@@ -2032,11 +2032,22 @@ export default function PostEditorScreen() {
         reference_objects:
           aiReferenceManualObjects.length > 0 ? aiReferenceManualObjects : undefined,
       });
-      const generatedUrl =
-        res?.imageUrl || res?.url || res?.image_url || res?.data?.imageUrl || res?.data?.url;
+      const rawGeneratedUrl =
+        res?.imageUrl ||
+        res?.url ||
+        res?.image_url ||
+        res?.image ||
+        res?.imagePath ||
+        res?.data?.imageUrl ||
+        res?.data?.url ||
+        res?.data?.image_url ||
+        res?.data?.image ||
+        res?.data?.imagePath;
+      const generatedUrl = getImageUrl(rawGeneratedUrl) || rawGeneratedUrl;
       if (generatedUrl) {
         setAiMarketingImageUrl(generatedUrl);
         setImageUrl(generatedUrl);
+        setImagePath(generatedUrl);
         Alert.alert('Success', 'AI Marketing Image generated and applied to post!');
       } else {
         Alert.alert('AI Image Generation', 'Image generation completed successfully.');
@@ -2049,34 +2060,34 @@ export default function PostEditorScreen() {
   };
 
   // AI Reference Media Analysis Handler
-  const handleAnalyzeReferenceMedia = async () => {
-    if (!aiRefImage) {
-      Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
-      return;
-    }
-    setAiAnalyzingRef(true);
-    try {
-      const res = await analyzeReferenceMedia(aiRefImage);
-      const summary =
-        res?.summary ||
-        res?.data?.summary ||
-        res?.message ||
-        'Reference media analyzed successfully.';
-      setAiRefAnalysisSummary(summary);
-      if (summary) {
-        setAiPrompt((prev) =>
-          prev
-            ? `${prev}\n\n[Reference Analysis: ${summary}]`
-            : `Create a post based on reference media: ${summary}`
-        );
-      }
-      Alert.alert('Analysis Complete', summary);
-    } catch (err: any) {
-      Alert.alert('Analysis Error', err.message || 'Failed to analyze reference media.');
-    } finally {
-      setAiAnalyzingRef(false);
-    }
-  };
+  // const handleAnalyzeReferenceMedia = async () => {
+  //   if (!aiRefImage) {
+  //     Alert.alert('Reference Image Needed', 'Please attach a reference image first.');
+  //     return;
+  //   }
+  //   setAiAnalyzingRef(true);
+  //   try {
+  //     const res = await analyzeReferenceMedia(aiRefImage);
+  //     const summary =
+  //       res?.summary ||
+  //       res?.data?.summary ||
+  //       res?.message ||
+  //       'Reference media analyzed successfully.';
+  //     setAiRefAnalysisSummary(summary);
+  //     if (summary) {
+  //       setAiPrompt((prev) =>
+  //         prev
+  //           ? `${prev}\n\n[Reference Analysis: ${summary}]`
+  //           : `Create a post based on reference media: ${summary}`
+  //       );
+  //     }
+  //     Alert.alert('Analysis Complete', summary);
+  //   } catch (err: any) {
+  //     Alert.alert('Analysis Error', err.message || 'Failed to analyze reference media.');
+  //   } finally {
+  //     setAiAnalyzingRef(false);
+  //   }
+  // };
 
   // Form Validation
   const validateForm = () => {
@@ -2127,8 +2138,9 @@ export default function PostEditorScreen() {
       scrollToTop();
       return;
     }
-
+    const action = targetStatus || (isScheduled ? 'scheduled' : 'draft');
     setSaving(true);
+    setSavingAction(action);
     try {
       const hashtagsArray = hashtagsInput
         .split(',')
@@ -2263,12 +2275,12 @@ export default function PostEditorScreen() {
           link: formattedWebsite || '',
           media: imageUrl
             ? [
-              {
-                type: 'image',
-                url: imageUrl,
-                imagePath: imagePath || imageUrl,
-              },
-            ]
+                {
+                  type: 'image',
+                  url: imageUrl,
+                  imagePath: imagePath || imageUrl,
+                },
+              ]
             : [],
         },
         platformSpecificContent: platformSpecificContentObj,
@@ -2292,6 +2304,19 @@ export default function PostEditorScreen() {
         Alert.alert('Success', 'Post updated successfully!', [
           { text: 'OK', onPress: () => router.push('/pages/posts/posts') },
         ]);
+      } else if (aiDraftPostId) {
+        const res = await updatePost(aiDraftPostId, payload);
+        if (
+          res &&
+          (res.success === false ||
+            (res.code && res.code !== 200 && res.code !== 201) ||
+            (res.statusCode && res.statusCode >= 400))
+        ) {
+          throw new Error(res.message || 'Failed to save post');
+        }
+        Alert.alert('Success', 'Post saved successfully!', [
+          { text: 'OK', onPress: () => router.push('/pages/posts/posts') },
+        ]);
       } else {
         const created = await createPost(payload);
         if (
@@ -2312,6 +2337,7 @@ export default function PostEditorScreen() {
       Alert.alert('Error', err.message || 'Failed to save post.');
     } finally {
       setSaving(false);
+      setSavingAction(null);
     }
   };
 
@@ -2362,9 +2388,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -2383,9 +2409,9 @@ export default function PostEditorScreen() {
                   ? override.hashtags
                   : hashtagsInput
                     ? hashtagsInput
-                      .split(',')
-                      .map((t) => t.trim().replace(/^#/, ''))
-                      .filter(Boolean)
+                        .split(',')
+                        .map((t) => t.trim().replace(/^#/, ''))
+                        .filter(Boolean)
                     : [],
               link: override.link || companyWebsite || '',
               mediaUrl:
@@ -2514,7 +2540,7 @@ export default function PostEditorScreen() {
                 colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)']}
                 style={styles.headerSaveBtnGradient}
               >
-                {saving ? (
+                {saving && savingAction === 'published' ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
@@ -2527,7 +2553,7 @@ export default function PostEditorScreen() {
           </HStack>
 
           {/* Main Tab Bar (AI Auto Post vs Manual Posting) */}
-          <HStack style={styles.mainTabBar} className="mt-3">
+          <HStack style={styles.mainTabBar}>
             <TouchableOpacity
               style={[styles.mainTabBtn, activeTab === 'ai' && styles.mainTabBtnActive]}
               onPress={() => setActiveTab('ai')}
@@ -2574,7 +2600,7 @@ export default function PostEditorScreen() {
         {/* TAB 1: AI AUTO POST */}
         {/* ================================================================= */}
         {activeTab === 'ai' && (
-          <VStack space="md">
+          <VStack space="md" style={{ marginBottom: 70 }}>
             <Box style={styles.card}>
               <HStack space="xs" className="items-center"></HStack>
               <Text style={styles.cardSub}>
@@ -2958,7 +2984,7 @@ export default function PostEditorScreen() {
                                   a.click();
                                   URL.revokeObjectURL(a.href);
                                 })
-                                .catch(() => { });
+                                .catch(() => {});
                             }
                           }}
                         >
@@ -3495,7 +3521,7 @@ export default function PostEditorScreen() {
                       </Text>
                       <Box style={styles.imagePreviewBox}>
                         <Image
-                          source={{ uri: aiMarketingImageUrl }}
+                          source={{ uri: getImageUrl(aiMarketingImageUrl) || aiMarketingImageUrl }}
                           style={styles.uploadedImage}
                           resizeMode="cover"
                         />
@@ -3504,7 +3530,9 @@ export default function PostEditorScreen() {
                         <TouchableOpacity
                           style={[styles.primaryBtn, { backgroundColor: '#2563eb', marginTop: 10 }]}
                           onPress={() => {
-                            setImageUrl(aiMarketingImageUrl);
+                            const fullUrl = getImageUrl(aiMarketingImageUrl) || aiMarketingImageUrl;
+                            setImageUrl(fullUrl);
+                            setImagePath(fullUrl);
                             Alert.alert('Applied!', 'AI generated image set as post media.');
                           }}
                         >
@@ -3829,7 +3857,7 @@ export default function PostEditorScreen() {
                         styles.subTabBtn,
                         (activePlatformTab === p ||
                           (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                        styles.subTabBtnActive,
+                          styles.subTabBtnActive,
                       ]}
                       onPress={() => setActivePlatformTab(p)}
                     >
@@ -3838,7 +3866,7 @@ export default function PostEditorScreen() {
                           styles.subTabText,
                           (activePlatformTab === p ||
                             (activePlatformTab === 'general' && selectedPlatforms[0] === p)) &&
-                          styles.subTabTextActive,
+                            styles.subTabTextActive,
                         ]}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -3894,9 +3922,9 @@ export default function PostEditorScreen() {
                             ? override.hashtags
                             : hashtagsInput
                               ? hashtagsInput
-                                .split(',')
-                                .map((t) => t.trim().replace(/^#/, ''))
-                                .filter(Boolean)
+                                  .split(',')
+                                  .map((t) => t.trim().replace(/^#/, ''))
+                                  .filter(Boolean)
                               : [],
                         mediaUrl:
                           override.image_url !== undefined
@@ -3920,9 +3948,9 @@ export default function PostEditorScreen() {
                               ? override.hashtags
                               : hashtagsInput
                                 ? hashtagsInput
-                                  .split(',')
-                                  .map((t) => t.trim().replace(/^#/, ''))
-                                  .filter(Boolean)
+                                    .split(',')
+                                    .map((t) => t.trim().replace(/^#/, ''))
+                                    .filter(Boolean)
                                 : [],
                           mediaUrl:
                             override.image_url !== undefined
@@ -4606,10 +4634,10 @@ export default function PostEditorScreen() {
                         const platformEntries = platformSpecificContent[network] || [];
                         const acctEntry = acct
                           ? platformEntries.find(
-                            (e: any) =>
-                              e.account_id ===
-                              (acct.account_id || acct.value || acct.id || acct._id)
-                          )
+                              (e: any) =>
+                                e.account_id ===
+                                (acct.account_id || acct.value || acct.id || acct._id)
+                            )
                           : platformEntries[0];
 
                         const override = platformOverrides[network] || {};
@@ -4635,10 +4663,10 @@ export default function PostEditorScreen() {
                           acctEntry?.hashtags && acctEntry.hashtags.length > 0
                             ? acctEntry.hashtags
                             : override.hashtags ||
-                            hashtagsInput
-                              .split(',')
-                              .map((t) => t.trim().replace(/^#/, ''))
-                              .filter(Boolean);
+                              hashtagsInput
+                                .split(',')
+                                .map((t) => t.trim().replace(/^#/, ''))
+                                .filter(Boolean);
 
                         const activeContentType =
                           acctEntry?.contentType ||
@@ -4894,13 +4922,13 @@ export default function PostEditorScreen() {
             </Box>
 
             {/* Save & Action Buttons Bar */}
-            <VStack space="sm" style={{ marginTop: 8, marginBottom: 40 }}>
+            <VStack space="sm" style={{ marginTop: 8, marginBottom: 50 }}>
               <TouchableOpacity
                 style={[styles.primaryBtn, { backgroundColor: '#0052d4' }]}
                 onPress={() => handleSavePost(isScheduled ? 'scheduled' : 'draft')}
                 disabled={saving}
               >
-                {saving ? (
+                {saving && (savingAction === 'draft' || savingAction === 'scheduled') ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.primaryBtnText}>
@@ -4914,8 +4942,14 @@ export default function PostEditorScreen() {
                 onPress={() => handleSavePost('published')}
                 disabled={saving}
               >
-                <Feather name="send" size={16} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.primaryBtnText}>Publish Post Now</Text>
+                {saving && savingAction === 'published' ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Feather name="send" size={16} color="#fff" style={{ marginRight: 6 }} />
+                    <Text style={styles.primaryBtnText}>Publish Post Now</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </VStack>
           </VStack>
@@ -6407,7 +6441,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerGradient: {
-    paddingBottom: 4,
+    paddingBottom: 0,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     overflow: 'hidden',
@@ -6477,6 +6511,7 @@ const styles = StyleSheet.create({
     padding: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+    marginTop: 1,
   },
   mainTabBtn: {
     flex: 1,
@@ -6516,7 +6551,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
-    marginBottom: 50,
   },
   cardTitle: {
     color: '#0f172a',
@@ -6590,7 +6624,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   uploadBox: {
-    height: 110,
     borderWidth: 1,
     borderColor: '#cbd5e1',
     borderStyle: 'dashed',
@@ -6598,6 +6631,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 12,
   },
   uploadText: {
     color: '#0052d4',

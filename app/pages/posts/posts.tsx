@@ -419,7 +419,7 @@ export default function PostsScreen() {
 
         <Box className="px-5 pb-3 pt-12">
           {/* Top Row: Title + Add Button */}
-          <HStack className="mb-1 items-center justify-between">
+          <HStack className="items-center justify-between">
             <VStack style={{ flex: 1 }}>
               <HStack space="xs" className="items-center">
                 <Heading size="xl" style={styles.headerTitle}>
@@ -851,7 +851,7 @@ export default function PostsScreen() {
 
 const styles = StyleSheet.create({
   headerGradient: {
-    paddingBottom: 6,
+    paddingBottom: 2,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     overflow: 'hidden',
@@ -884,7 +884,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '800',
     fontSize: 24,
-    letterSpacing: -0.3,
+    lineHeight: 20,
   },
   headerSubtitle: {
     color: 'rgba(255, 255, 255, 0.85)',
@@ -1279,9 +1279,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#ffffff',
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     shadowColor: '#0f172a',
