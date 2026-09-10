@@ -1,4 +1,5 @@
 import { fetchWithAuth, API_BASE_URL } from '@/services/api';
+import { Platform } from 'react-native';
 
 const BASE = `${API_BASE_URL}/festivals`;
 
@@ -109,21 +110,49 @@ export interface CreateFestivalPostPayload {
   image?: string;
 }
 
-export const getUploadBaseUrl = () => API_BASE_URL.replace(/\/v1$/, '');
+export const getUploadBaseUrl = () => API_BASE_URL.replace(/\/v1\/?$/, '');
 
 export const getFestivalImageUrl = (image?: string): string => {
-  if (!image) return '';
-  if (
-    image.startsWith('http://') ||
-    image.startsWith('https://') ||
-    image.startsWith('blob:') ||
-    image.startsWith('file:') ||
-    image.startsWith('data:')
-  ) {
-    return image;
+  if (!image || typeof image !== 'string' || !image.trim()) return '';
+  let trimmed = image.trim();
+  const serverHost = getUploadBaseUrl();
+
+  // Fix localhost/127.0.0.1 on mobile devices when URL comes from backend
+  if (Platform.OS !== 'web' && (trimmed.includes('localhost') || trimmed.includes('127.0.0.1'))) {
+    const hostMatch = API_BASE_URL.match(/^https?:\/\/([^/]+)/);
+    if (hostMatch && hostMatch[1]) {
+      trimmed = trimmed.replace(/localhost:\d+|127\.0\.0\.1:\d+/g, hostMatch[1]);
+      trimmed = trimmed.replace(/localhost|127\.0\.0\.1/g, hostMatch[1].split(':')[0]);
+    }
   }
-  const cleanImage = image.replace(/^\/+/, '');
-  return `${getUploadBaseUrl()}/generated-post-images/${cleanImage}`;
+
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('file:') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    const urlPattern = /^(https?:\/\/[^\/]+)\/(?!generated-post-images\/)(.*)$/;
+    const match = trimmed.match(urlPattern);
+    if (match) {
+      const hostPart = match[1];
+      const pathPart = match[2];
+      if (
+        hostPart.replace(/\/$/, '') === serverHost.replace(/\/$/, '') &&
+        !pathPart.startsWith('v1/') &&
+        !pathPart.startsWith('assets/')
+      ) {
+        const cleanPath = pathPart.replace(/^(uploads\/)?(generated-post-images\/)?/, '');
+        return `${hostPart}/generated-post-images/${cleanPath}`;
+      }
+    }
+    return trimmed;
+  }
+
+  const cleanImage = trimmed
+    .replace(/^\/+/, '')
+    .replace(/^(uploads\/)?(generated-post-images\/)?/, '');
+
+  return `${serverHost}/generated-post-images/${cleanImage}`;
 };
 
 export const normalizeFestivalPosts = (response: any): FestivalGeneratedPost[] => {

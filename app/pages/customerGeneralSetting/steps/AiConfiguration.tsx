@@ -254,7 +254,6 @@ export default function AiConfiguration({ data, onChange, errors = {} }: AiConfi
   const [activeGuideTab, setActiveGuideTab] = useState('prerequisites');
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
   const [showGeminiKey, setShowGeminiKey] = useState(false);
-  const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [connectionLatency, setConnectionLatency] = useState<number | null>(null);
   const [troubleshootQuery, setTroubleshootQuery] = useState('');

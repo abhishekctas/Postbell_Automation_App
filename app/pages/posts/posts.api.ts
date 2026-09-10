@@ -251,7 +251,19 @@ export const getAllSocialAccountsForPost = async (loginTypeParam?: string): Prom
 // === Helper for Image URL resolution ===
 export const getImageUrl = (url?: string): string => {
   if (!url || typeof url !== 'string' || !url.trim()) return '';
-  const trimmed = url.trim();
+  let trimmed = url.trim();
+
+  const serverHost = API_BASE_URL.replace(/\/v1\/?$/, '');
+
+  // Fix localhost/127.0.0.1 on mobile devices when URL comes from backend
+  if (Platform.OS !== 'web' && (trimmed.includes('localhost') || trimmed.includes('127.0.0.1'))) {
+    const hostMatch = API_BASE_URL.match(/^https?:\/\/([^/]+)/);
+    if (hostMatch && hostMatch[1]) {
+      trimmed = trimmed.replace(/localhost:\d+|127\.0\.0\.1:\d+/g, hostMatch[1]);
+      trimmed = trimmed.replace(/localhost|127\.0\.0\.1/g, hostMatch[1].split(':')[0]);
+    }
+  }
+
   if (
     trimmed.startsWith('blob:') ||
     trimmed.startsWith('file:') ||
@@ -261,7 +273,7 @@ export const getImageUrl = (url?: string): string => {
   ) {
     return trimmed;
   }
-  const serverHost = API_BASE_URL.replace(/\/v1\/?$/, '');
+
   if (trimmed.startsWith('/')) {
     return `${serverHost}${trimmed}`;
   }

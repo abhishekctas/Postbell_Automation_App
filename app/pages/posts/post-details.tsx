@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Linking,
   Modal,
-  Platform,
   View,
 } from 'react-native';
 import { Box } from '@/components/ui/box';
@@ -89,13 +88,13 @@ const PLATFORM_REGISTRY: Record<
       <FontAwesome name="linkedin" size={size} color={color} />
     ),
   },
-  snapchat: {
-    label: 'Snapchat',
-    color: '#e2de07ff',
-    icon: (size = 18, color = '#e2de07ff') => (
-      <FontAwesome name="snapchat" size={size} color={color} />
-    ),
-  },
+  // snapchat: {
+  //   label: 'Snapchat',
+  //   color: '#e2de07ff',
+  //   icon: (size = 18, color = '#e2de07ff') => (
+  //     <FontAwesome name="snapchat" size={size} color={color} />
+  //   ),
+  // },
   google_business: {
     label: 'Google Business',
     color: '#313641ff',

@@ -23,7 +23,7 @@ interface SocialMediaAuthProps {
 const PLATFORMS = [
   {
     id: 'instagram',
-    name: 'Instagram Business',
+    name: 'Instagram',
     description:
       'Connect your Instagram professional or creator account to publish auto-posts & reels',
     iconName: 'instagram',
@@ -34,7 +34,7 @@ const PLATFORMS = [
   },
   {
     id: 'facebook',
-    name: 'Facebook Page',
+    name: 'Facebook',
     description:
       'Connect your Facebook business page to publish scheduled posts and festival flyers',
     iconName: 'facebook-square',
@@ -44,13 +44,23 @@ const PLATFORMS = [
     isComingSoon: false,
   },
   {
+    id: 'whatsapp',
+    name: 'WhatsApp',
+    description: 'Connect your WhatsApp account for story automation',
+    iconName: 'whatsapp',
+    color: '#25d366',
+    bgColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+    isComingSoon: false,
+  },
+  {
     id: 'twitter',
     name: 'X (Twitter)',
     description: 'Connect your X (Twitter) account for automated tweets & updates',
     iconName: 'twitter',
-    color: '#000000',
+    color: '#1da1f2',
     bgColor: '#f1f5f9',
-    borderColor: '#cbd5e1',
+    borderColor: '#bae6fd',
     isComingSoon: false,
   },
   {
@@ -65,12 +75,12 @@ const PLATFORMS = [
   },
   {
     id: 'google_business',
-    name: 'Google Business Profile',
+    name: 'Google Business',
     description: 'Connect Google Business Profile to update local business posts & offers',
     iconName: 'google',
-    color: '#4285F4',
+    color: '#313641ff',
     bgColor: '#eff6ff',
-    borderColor: '#bfdbfe',
+    borderColor: '#8993a6ff',
     isComingSoon: false,
   },
   {
@@ -83,26 +93,16 @@ const PLATFORMS = [
     borderColor: '#fecaca',
     isComingSoon: false,
   },
-  {
-    id: 'snapchat',
-    name: 'Snapchat',
-    description: 'Connect your Snapchat account for story automation',
-    iconName: 'snapchat-ghost',
-    color: '#d97706',
-    bgColor: '#fffbeb',
-    borderColor: '#fef3c7',
-    isComingSoon: false,
-  },
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp',
-    description: 'Connect your WhatsApp account for story automation',
-    iconName: 'whatsapp',
-    color: '#25d366',
-    bgColor: '#f0fdf4',
-    borderColor: '#bbf7d0',
-    isComingSoon: false,
-  },
+  // {
+  //   id: 'snapchat',
+  //   name: 'Snapchat',
+  //   description: 'Connect your Snapchat account for story automation',
+  //   iconName: 'snapchat-ghost',
+  //   color: '#d97706',
+  //   bgColor: '#fffbeb',
+  //   borderColor: '#fef3c7',
+  //   isComingSoon: false,
+  // },
 ];
 
 export default function SocialMediaAuth({ data, onChange }: SocialMediaAuthProps) {

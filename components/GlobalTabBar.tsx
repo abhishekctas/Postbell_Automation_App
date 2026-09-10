@@ -86,7 +86,7 @@ const MENU_ITEMS: MenuItem[] = [
     customerAllowed: false,
   },
   {
-    label: 'General Settings',
+    label: 'Settings',
     path: '/pages/generalSetting/general-settings',
     icon: 'settings',
     customerAllowed: true,
