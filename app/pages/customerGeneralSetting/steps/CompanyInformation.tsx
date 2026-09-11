@@ -223,6 +223,23 @@ export default function CompanyInformation({
             </View>
             {errors?.company_phone && <Text style={styles.errorText}>{errors.company_phone}</Text>}
           </VStack>
+
+          {/* Address */}
+          <VStack space="xs">
+            <Text style={styles.label}>Company Address</Text>
+            <View style={[styles.inputContainer, !!errors?.company_address && styles.inputError]}>
+              <Feather name="map-pin" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.textInput}
+                placeholder="123 Business Street, Suite 100, City, Country"
+                placeholderTextColor="#94a3b8"
+                value={data.company_address || ''}
+                onChangeText={(val) => handleChange('company_address', val)}
+                onBlur={() => onTouch?.('company_address')}
+              />
+            </View>
+            {errors?.company_address && <Text style={styles.errorText}>{errors.company_address}</Text>}
+          </VStack>
         </VStack>
 
         {/* Feature Badges Footer */}

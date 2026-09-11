@@ -157,9 +157,9 @@ const formatDate = (dateStr: string) => {
 
 const renderPlatformIcons = (platform: string | string[]) => {
   const list = Array.isArray(platform) ? platform : platform ? [platform] : [];
-  if (list.length === 0) {
-    return <Feather name="share-2" size={13} color="#64748b" style={{ marginRight: 5 }} />;
-  }
+  // if (list.length === 0) {
+  //   return <Feather name="share-2" size={13} color="#64748b" style={{ marginRight: 5 }} />;
+  // }
   return (
     <HStack space="xs" style={{ alignItems: 'center' }}>
       {list.map((plat, idx) => {
@@ -168,20 +168,20 @@ const renderPlatformIcons = (platform: string | string[]) => {
           return (
             <FontAwesome
               key={idx}
-              name="facebook-official"
+              name="facebook-square"
               size={15}
-              color="#1877F2"
+              color="#1877f2"
               style={{ marginRight: 5 }}
             />
           );
         }
         if (name.includes('instagram') || name === 'ig') {
           return (
-            <AntDesign
+            <FontAwesome
               key={idx}
               name="instagram"
               size={15}
-              color="#E4405F"
+              color="#e1306c"
               style={{ marginRight: 5 }}
             />
           );
@@ -192,18 +192,18 @@ const renderPlatformIcons = (platform: string | string[]) => {
               key={idx}
               name="whatsapp"
               size={15}
-              color="#25D366"
+              color="#25d366"
               style={{ marginRight: 5 }}
             />
           );
         }
         if (name.includes('twitter') || name === 'x' || name.includes('x.com')) {
           return (
-            <FontAwesome6
+            <FontAwesome
               key={idx}
-              name="x-twitter"
-              size={14}
-              color="#000000"
+              name="twitter"
+              size={15}
+              color="#1da1f2"
               style={{ marginRight: 5 }}
             />
           );
@@ -214,7 +214,29 @@ const renderPlatformIcons = (platform: string | string[]) => {
               key={idx}
               name="linkedin"
               size={15}
-              color="#0A66C2"
+              color="#0a66c2"
+              style={{ marginRight: 5 }}
+            />
+          );
+        }
+        if (name.includes('google')) {
+          return (
+            <FontAwesome
+              key={idx}
+              name="google"
+              size={15}
+              color="#313641ff"
+              style={{ marginRight: 5 }}
+            />
+          );
+        }
+        if (name.includes('pinterest')) {
+          return (
+            <FontAwesome
+              key={idx}
+              name="pinterest"
+              size={15}
+              color="#e60023"
               style={{ marginRight: 5 }}
             />
           );
@@ -233,17 +255,17 @@ const getPlatformMeta = (platformKey: string) => {
     return {
       name: 'Instagram',
       icon: 'instagram',
-      iconType: 'antdesign',
-      color: '#E4405F',
+      iconType: 'fontawesome',
+      color: '#e1306c',
       bg: '#fce7f3',
     };
   }
   if (key.includes('facebook') || key === 'fb') {
     return {
       name: 'Facebook',
-      icon: 'facebook-official',
+      icon: 'facebook-square',
       iconType: 'fontawesome',
-      color: '#1877F2',
+      color: '#1877f2',
       bg: '#eff6ff',
     };
   }
@@ -252,17 +274,17 @@ const getPlatformMeta = (platformKey: string) => {
       name: 'WhatsApp Business',
       icon: 'whatsapp',
       iconType: 'fontawesome',
-      color: '#25D366',
+      color: '#25d366',
       bg: '#dcfce7',
     };
   }
   if (key.includes('twitter') || key === 'x') {
     return {
-      name: 'Twitter / X',
-      icon: 'x-twitter',
-      iconType: 'fontawesome6',
-      color: '#0f172a',
-      bg: '#f1f5f9',
+      name: 'X (Twitter)',
+      icon: 'twitter',
+      iconType: 'fontawesome',
+      color: '#1da1f2',
+      bg: '#eff6ff',
     };
   }
   if (key.includes('linkedin') || key === 'in') {
@@ -270,8 +292,26 @@ const getPlatformMeta = (platformKey: string) => {
       name: 'LinkedIn',
       icon: 'linkedin',
       iconType: 'fontawesome',
-      color: '#0A66C2',
+      color: '#0a66c2',
       bg: '#e0f2fe',
+    };
+  }
+  if (key.includes('google')) {
+    return {
+      name: 'Google Business',
+      icon: 'google',
+      iconType: 'fontawesome',
+      color: '#313641ff',
+      bg: '#eff6ff',
+    };
+  }
+  if (key.includes('pinterest')) {
+    return {
+      name: 'Pinterest',
+      icon: 'pinterest',
+      iconType: 'fontawesome',
+      color: '#e60023',
+      bg: '#fef2f2',
     };
   }
   return {
@@ -385,7 +425,7 @@ export default function CustomerDashboard() {
           <ActivityIndicator size="large" color="#0b53f8" />
         </View>
         <Text style={{ marginTop: 14, color: '#64748b', fontSize: 14, fontWeight: '600' }}>
-          Loading customer workspace...
+          Loading Dashboard...
         </Text>
       </Box>
     );
@@ -439,7 +479,7 @@ export default function CustomerDashboard() {
 
   // Compute total social accounts connected
   const platformsList: SocialMediaPlatform[] = Array.isArray(social?.platforms)
-    ? social.platforms
+    ? social.platforms.filter((p) => (p.platform || '').toLowerCase().trim() !== 'snapchat')
     : [];
 
   const totalConnectedCount =
@@ -499,10 +539,6 @@ export default function CustomerDashboard() {
               <Heading style={styles.userName} numberOfLines={1}>
                 {fullName || firstName || 'Customer Workspace'}
               </Heading>
-              <View style={styles.workspacePill}>
-                <View style={styles.workspacePillDot} />
-                <Text style={styles.workspacePillText}>Customer Workspace</Text>
-              </View>
             </VStack>
           </HStack>
 
@@ -823,8 +859,18 @@ export default function CustomerDashboard() {
                 const normStatus = (item.status || '').toLowerCase();
                 const previewImg = item.image_url ? getMediaUrl(item.image_url) : undefined;
                 return (
-                  <View
+                  <TouchableOpacity
                     key={item.id || idx}
+                    activeOpacity={0.88}
+                    onPress={() => {
+                      const postId = item.id || (item as any)._id;
+                      if (postId) {
+                        router.push({
+                          pathname: '/pages/posts/post-details',
+                          params: { id: postId },
+                        });
+                      }
+                    }}
                     style={[styles.card, styles.shadowCard, styles.timelineCard]}
                   >
                     <HStack style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -866,7 +912,6 @@ export default function CustomerDashboard() {
                             style={{ alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}
                           >
                             {renderPlatformIcons(item.platform || [])}
-                            <View style={styles.timeDivider} />
                             <Feather
                               name="calendar"
                               size={11}
@@ -931,7 +976,7 @@ export default function CustomerDashboard() {
 
                     {/* Image Preview / No Image fallback */}
                     <TimelineImage imageUrl={previewImg} />
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </VStack>
@@ -1076,28 +1121,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginTop: 1,
   },
-  workspacePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  workspacePillDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#4ade80',
-    marginRight: 5,
-  },
-  workspacePillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
+
   headerIconButton: {
     width: 38,
     height: 38,
@@ -1278,13 +1302,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 6,
     marginTop: 2,
-  },
-  timeDivider: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#cbd5e1',
-    marginHorizontal: 4,
   },
   hashtagBadge: {
     backgroundColor: 'rgba(11, 83, 248, 0.08)',

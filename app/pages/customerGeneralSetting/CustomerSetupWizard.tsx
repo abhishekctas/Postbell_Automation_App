@@ -29,6 +29,7 @@ export interface SetupWizardData {
   company_website: string;
   company_email: string;
   company_phone: string;
+  company_address?: string;
   company_logo: string;
   company_logo_file?: any;
   company_logo_preview?: string;
@@ -73,6 +74,7 @@ const initialSetupData: SetupWizardData = {
   company_website: '',
   company_email: '',
   company_phone: '',
+  company_address: '',
   company_logo: '',
   social_media_auth: {
     instagram: {
@@ -200,6 +202,8 @@ export default function CustomerSetupWizard() {
                 cust.company_info?.company_email || cust.company_email || prev.company_email,
               company_phone:
                 cust.company_info?.company_phone || cust.company_phone || prev.company_phone,
+              company_address:
+                cust.company_info?.company_address || cust.company_address || prev.company_address || '',
               company_logo: cust.company_info?.company_logo || cust.logo_url || prev.company_logo,
               social_media_auth: cust.social_media_auth || prev.social_media_auth,
               social_links: {

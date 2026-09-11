@@ -22,6 +22,8 @@ import { Heading } from '@/components/ui/heading';
 import { Button, ButtonText } from '@/components/ui/button';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import {
@@ -626,6 +628,118 @@ export default function FestivalAutoPostScreen() {
     setImageUrl('');
     setModalImageLoadError(false);
     setTouched((prev) => ({ ...prev, image: true }));
+  };
+
+  const handleDownloadImage = async (imgUri: string, eventName: string) => {
+    if (!imgUri) return;
+    const resolvedUri = getFestivalImageUrl(imgUri) || imgUri;
+    const filenameBase = `${(eventName || 'festival-image').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`;
+
+    try {
+      if (Platform.OS === 'web') {
+        if (resolvedUri.startsWith('blob:') || resolvedUri.startsWith('data:')) {
+          const link = document.createElement('a');
+          link.href = resolvedUri;
+          const extension = resolvedUri.includes('image/png') ? 'png' : 'jpg';
+          link.download = `${filenameBase}.${extension}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } else {
+          try {
+            const response = await fetch(resolvedUri);
+            if (!response.ok) throw new Error('Failed to fetch image');
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            const extension =
+              blob.type === 'image/png' || resolvedUri.toLowerCase().includes('.png')
+                ? 'png'
+                : 'jpg';
+            link.download = `${filenameBase}.${extension}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+          } catch {
+            if (typeof window !== 'undefined') {
+              const link = document.createElement('a');
+              link.href = resolvedUri;
+              link.target = '_blank';
+              const extension = resolvedUri.toLowerCase().includes('.png') ? 'png' : 'jpg';
+              link.download = `${filenameBase}.${extension}`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+          }
+        }
+      } else {
+        // Mobile (Android / iOS)
+        const extension = resolvedUri.toLowerCase().includes('.png') ? 'png' : 'jpg';
+        let targetUri = resolvedUri;
+
+        if (resolvedUri.startsWith('data:')) {
+          const base64Data = resolvedUri.split(',')[1] || resolvedUri;
+          const localUri = `${FileSystem.cacheDirectory}${filenameBase}.${extension}`;
+          await FileSystem.writeAsStringAsync(localUri, base64Data, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          targetUri = localUri;
+        } else if (resolvedUri.startsWith('http://') || resolvedUri.startsWith('https://')) {
+          const localUri = `${FileSystem.cacheDirectory}${filenameBase}.${extension}`;
+          const downloadResult = await FileSystem.downloadAsync(resolvedUri, localUri);
+          if (downloadResult.status === 200) {
+            targetUri = downloadResult.uri;
+          } else {
+            throw new Error(`Failed to download image (HTTP ${downloadResult.status})`);
+          }
+        }
+
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status === 'granted') {
+          await MediaLibrary.saveToLibraryAsync(targetUri);
+        } else {
+          Alert.alert(
+            'Permission Needed',
+            'Media library permission is required to save image to gallery.'
+          );
+        }
+      }
+
+      // Download / save caption + hashtags text file like post page
+      const currentCaption = caption ? caption.trim() : '';
+      const allHashtags =
+        Array.isArray(hashtags) && hashtags.length > 0
+          ? hashtags.map((t) => `#${t.replace(/^#/, '')}`).join(' ')
+          : '';
+      const fullText = allHashtags ? `${currentCaption}\n\n${allHashtags}` : currentCaption;
+
+      if (fullText) {
+        if (Platform.OS === 'web') {
+          const txtBlob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+          const txtUrl = URL.createObjectURL(txtBlob);
+          const txtLink = document.createElement('a');
+          txtLink.href = txtUrl;
+          txtLink.download = `${filenameBase}.txt`;
+          document.body.appendChild(txtLink);
+          txtLink.click();
+          document.body.removeChild(txtLink);
+          URL.revokeObjectURL(txtUrl);
+        } else {
+          const txtUri = `${FileSystem.cacheDirectory}${filenameBase}.txt`;
+          await FileSystem.writeAsStringAsync(txtUri, fullText, {
+            encoding: FileSystem.EncodingType.UTF8,
+          });
+        }
+      }
+
+      Alert.alert('Success', `Successfully downloaded ${eventName || 'festival post'}!`);
+    } catch (err: any) {
+      console.error('Download image error:', err);
+      Alert.alert('Error', err?.message || 'Failed to download image.');
+    }
   };
 
   const handlePickImage = async () => {
@@ -1413,6 +1527,16 @@ export default function FestivalAutoPostScreen() {
 
                   {previewImageUri && (
                     <Box style={styles.imagePreviewWrap}>
+                      <TouchableOpacity
+                        style={styles.downloadImageBtn}
+                        onPress={() =>
+                          handleDownloadImage(previewImageUri, name || 'festival-image')
+                        }
+                        activeOpacity={0.8}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Feather name="download" size={15} color="#ffffff" />
+                      </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.removeImageBtn}
                         onPress={handleRemoveImage}
@@ -2229,6 +2353,23 @@ const styles = StyleSheet.create({
     padding: 8,
     alignItems: 'center',
     position: 'relative',
+  },
+  downloadImageBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 44,
+    backgroundColor: '#2563eb',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   removeImageBtn: {
     position: 'absolute',

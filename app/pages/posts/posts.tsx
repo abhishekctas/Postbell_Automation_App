@@ -31,7 +31,7 @@ const PLATFORMS_FILTER = [
   { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp', color: '#25d366' },
   { id: 'twitter', label: 'Twitter / X', icon: 'twitter', color: '#1da1f2' },
   { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', color: '#0a66c2' },
-  { id: 'snapchat', label: 'Snapchat', icon: 'snapchat-ghost', color: '#eab308' },
+  // { id: 'snapchat', label: 'Snapchat', icon: 'snapchat-ghost', color: '#eab308' },
   { id: 'google-business', label: 'Google Business', icon: 'google', color: '#4285f4' },
   { id: 'pinterest', label: 'Pinterest', icon: 'pinterest', color: '#e60023' },
 ];
@@ -195,10 +195,12 @@ function PostCard({
                   } else if (name.includes('linkedin')) {
                     iconName = 'linkedin';
                     iconColor = '#0a66c2';
-                  } else if (name.includes('snapchat')) {
-                    iconName = 'snapchat-ghost';
-                    iconColor = '#eab308';
-                  } else if (name.includes('google_business')) {
+                  }
+                  // else if (name.includes('snapchat')) {
+                  //   iconName = 'snapchat-ghost';
+                  //   iconColor = '#eab308';
+                  // }
+                  else if (name.includes('google_business')) {
                     iconName = 'google';
                     iconColor = '#313641ff';
                   } else if (name.includes('pinterest')) {
