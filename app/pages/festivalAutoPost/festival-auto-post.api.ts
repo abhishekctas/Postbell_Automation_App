@@ -1,6 +1,8 @@
 import { fetchWithAuth, API_BASE_URL } from '@/services/api';
 import { Platform } from 'react-native';
 
+export { getAllSocialAccountsForPost } from '../posts/posts.api';
+
 const BASE = `${API_BASE_URL}/festivals`;
 
 // Helper function to check if response contains an error (matching control panel)
@@ -56,6 +58,9 @@ export interface FestivalGeneratedPost {
   image_url?: string;
   caption?: string;
   hashtags?: string[];
+  selectedNetworks?: string[];
+  selectedAccounts?: string[] | Record<string, string[]>;
+  platformSpecificContent?: Record<string, any[]> | any[];
   year?: number;
   language?: string;
   isAutoPost?: boolean;
@@ -95,6 +100,9 @@ export interface UpdateFestivalPostPayload {
   caption?: string;
   hashtags?: string[];
   image?: string;
+  selectedNetworks?: string[];
+  selectedAccounts?: Record<string, string[]> | string[];
+  platformSpecificContent?: Record<string, any[]>;
 }
 
 export interface CreateFestivalPostPayload {
@@ -108,6 +116,9 @@ export interface CreateFestivalPostPayload {
   caption?: string;
   hashtags?: string[];
   image?: string;
+  selectedNetworks?: string[];
+  selectedAccounts?: Record<string, string[]> | string[];
+  platformSpecificContent?: Record<string, any[]>;
 }
 
 export const getUploadBaseUrl = () => API_BASE_URL.replace(/\/v1\/?$/, '');
@@ -197,6 +208,9 @@ export const normalizeFestivalPosts = (response: any): FestivalGeneratedPost[] =
               .map((s: string) => s.trim())
               .filter(Boolean)
           : [],
+      selectedNetworks: post.selectedNetworks || post.selected_networks || [],
+      selectedAccounts: post.selectedAccounts || post.selected_accounts || [],
+      platformSpecificContent: post.platformSpecificContent || post.platform_specific_content || {},
       isAutoPost: Boolean(post.isAutoPost),
       post_status: post.post_status,
       year: post.year,
