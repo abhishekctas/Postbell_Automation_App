@@ -203,7 +203,10 @@ export default function CustomerSetupWizard() {
               company_phone:
                 cust.company_info?.company_phone || cust.company_phone || prev.company_phone,
               company_address:
-                cust.company_info?.company_address || cust.company_address || prev.company_address || '',
+                cust.company_info?.company_address ||
+                cust.company_address ||
+                prev.company_address ||
+                '',
               company_logo: cust.company_info?.company_logo || cust.logo_url || prev.company_logo,
               social_media_auth: cust.social_media_auth || prev.social_media_auth,
               social_links: {

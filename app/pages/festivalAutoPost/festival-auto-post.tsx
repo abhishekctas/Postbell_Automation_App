@@ -25,7 +25,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons, FontAwesome } from '@expo/vector-icons';
 import {
   getFestivalPosts,
   updateFestivalPostSelection,
@@ -35,6 +35,7 @@ import {
   uploadFestivalImage,
   generateFestivalPostAI,
   getFestivalImageUrl,
+  getAllSocialAccountsForPost,
   type FestivalGeneratedPost,
   type UpdateFestivalPostPayload,
   type CreateFestivalPostPayload,
@@ -57,6 +58,16 @@ const CATEGORY_SUGGESTIONS = [
 ];
 
 const LIMIT_OPTIONS = [10, 20, 30, 50, 100];
+
+const SOCIAL_PLATFORMS = [
+  { id: 'facebook', label: 'Facebook', icon: 'facebook-square', color: '#1877f2' },
+  { id: 'instagram', label: 'Instagram', icon: 'instagram', color: '#e1306c' },
+  { id: 'whatsapp', label: 'WhatsApp', icon: 'whatsapp', color: '#25d366' },
+  { id: 'twitter', label: 'Twitter', icon: 'twitter', color: '#1da1f2' },
+  { id: 'linkedin', label: 'LinkedIn', icon: 'linkedin', color: '#0a66c2' },
+  { id: 'google_business', label: 'Google Business', icon: 'google', color: '#313641ff' },
+  { id: 'pinterest', label: 'Pinterest', icon: 'pinterest', color: '#bd081c' },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Instagram-style Feed Card Component                               */
@@ -411,6 +422,176 @@ export default function FestivalAutoPostScreen() {
   const [generatingType, setGeneratingType] = useState<'gemini' | 'openai' | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // Social accounts & platforms state
+  const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  const [networksModalOpen, setNetworksModalOpen] = useState(false);
+  const [platformSpecificContent, setPlatformSpecificContent] = useState<Record<string, any[]>>({});
+  const [platformOverrides, setPlatformOverrides] = useState<Record<string, any>>({});
+  const [contentTypeOverrides, setContentTypeOverrides] = useState<Record<string, string>>({});
+
+  const fetchAndSetSocialAccounts = async () => {
+    try {
+      const res = await getAllSocialAccountsForPost();
+      let accs: any[] = [];
+      if (Array.isArray(res)) {
+        accs = res;
+      } else if (Array.isArray(res?.data)) {
+        accs = res.data;
+      } else if (Array.isArray(res?.data?.data)) {
+        accs = res.data.data;
+      }
+      setSocialAccounts(accs);
+      return accs;
+    } catch (err) {
+      console.error('Failed to load social accounts:', err);
+      return [];
+    }
+  };
+
+  const isPlatformMatch = (accPlatform?: string, platId?: string) => {
+    if (!accPlatform || !platId) return false;
+    const p1 = accPlatform.toLowerCase().trim();
+    const p2 = platId.toLowerCase().trim();
+    if (p1 === p2) return true;
+    if ((p1 === 'twitter' || p1 === 'x') && (p2 === 'twitter' || p2 === 'x')) return true;
+    if (
+      (p1 === 'google' || p1 === 'google_business') &&
+      (p2 === 'google' || p2 === 'google_business')
+    )
+      return true;
+    return false;
+  };
+
+  const [tempAccountsBackup, setTempAccountsBackup] = useState<string[]>([]);
+  const [tempPlatformsBackup, setTempPlatformsBackup] = useState<string[]>([]);
+
+  const openNetworksModal = async () => {
+    setTempAccountsBackup([...selectedAccounts]);
+    setTempPlatformsBackup([...selectedPlatforms]);
+    await fetchAndSetSocialAccounts();
+    setNetworksModalOpen(true);
+  };
+
+  const handleCancelNetworksModal = () => {
+    handleAccountSelection(tempAccountsBackup, tempPlatformsBackup);
+    setNetworksModalOpen(false);
+  };
+
+  const handleDoneNetworksModal = () => {
+    handleAccountSelection(selectedAccounts);
+    setNetworksModalOpen(false);
+  };
+
+  const syncPlatformSpecificContent = (accounts: string[], platforms: string[]) => {
+    setPlatformSpecificContent((prev) => {
+      const nextContent: Record<string, any[]> = {};
+      platforms.forEach((platform) => {
+        const platformAccs = socialAccounts.filter(
+          (a) =>
+            isPlatformMatch(a.platform, platform) &&
+            accounts.includes(a.account_id || a.value || a.id || a._id)
+        );
+
+        const existingEntries = prev[platform] || [];
+        const override = platformOverrides[platform] || {};
+
+        if (platformAccs.length > 0) {
+          nextContent[platform] = platformAccs.map((acc) => {
+            const accId = acc.account_id || acc.value || acc.id || acc._id;
+            const existing = existingEntries.find((item: any) => item.account_id === accId);
+            if (existing) return existing;
+
+            return {
+              account_id: accId,
+              caption: override.caption || caption || '',
+              hashtags:
+                override.hashtags && override.hashtags.length > 0 ? override.hashtags : hashtags,
+              link: override.link || '',
+              mediaUrl: override.image_url !== undefined ? override.image_url : imageUrl || '',
+              contentType: override.contentType || contentTypeOverrides[platform] || 'media',
+            };
+          });
+        } else {
+          const existing = existingEntries[0];
+          nextContent[platform] = [
+            existing || {
+              account_id: '',
+              caption: override.caption || caption || '',
+              hashtags:
+                override.hashtags && override.hashtags.length > 0 ? override.hashtags : hashtags,
+              link: override.link || '',
+              mediaUrl: override.image_url !== undefined ? override.image_url : imageUrl || '',
+              contentType: override.contentType || contentTypeOverrides[platform] || 'media',
+            },
+          ];
+        }
+      });
+      return nextContent;
+    });
+  };
+
+  const handleAccountSelection = (accounts: string[], customPlatforms?: string[]) => {
+    setSelectedAccounts(accounts);
+    const derivedPlatforms = Array.from(
+      new Set(
+        accounts
+          .map((accId) => {
+            const acc = socialAccounts.find(
+              (a) => (a.account_id || a.value || a.id || a._id) === accId
+            );
+            return acc?.platform;
+          })
+          .filter(Boolean) as string[]
+      )
+    );
+    const currentPlatforms = customPlatforms || selectedPlatforms;
+    const manualOnlyPlatforms = currentPlatforms.filter(
+      (p) => !socialAccounts.some((a) => isPlatformMatch(a.platform, p))
+    );
+    const nextPlatforms = Array.from(new Set([...derivedPlatforms, ...manualOnlyPlatforms]));
+    setSelectedPlatforms(nextPlatforms);
+    syncPlatformSpecificContent(accounts, nextPlatforms);
+  };
+
+  const togglePlatform = (pId: string) => {
+    const platformAccounts = socialAccounts.filter((a) => isPlatformMatch(a.platform, pId));
+    if (platformAccounts.length === 0) {
+      const nextPlatforms = selectedPlatforms.includes(pId)
+        ? selectedPlatforms.filter((x) => x !== pId)
+        : [...selectedPlatforms, pId];
+      setSelectedPlatforms(nextPlatforms);
+      syncPlatformSpecificContent(selectedAccounts, nextPlatforms);
+      return;
+    }
+
+    const platformAccIds = platformAccounts.map((a) => a.account_id || a.value || a.id || a._id);
+    const allSelected = platformAccIds.every((id) => selectedAccounts.includes(id));
+
+    let updatedAccounts: string[];
+    if (allSelected) {
+      updatedAccounts = selectedAccounts.filter((id) => !platformAccIds.includes(id));
+    } else {
+      const toAdd = platformAccIds.filter((id) => !selectedAccounts.includes(id));
+      updatedAccounts = [...selectedAccounts, ...toAdd];
+    }
+    handleAccountSelection(updatedAccounts);
+  };
+
+  const handleDeleteNetwork = (pId: string) => {
+    const platformAccounts = socialAccounts.filter((a) => isPlatformMatch(a.platform, pId));
+    if (platformAccounts.length === 0) {
+      const nextPlatforms = selectedPlatforms.filter((x) => x !== pId);
+      setSelectedPlatforms(nextPlatforms);
+      syncPlatformSpecificContent(selectedAccounts, nextPlatforms);
+      return;
+    }
+    const platformAccIds = platformAccounts.map((a) => a.account_id || a.value || a.id || a._id);
+    const updatedAccounts = selectedAccounts.filter((id) => !platformAccIds.includes(id));
+    handleAccountSelection(updatedAccounts);
+  };
+
   const fetchFestivalPostsList = useCallback(async () => {
     try {
       setLoading(true);
@@ -528,11 +709,16 @@ export default function FestivalAutoPostScreen() {
     setModalImageLoadError(false);
     setTouched({});
     setGeneratingType(null);
+    setSelectedPlatforms([]);
+    setSelectedAccounts([]);
+    setPlatformSpecificContent({});
+    setPlatformOverrides({});
   };
 
-  const handleOpenAdd = (initialDate?: Date | null) => {
+  const handleOpenAdd = async (initialDate?: Date | null) => {
     setEditingPost(null);
     resetForm();
+    await fetchAndSetSocialAccounts();
     const targetDate = initialDate ?? new Date();
     if (isPastDate(targetDate)) {
       Alert.alert('Validation Error', 'Cannot create a festival post for a past date');
@@ -546,7 +732,7 @@ export default function FestivalAutoPostScreen() {
     setModalVisible(true);
   };
 
-  const handleOpenEdit = (post: FestivalGeneratedPost) => {
+  const handleOpenEdit = async (post: FestivalGeneratedPost) => {
     setEditingPost(post);
     setName(post.name || '');
     setDate(post.date || '');
@@ -562,6 +748,66 @@ export default function FestivalAutoPostScreen() {
     setImageError(null);
     setTouched({});
     setDatePickerValue(post.date ? new Date(post.date) : new Date());
+
+    let loadedAccounts: any[] = [];
+    try {
+      loadedAccounts = await fetchAndSetSocialAccounts();
+    } catch {
+      // Default fallback
+    }
+
+    if (
+      post.selectedNetworks &&
+      Array.isArray(post.selectedNetworks) &&
+      post.selectedNetworks.length > 0
+    ) {
+      setSelectedPlatforms(post.selectedNetworks);
+    } else {
+      setSelectedPlatforms([]);
+    }
+
+    const loadedAccIds: string[] = [];
+    if (post.selectedAccounts) {
+      if (Array.isArray(post.selectedAccounts)) {
+        loadedAccIds.push(...post.selectedAccounts);
+      } else if (typeof post.selectedAccounts === 'object') {
+        Object.values(post.selectedAccounts).forEach((accList) => {
+          if (Array.isArray(accList)) loadedAccIds.push(...accList);
+        });
+      }
+    }
+    if (loadedAccIds.length > 0) {
+      setSelectedAccounts(loadedAccIds);
+    } else if (loadedAccounts.length > 0 && post.selectedNetworks) {
+      const autoSelected = loadedAccounts
+        .filter((acc: any) => (post.selectedNetworks || []).includes(acc.platform))
+        .map((acc: any) => acc.account_id || acc.value || acc.id);
+      setSelectedAccounts(autoSelected);
+    } else {
+      setSelectedAccounts([]);
+    }
+
+    if (post.platformSpecificContent && typeof post.platformSpecificContent === 'object') {
+      setPlatformSpecificContent(post.platformSpecificContent as Record<string, any[]>);
+      const overridesMap: Record<string, any> = {};
+      Object.entries(post.platformSpecificContent).forEach(([plat, entries]: [string, any]) => {
+        const entryList = Array.isArray(entries) ? entries : [];
+        if (entryList.length > 0) {
+          const first = entryList[0];
+          overridesMap[plat] = {
+            caption: first.caption || '',
+            link: first.link || '',
+            hashtags: first.hashtags || [],
+            image_url: first.mediaUrl || first.media_url || '',
+          };
+        }
+      });
+      setPlatformOverrides(overridesMap);
+    } else {
+      setPlatformSpecificContent({});
+      setPlatformOverrides({});
+    }
+
     setModalVisible(true);
   };
 
@@ -846,6 +1092,100 @@ export default function FestivalAutoPostScreen() {
         }
       }
 
+      // Group flat selectedAccounts -> { facebook: ['acc1'], instagram: ['acc2'] }
+      const selectedAccountsObject: Record<string, string[]> = {};
+      selectedAccounts.forEach((accId) => {
+        let platform = '';
+        const acc = socialAccounts.find(
+          (a) => (a.account_id || a.value || a.id || a._id) === accId
+        );
+        if (acc) {
+          platform = acc.platform;
+        }
+        if (platform && selectedPlatforms.includes(platform)) {
+          if (!selectedAccountsObject[platform]) selectedAccountsObject[platform] = [];
+          selectedAccountsObject[platform].push(accId);
+        }
+      });
+
+      // Build platformSpecificContent
+      const platformSpecificContentObj: Record<string, any[]> = {};
+      selectedPlatforms.forEach((platform) => {
+        const platformAccs = socialAccounts.filter(
+          (a) =>
+            isPlatformMatch(a.platform, platform) &&
+            selectedAccounts.includes(a.account_id || a.value || a.id || a._id)
+        );
+        const existingEntries = platformSpecificContent[platform] || [];
+        const override = platformOverrides[platform] || {};
+
+        if (platformAccs.length > 0) {
+          platformSpecificContentObj[platform] = platformAccs.map((acc) => {
+            const accId = acc.account_id || acc.value || acc.id || acc._id;
+            const item = existingEntries.find((e: any) => e.account_id === accId) || {};
+
+            const itemContentType =
+              item.contentType || override.contentType || contentTypeOverrides[platform] || 'media';
+            const itemCaption =
+              item.caption !== undefined ? item.caption : override.caption || caption || '';
+            const itemLink = item.link || override.link || '';
+            const itemHashtags =
+              item.hashtags && item.hashtags.length > 0
+                ? item.hashtags
+                : override.hashtags && override.hashtags.length > 0
+                  ? override.hashtags
+                  : hashtags;
+            const itemMediaUrl =
+              item.mediaUrl !== undefined
+                ? item.mediaUrl
+                : override.image_url !== undefined
+                  ? override.image_url
+                  : finalImageUrl || '';
+
+            return {
+              account_id: accId,
+              caption: itemCaption,
+              link: itemLink,
+              hashtags: itemHashtags,
+              mediaUrl: itemMediaUrl,
+              contentType: itemContentType,
+              post_status: status === 'active' ? 'published' : 'draft',
+            };
+          });
+        } else {
+          const item = existingEntries[0] || {};
+          const itemContentType =
+            item.contentType || override.contentType || contentTypeOverrides[platform] || 'media';
+          const itemCaption =
+            item.caption !== undefined ? item.caption : override.caption || caption || '';
+          const itemLink = item.link || override.link || '';
+          const itemHashtags =
+            item.hashtags && item.hashtags.length > 0
+              ? item.hashtags
+              : override.hashtags && override.hashtags.length > 0
+                ? override.hashtags
+                : hashtags;
+          const itemMediaUrl =
+            item.mediaUrl !== undefined
+              ? item.mediaUrl
+              : override.image_url !== undefined
+                ? override.image_url
+                : finalImageUrl || '';
+
+          platformSpecificContentObj[platform] = [
+            {
+              account_id: '',
+              caption: itemCaption,
+              link: itemLink,
+              hashtags: itemHashtags,
+              mediaUrl: itemMediaUrl,
+              contentType: itemContentType,
+              post_status: status === 'active' ? 'published' : 'draft',
+            },
+          ];
+        }
+      });
+
       if (editingPost) {
         const payload: UpdateFestivalPostPayload = {
           name: name.trim(),
@@ -857,6 +1197,9 @@ export default function FestivalAutoPostScreen() {
           caption: caption.trim(),
           hashtags,
           image: finalImageUrl,
+          selectedNetworks: selectedPlatforms,
+          selectedAccounts: selectedAccountsObject,
+          platformSpecificContent: platformSpecificContentObj,
         };
         const response = await updateFestivalPost(getPostId(editingPost), payload);
         const updated = response.data;
@@ -879,6 +1222,9 @@ export default function FestivalAutoPostScreen() {
           caption: caption.trim(),
           hashtags,
           image: finalImageUrl,
+          selectedNetworks: selectedPlatforms,
+          selectedAccounts: selectedAccountsObject,
+          platformSpecificContent: platformSpecificContentObj,
         };
         const response = await createFestivalPost(payload);
         const created = response.data;
@@ -1646,6 +1992,110 @@ export default function FestivalAutoPostScreen() {
                   )}
                 </VStack>
 
+                {/* Target Platforms & Accounts Section */}
+                <Box style={styles.switchCard}>
+                  <VStack space="xs" style={{ flex: 1 }}>
+                    <HStack className="items-center justify-between">
+                      <VStack style={{ flex: 1 }}>
+                        <Text style={styles.switchCardTitle}>Platforms</Text>
+                        <Text style={styles.switchCardSub}>
+                          Select social networks and accounts for this festival post
+                        </Text>
+                      </VStack>
+                      <TouchableOpacity
+                        onPress={openNetworksModal}
+                        style={{
+                          backgroundColor: '#2563eb',
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>
+                          Platforms
+                        </Text>
+                      </TouchableOpacity>
+                    </HStack>
+
+                    {/* Selected Platform Pills Badges */}
+                    {selectedPlatforms.length > 0 && (
+                      <HStack space="xs" className="mt-2 flex-wrap" style={{ gap: 6 }}>
+                        {selectedPlatforms.map((net) => {
+                          const plat = SOCIAL_PLATFORMS.find((p) => p.id === net);
+                          const platColor = plat?.color || '#2563eb';
+                          const accountCount = selectedAccounts.filter((accId) =>
+                            socialAccounts.find(
+                              (a) =>
+                                (a.account_id || a.value || a.id || a._id) === accId &&
+                                isPlatformMatch(a.platform, net)
+                            )
+                          ).length;
+
+                          return (
+                            <TouchableOpacity
+                              key={net}
+                              onPress={openNetworksModal}
+                              activeOpacity={0.8}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: `${platColor}15`,
+                                borderColor: `${platColor}40`,
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                paddingVertical: 5,
+                                paddingHorizontal: 10,
+                                gap: 6,
+                                marginTop: 2,
+                              }}
+                            >
+                              <FontAwesome
+                                name={(plat?.icon as any) || 'share-alt'}
+                                size={14}
+                                color={platColor}
+                              />
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: platColor }}>
+                                {plat?.label || net}
+                              </Text>
+                              {accountCount > 1 && (
+                                <Box
+                                  style={{
+                                    backgroundColor: platColor,
+                                    borderRadius: 8,
+                                    paddingHorizontal: 6,
+                                    paddingVertical: 1,
+                                  }}
+                                >
+                                  <Text style={{ fontSize: 10, color: '#fff', fontWeight: '700' }}>
+                                    {accountCount} accounts
+                                  </Text>
+                                </Box>
+                              )}
+                              <TouchableOpacity
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteNetwork(net);
+                                }}
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: 9,
+                                  backgroundColor: '#000000',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  marginLeft: 4,
+                                }}
+                              >
+                                <Feather name="x" size={10} color="#fff" />
+                              </TouchableOpacity>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </HStack>
+                    )}
+                  </VStack>
+                </Box>
+
                 {/* Selected for notifications switch */}
                 <Box style={styles.switchCard}>
                   <VStack style={{ flex: 1 }}>
@@ -1706,6 +2156,294 @@ export default function FestivalAutoPostScreen() {
             </HStack>
           </Box>
         </Box>
+      </Modal>
+
+      {/* Platforms & Accounts Selection Modal */}
+      <Modal
+        visible={networksModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setNetworksModalOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownModalOverlay}
+          activeOpacity={1}
+          onPress={() => setNetworksModalOpen(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.actionMenuModalBox}>
+            <HStack className="mb-3 items-center justify-between">
+              <Heading size="md" style={{ color: '#0f172a', fontWeight: '800', fontSize: 18 }}>
+                Select Platforms & Accounts
+              </Heading>
+              <TouchableOpacity
+                style={{ padding: 5, backgroundColor: '#15203cff', borderRadius: 24 }}
+                onPress={() => setNetworksModalOpen(false)}
+              >
+                <Feather name="x" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </HStack>
+
+            {/* Select All Accounts Master Switch */}
+            {socialAccounts.length > 0 ? (
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 10,
+                  paddingHorizontal: 4,
+                  marginBottom: 10,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#e2e8f0',
+                }}
+                onPress={() => {
+                  const allAccIds = socialAccounts.map(
+                    (a) => a.account_id || a.value || a.id || a._id
+                  );
+                  if (selectedAccounts.length === allAccIds.length) {
+                    handleAccountSelection([]);
+                  } else {
+                    handleAccountSelection(allAccIds);
+                  }
+                }}
+              >
+                <Feather
+                  name={
+                    selectedAccounts.length === socialAccounts.length
+                      ? 'check-square'
+                      : selectedAccounts.length > 0
+                        ? 'minus-square'
+                        : 'square'
+                  }
+                  size={18}
+                  color="#2563eb"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#0f172a' }}>
+                  Select All Accounts ({socialAccounts.length})
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {socialAccounts.length === 0 ? (
+                <Box style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <Text style={{ color: '#64748b', fontSize: 14 }}>
+                    No social media accounts available
+                  </Text>
+                </Box>
+              ) : (
+                SOCIAL_PLATFORMS.map((plat) => {
+                  const platformAccounts = socialAccounts.filter((a) =>
+                    isPlatformMatch(a.platform, plat.id)
+                  );
+                  if (platformAccounts.length === 0) return null;
+
+                  const platformAccIds = platformAccounts.map(
+                    (a) => a.account_id || a.value || a.id || a._id
+                  );
+                  const selectedForPlatform = platformAccIds.filter((id) =>
+                    selectedAccounts.includes(id)
+                  );
+                  const isAllSelected =
+                    platformAccIds.length > 0 &&
+                    selectedForPlatform.length === platformAccIds.length;
+                  const isPartiallySelected = selectedForPlatform.length > 0 && !isAllSelected;
+
+                  return (
+                    <Box
+                      key={plat.id}
+                      style={{
+                        marginBottom: 14,
+                      }}
+                    >
+                      {/* Platform Group Header Bar */}
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          backgroundColor: `${plat.color}10`,
+                          paddingVertical: 8,
+                          paddingHorizontal: 12,
+                          borderRadius: 8,
+                          marginBottom: 4,
+                        }}
+                        onPress={() => togglePlatform(plat.id)}
+                      >
+                        <HStack space="xs" className="items-center" style={{ flex: 1 }}>
+                          <Feather
+                            name={
+                              isAllSelected
+                                ? 'check-square'
+                                : isPartiallySelected
+                                  ? 'minus-square'
+                                  : 'square'
+                            }
+                            size={16}
+                            color={plat.color}
+                            style={{ marginRight: 8 }}
+                          />
+                          <FontAwesome
+                            name={plat.icon as any}
+                            size={15}
+                            color={plat.color}
+                            style={{ marginRight: 6 }}
+                          />
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: '800',
+                              color: plat.color,
+                              letterSpacing: 0.5,
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {plat.label}
+                          </Text>
+                        </HStack>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            color: '#64748b',
+                            fontWeight: '600',
+                          }}
+                        >
+                          {selectedForPlatform.length}/{platformAccounts.length} selected
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Account Items List under Platform */}
+                      <VStack space="xs">
+                        {platformAccounts.map((acc) => {
+                          const accId = acc.account_id || acc.value || acc.id || acc._id;
+                          const isAccChecked = selectedAccounts.includes(accId);
+                          const displayName =
+                            acc.account_name ||
+                            (acc.first_name
+                              ? `${acc.first_name} ${acc.last_name || ''}`.trim()
+                              : '') ||
+                            acc.username ||
+                            plat.label;
+
+                          const subtitle = acc.page_id
+                            ? `Page: ${acc.page_id}`
+                            : acc.waba_id
+                              ? `WABA: ${acc.waba_id}`
+                              : acc.username
+                                ? acc.username.startsWith('@')
+                                  ? acc.username
+                                  : `@${acc.username}`
+                                : '';
+
+                          return (
+                            <TouchableOpacity
+                              key={accId}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                paddingVertical: 8,
+                                paddingHorizontal: 8,
+                                borderRadius: 8,
+                                marginVertical: 1,
+                              }}
+                              onPress={() => {
+                                const updated = isAccChecked
+                                  ? selectedAccounts.filter((id) => id !== accId)
+                                  : [...selectedAccounts, accId];
+                                handleAccountSelection(updated);
+                              }}
+                            >
+                              <HStack space="sm" className="items-center" style={{ flex: 1 }}>
+                                <Box
+                                  style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 18,
+                                    backgroundColor: `${plat.color}20`,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  <FontAwesome
+                                    name={plat.icon as any}
+                                    size={16}
+                                    color={plat.color}
+                                  />
+                                </Box>
+                                <VStack style={{ flex: 1 }}>
+                                  <Text
+                                    style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }}
+                                    numberOfLines={1}
+                                  >
+                                    {displayName}
+                                  </Text>
+                                  {subtitle ? (
+                                    <Text
+                                      style={{ fontSize: 11, color: '#64748b' }}
+                                      numberOfLines={1}
+                                    >
+                                      {subtitle}
+                                    </Text>
+                                  ) : null}
+                                </VStack>
+                              </HStack>
+                              <Feather
+                                name={isAccChecked ? 'check-circle' : 'circle'}
+                                size={18}
+                                color={isAccChecked ? '#2563eb' : '#94a3b8'}
+                              />
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </VStack>
+                    </Box>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            {/* Modal Footer Buttons */}
+            <HStack
+              className="items-center justify-between"
+              style={{ paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', marginTop: 8 }}
+            >
+              <TouchableOpacity
+                onPress={handleCancelNetworksModal}
+                style={{ paddingVertical: 8, paddingHorizontal: 16 }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: '700',
+                    color: '#475569',
+                    borderWidth: 1,
+                    borderColor: '#cbd5e1',
+                    borderRadius: 20,
+                    paddingVertical: 7,
+                    paddingHorizontal: 18,
+                  }}
+                >
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#2563eb',
+                  paddingHorizontal: 20,
+                  paddingVertical: 9,
+                  borderRadius: 20,
+                }}
+                onPress={handleDoneNetworksModal}
+              >
+                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '700' }}>
+                  Done ({selectedAccounts.length} account{selectedAccounts.length === 1 ? '' : 's'})
+                </Text>
+              </TouchableOpacity>
+            </HStack>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </Box>
   );
@@ -2189,7 +2927,7 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     paddingHorizontal: 18,
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   modalHeaderAvatar: {
     width: 44,

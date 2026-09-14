@@ -238,7 +238,9 @@ export default function CompanyInformation({
                 onBlur={() => onTouch?.('company_address')}
               />
             </View>
-            {errors?.company_address && <Text style={styles.errorText}>{errors.company_address}</Text>}
+            {errors?.company_address && (
+              <Text style={styles.errorText}>{errors.company_address}</Text>
+            )}
           </VStack>
         </VStack>
 
