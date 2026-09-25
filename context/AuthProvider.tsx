@@ -284,5 +284,5 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     [authState, requestOtp, resendOtp, verifyOtp, signOut, updateUser]
   );
 
-  return <AuthContext value={contextValue}>{children}</AuthContext>;
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
