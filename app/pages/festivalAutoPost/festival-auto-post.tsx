@@ -429,7 +429,6 @@ export default function FestivalAutoPostScreen() {
   const [networksModalOpen, setNetworksModalOpen] = useState(false);
   const [platformSpecificContent, setPlatformSpecificContent] = useState<Record<string, any[]>>({});
   const [platformOverrides, setPlatformOverrides] = useState<Record<string, any>>({});
-  const [contentTypeOverrides, setContentTypeOverrides] = useState<Record<string, string>>({});
 
   const fetchAndSetSocialAccounts = async () => {
     try {
@@ -510,7 +509,7 @@ export default function FestivalAutoPostScreen() {
                 override.hashtags && override.hashtags.length > 0 ? override.hashtags : hashtags,
               link: override.link || '',
               mediaUrl: override.image_url !== undefined ? override.image_url : imageUrl || '',
-              contentType: override.contentType || contentTypeOverrides[platform] || 'media',
+              contentType: override.contentType || 'media',
             };
           });
         } else {
@@ -523,7 +522,7 @@ export default function FestivalAutoPostScreen() {
                 override.hashtags && override.hashtags.length > 0 ? override.hashtags : hashtags,
               link: override.link || '',
               mediaUrl: override.image_url !== undefined ? override.image_url : imageUrl || '',
-              contentType: override.contentType || contentTypeOverrides[platform] || 'media',
+              contentType: override.contentType || 'media',
             },
           ];
         }
@@ -1124,8 +1123,7 @@ export default function FestivalAutoPostScreen() {
             const accId = acc.account_id || acc.value || acc.id || acc._id;
             const item = existingEntries.find((e: any) => e.account_id === accId) || {};
 
-            const itemContentType =
-              item.contentType || override.contentType || contentTypeOverrides[platform] || 'media';
+            const itemContentType = item.contentType || override.contentType || 'media';
             const itemCaption =
               item.caption !== undefined ? item.caption : override.caption || caption || '';
             const itemLink = item.link || override.link || '';
@@ -1154,8 +1152,7 @@ export default function FestivalAutoPostScreen() {
           });
         } else {
           const item = existingEntries[0] || {};
-          const itemContentType =
-            item.contentType || override.contentType || contentTypeOverrides[platform] || 'media';
+          const itemContentType = item.contentType || override.contentType || 'media';
           const itemCaption =
             item.caption !== undefined ? item.caption : override.caption || caption || '';
           const itemLink = item.link || override.link || '';
@@ -2007,7 +2004,7 @@ export default function FestivalAutoPostScreen() {
                         style={{
                           backgroundColor: '#2563eb',
                           paddingHorizontal: 10,
-                          paddingVertical: 6,
+                          paddingVertical: 5,
                           borderRadius: 8,
                         }}
                       >
@@ -2171,7 +2168,7 @@ export default function FestivalAutoPostScreen() {
           onPress={() => setNetworksModalOpen(false)}
         >
           <TouchableOpacity activeOpacity={1} style={styles.actionMenuModalBox}>
-            <HStack className="mb-3 items-center justify-between">
+            <HStack className="mb-2 items-center justify-between">
               <Heading size="md" style={{ color: '#0f172a', fontWeight: '800', fontSize: 18 }}>
                 Select Platforms & Accounts
               </Heading>
@@ -2406,11 +2403,11 @@ export default function FestivalAutoPostScreen() {
             {/* Modal Footer Buttons */}
             <HStack
               className="items-center justify-between"
-              style={{ paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9', marginTop: 8 }}
+              style={{ paddingTop: 2, borderTopWidth: 1, borderTopColor: '#f1f5f9', marginTop: 0 }}
             >
               <TouchableOpacity
                 onPress={handleCancelNetworksModal}
-                style={{ paddingVertical: 8, paddingHorizontal: 16 }}
+                style={{ paddingVertical: 2, paddingHorizontal: 8, marginTop: 5 }}
               >
                 <Text
                   style={{
@@ -2419,9 +2416,9 @@ export default function FestivalAutoPostScreen() {
                     color: '#475569',
                     borderWidth: 1,
                     borderColor: '#cbd5e1',
-                    borderRadius: 20,
-                    paddingVertical: 7,
-                    paddingHorizontal: 18,
+                    borderRadius: 10,
+                    paddingVertical: 5,
+                    paddingHorizontal: 16,
                   }}
                 >
                   Cancel
@@ -2431,9 +2428,9 @@ export default function FestivalAutoPostScreen() {
               <TouchableOpacity
                 style={{
                   backgroundColor: '#2563eb',
-                  paddingHorizontal: 20,
-                  paddingVertical: 9,
-                  borderRadius: 20,
+                  paddingHorizontal: 16,
+                  paddingVertical: 5,
+                  borderRadius: 10,
                 }}
                 onPress={handleDoneNetworksModal}
               >
@@ -2825,7 +2822,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    marginHorizontal: 15,
   },
   dropdownModalBox: {
     width: 220,
@@ -3076,8 +3073,8 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 10,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 6,
+    paddingVertical: 6,
+    marginBottom: 4,
   },
   aiBtnText: {
     color: '#fff',
@@ -3136,7 +3133,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     justifyContent: 'center',
-    height: 44,
+    height: 40,
     borderWidth: 1,
     borderColor: '#bfdbfe',
   },
@@ -3240,7 +3237,7 @@ const styles = StyleSheet.create({
     color: '#dc2626',
   },
   modalFooter: {
-    padding: 16,
+    padding: 10,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     backgroundColor: '#f8fafc',
@@ -3259,10 +3256,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   actionMenuModalBox: {
-    width: 250,
+    width: '100%',
     backgroundColor: '#ffffff',
     borderRadius: 18,
-    padding: 8,
+    padding: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,

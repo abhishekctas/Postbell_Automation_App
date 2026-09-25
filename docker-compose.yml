@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  android-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: postbell-android-builder
+    volumes:
+      - ./android/app/build/outputs:/app/android/app/build/outputs

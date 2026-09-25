@@ -21,7 +21,6 @@ import { Text } from '@/components/ui/text';
 import { Heading } from '@/components/ui/heading';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import {
   getMyActiveSubscription,
   getMyUsageStats,

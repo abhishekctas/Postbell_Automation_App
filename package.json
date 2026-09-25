@@ -13,9 +13,10 @@
     "prettier": "prettier --write .",
     "prettier:check": "prettier --check .",
     "build:web": "expo export",
-    "build:android": "export JAVA_HOME=\"${JAVA_HOME:-/home/ctas37/.gradle/jdks/eclipse_adoptium-17-amd64-linux.2}\" && cd android && ./gradlew assembleRelease",
+    "build:android": "NODE_ENV=production cd android && ./gradlew assembleRelease",
     "android-build": "eas build --platform android",
-    "ios-build": "eas build --platform ios"
+    "ios-build": "eas build --platform ios",
+    "build:configure": "eas build:configure"
   },
   "jest": {
     "preset": "jest-expo"
@@ -44,7 +45,7 @@
     "expo-font": "~14.0.9",
     "expo-haptics": "~15.0.7",
     "expo-image": "~3.0.10",
-    "expo-image-manipulator": "^57.0.12",
+    "expo-image-manipulator": "~14.0.8",
     "expo-image-picker": "~17.0.11",
     "expo-linear-gradient": "~15.0.7",
     "expo-linking": "~8.0.9",
