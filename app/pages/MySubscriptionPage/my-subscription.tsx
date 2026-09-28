@@ -356,7 +356,7 @@ export default function MySubscriptionScreen() {
                             </Text>
                             <Text style={styles.heroPlanCycleSub}>
                               {activeSub.billing_cycle === 'annual' ||
-                              activeSub.billing_cycle === 'yearly'
+                                activeSub.billing_cycle === 'yearly'
                                 ? 'Billed annually'
                                 : 'Billed monthly'}
                               {activeSub.plan_id?.description
@@ -392,7 +392,7 @@ export default function MySubscriptionScreen() {
                             <Text style={styles.priceCycle}>
                               per{' '}
                               {activeSub.billing_cycle === 'annual' ||
-                              activeSub.billing_cycle === 'yearly'
+                                activeSub.billing_cycle === 'yearly'
                                 ? 'year'
                                 : 'month'}
                             </Text>
@@ -484,7 +484,7 @@ export default function MySubscriptionScreen() {
                             <Text style={styles.infoLabel}>Cycle</Text>
                             <Text style={styles.infoVal}>
                               {activeSub.billing_cycle === 'annual' ||
-                              activeSub.billing_cycle === 'yearly'
+                                activeSub.billing_cycle === 'yearly'
                                 ? 'Annual'
                                 : 'Monthly'}
                             </Text>
@@ -1018,7 +1018,7 @@ export default function MySubscriptionScreen() {
                                           ((item.usage.ai_content_used_today || 0) /
                                             (item.plan_snapshot?.ai_content_generation_limit ||
                                               200)) *
-                                            100
+                                          100
                                         )}%`,
                                       },
                                     ]}
@@ -1289,14 +1289,14 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 82
   },
 
   tabContainer: {
     backgroundColor: '#f1f5f9',
     borderRadius: 12,
     padding: 4,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   tabBtn: {
     flex: 1,

@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
-    paddingBottom: 110,
+    paddingBottom: 130,
   },
   tabScrollContent: {
     flexDirection: 'row',

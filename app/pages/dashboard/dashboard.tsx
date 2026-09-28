@@ -11,6 +11,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -600,15 +601,15 @@ function SubscriptionAnalyticsSection({
     data.statusBreakdown
   )
     ? (data.statusBreakdown as any[]).map((s: any) => ({
-        name: s.status || s._id || s.name || 'Unknown',
-        count: s.count ?? 0,
-        revenue: s.revenue ?? 0,
-      }))
+      name: s.status || s._id || s.name || 'Unknown',
+      count: s.count ?? 0,
+      revenue: s.revenue ?? 0,
+    }))
     : Object.entries(data.statusBreakdown ?? {}).map(([status, item]: [string, any]) => ({
-        name: status,
-        count: item?.count ?? 0,
-        revenue: item?.revenue ?? 0,
-      }));
+      name: status,
+      count: item?.count ?? 0,
+      revenue: item?.revenue ?? 0,
+    }));
 
   return (
     <Box style={styles.cardWrapper}>
@@ -1215,6 +1216,7 @@ function WebsiteVisitorsSection({
 
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
   const isCustomer =
     user?.loginType === 'customer' || user?.role_name?.toLowerCase().includes('customer');
@@ -1429,7 +1431,7 @@ export default function DashboardScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0b53f8" />
         }
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 90 }]}
       >
         {/* ── ERROR ─────────────────────────────────────────────────────────── */}
         {error && (
@@ -1718,7 +1720,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 85,
+    // paddingBottom: 70,
   },
   errorBox: {
     backgroundColor: '#fee2e2',

@@ -10,6 +10,7 @@ import {
   Platform,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
@@ -90,6 +91,7 @@ function InfoRow({
 }
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const { user, signOut, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -302,7 +304,7 @@ export default function ProfileScreen() {
           <ActivityIndicator size="large" color="#0052d4" />
         </Box>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 65 }]} showsVerticalScrollIndicator={false}>
           {/* Profile card */}
           <Box style={styles.profileCard}>
             <HStack space="lg" className="items-center">
@@ -401,9 +403,6 @@ export default function ProfileScreen() {
               </HStack>
             </TouchableOpacity>
           </VStack>
-
-          {/* Footer version */}
-          <Text style={styles.footerVersion}>PostBell v1.0.0</Text>
         </ScrollView>
       )}
     </Box>
@@ -469,6 +468,7 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     paddingBottom: 40,
+    marginBottom: "auto"
   },
   profileCard: {
     backgroundColor: '#ffffff',
@@ -612,12 +612,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#0052d4',
     borderRadius: 12,
     marginTop: 12,
-  },
-  footerVersion: {
-    fontSize: 12,
-    color: '#94a3b8',
-    textAlign: 'center',
-    marginTop: 20,
-    fontWeight: '500',
   },
 });

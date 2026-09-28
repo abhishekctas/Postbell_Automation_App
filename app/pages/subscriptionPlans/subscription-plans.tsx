@@ -910,7 +910,7 @@ export default function SubscriptionPlansScreen() {
           </Box>
         ) : (
           <ScrollView
-            contentContainerStyle={{ paddingBottom: 80 }}
+            contentContainerStyle={{ paddingBottom: 130 }}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563eb" />
@@ -1623,21 +1623,21 @@ export default function SubscriptionPlansScreen() {
                 {/* Popularity badges if any */}
                 {(selectedPlanForDetails.is_popular_monthly ||
                   selectedPlanForDetails.is_popular_annual) && (
-                  <HStack space="xs" className="mb-4">
-                    {selectedPlanForDetails.is_popular_monthly && (
-                      <Box style={styles.popularTag}>
-                        <Star size={12} color="#d97706" />
-                        <Text style={styles.popularTagText}>Popular Monthly</Text>
-                      </Box>
-                    )}
-                    {selectedPlanForDetails.is_popular_annual && (
-                      <Box style={styles.popularTag}>
-                        <Crown size={12} color="#d97706" />
-                        <Text style={styles.popularTagText}>Popular Annual</Text>
-                      </Box>
-                    )}
-                  </HStack>
-                )}
+                    <HStack space="xs" className="mb-4">
+                      {selectedPlanForDetails.is_popular_monthly && (
+                        <Box style={styles.popularTag}>
+                          <Star size={12} color="#d97706" />
+                          <Text style={styles.popularTagText}>Popular Monthly</Text>
+                        </Box>
+                      )}
+                      {selectedPlanForDetails.is_popular_annual && (
+                        <Box style={styles.popularTag}>
+                          <Crown size={12} color="#d97706" />
+                          <Text style={styles.popularTagText}>Popular Annual</Text>
+                        </Box>
+                      )}
+                    </HStack>
+                  )}
 
                 {/* Modal Footer / Close Button */}
                 <TouchableOpacity
