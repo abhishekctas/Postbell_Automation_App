@@ -1902,8 +1902,8 @@ export default function FestivalAutoPostScreen() {
                         }}
                       >
                         {previewImageUri &&
-                        !modalImageLoadError &&
-                        !previewImageUri.includes('360_image') ? (
+                          !modalImageLoadError &&
+                          !previewImageUri.includes('360_image') ? (
                           <Image
                             source={{ uri: previewImageUri }}
                             style={styles.imagePreview}
@@ -2592,6 +2592,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingTop: 14,
     paddingBottom: 40,
+    paddingBlock: "auto"
   },
   igCard: {
     backgroundColor: '#ffffff',
@@ -2762,7 +2763,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     marginTop: 0,
     paddingHorizontal: 8,
-    paddingVertical: 10,
+    paddingVertical: 6,
     marginBottom: 40,
   },
   paginationInfo: {

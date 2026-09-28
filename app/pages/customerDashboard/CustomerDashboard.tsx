@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Box } from '@/components/ui/box';
 import { VStack } from '@/components/ui/vstack';
@@ -324,6 +325,7 @@ const getPlatformMeta = (platformKey: string) => {
 };
 
 export default function CustomerDashboard() {
+  const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
   const userId = user?._id || user?.id || '';
 
@@ -567,7 +569,7 @@ export default function CustomerDashboard() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 45 }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#193867']} />
         }
