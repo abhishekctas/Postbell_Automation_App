@@ -273,7 +273,6 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}): Pro
 
       for (const altUrl of candidates) {
         try {
-          console.log('Retrying with alternate host IP:', altUrl);
           let altConfig = config;
           if (options.body && typeof options.body === 'object' && (options.body as any)._parts) {
             const freshFormData = new FormData();

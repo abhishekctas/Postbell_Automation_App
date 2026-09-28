@@ -64,7 +64,6 @@ export default function BlogsScreen() {
   const [viewingImage, setViewingImage] = useState<{ url: string; title: string } | null>(null);
 
   // Form State
-  const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const [showTagSelect, setShowTagSelect] = useState(false);
 
   const fetchTagsList = async () => {
@@ -714,7 +713,6 @@ export default function BlogsScreen() {
                 <TouchableOpacity
                   style={styles.selectItem}
                   onPress={() => {
-                    setSelectedTag(item);
                     setShowTagSelect(false);
                   }}
                 >

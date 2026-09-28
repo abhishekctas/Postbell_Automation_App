@@ -204,7 +204,7 @@ export default function SystemLogsScreen() {
   const [dateTo, setDateTo] = useState<string>(getTodayDateString());
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  // const [hasMore, setHasMore] = useState(true);
 
   const [selectedLog, setSelectedLog] = useState<SystemLog | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<'from' | 'to' | null>(null);
@@ -241,7 +241,7 @@ export default function SystemLogsScreen() {
 
         const lastPage = res?.pagination?.lastPage || (items.length >= 10 ? pg + 1 : pg);
         setTotalPages(Math.max(1, lastPage));
-        setHasMore(pg < lastPage);
+        // setHasMore(pg < lastPage);
         setPage(pg);
       } catch (error) {
         console.error('Error fetching system logs:', error);
