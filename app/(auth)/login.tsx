@@ -216,7 +216,7 @@ export default function LoginScreen() {
         <VStack space="xs" style={styles.headerContainer}>
           <Box style={styles.logoBox}>
             <Image
-              source={require('../../assets/images/Generated_Image_logo.png')}
+              source={require('../../assets/images/postbell_logo.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
