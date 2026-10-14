@@ -7,6 +7,7 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
@@ -158,6 +159,7 @@ const WIZARD_STEPS = [
 
 export default function CustomerSetupWizard() {
   const { updateUser } = useAuth();
+  const insets = useSafeAreaInsets();
   const { step } = useLocalSearchParams<{ tab?: string; step?: string }>();
   const [activeStep, setActiveStep] = useState(0);
   const [setupData, setSetupData] = useState<SetupWizardData>(initialSetupData);
@@ -501,7 +503,7 @@ export default function CustomerSetupWizard() {
       </ScrollView>
 
       {/* Sticky Bottom Actions Bar */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           {/* Back Button */}
           <TouchableOpacity
@@ -652,8 +654,9 @@ const styles = StyleSheet.create({
   },
   stepContentBox: {},
   bottomBar: {
-    paddingTop: 8,
+    paddingTop: 10,
     paddingBottom: 8,
+    paddingHorizontal: 12,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     backgroundColor: '#f8fafc',
