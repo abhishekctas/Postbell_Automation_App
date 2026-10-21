@@ -136,7 +136,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#e2e8f0',
-    overflow: 'hidden',
     paddingHorizontal: 8,
   },
   mainCardNoTabBar: {
