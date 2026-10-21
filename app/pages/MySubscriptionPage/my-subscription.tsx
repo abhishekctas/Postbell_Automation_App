@@ -1289,7 +1289,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
-    paddingBottom: 82
+    paddingBottom: 88
   },
 
   tabContainer: {
