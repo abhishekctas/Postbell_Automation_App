@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
     overflow: 'hidden',
-    marginBottom: 40,
+    marginBottom: 50,
     marginHorizontal: 15,
   },
   weekdayHeaderRow: {
@@ -865,7 +865,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
     justifyContent: 'space-between',
-    marginBottom: 40,
+    marginBottom: 50,
     marginHorizontal: 15,
   },
   yearMonthCard: {

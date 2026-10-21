@@ -425,7 +425,7 @@ export default function CustomerSetupWizard() {
   }
 
   return (
-    <VStack space="md" style={styles.container}>
+    <VStack space="sm" style={styles.container}>
       {/* Top Stepper Bar */}
       <View style={styles.stepperContainer}>
         <ScrollView

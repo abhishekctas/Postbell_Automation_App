@@ -2591,7 +2591,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingTop: 14,
-    paddingBottom: 40,
+    paddingBottom: 45,
     paddingBlock: "auto"
   },
   igCard: {
@@ -2762,8 +2762,8 @@ const styles = StyleSheet.create({
   paginationCard: {
     backgroundColor: '#ffffff',
     marginTop: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     marginBottom: 40,
   },
   paginationInfo: {
