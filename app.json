@@ -27,8 +27,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/postbell_logo.png",
-        "backgroundImage": "./assets/images/postbell_logo.png",
+        "foregroundImage": "./assets/images/icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "softwareKeyboardLayoutMode": "pan",
@@ -52,8 +51,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/postbell_logo.png",
-          "imageWidth": 200,
+          "image": "./assets/images/splash-icon-padded.png",
+          "imageWidth": 288,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
