@@ -79,6 +79,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f1f5f9',
+    paddingBottom: 40,
   },
   headerGradient: {
     paddingTop: 38,
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 12,
     marginTop: -12,
-    marginBottom: 90,
+    marginBottom: 85,
     backgroundColor: '#f8fafc',
     borderRadius: 20,
     borderWidth: 2,
@@ -139,6 +140,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   mainCardNoTabBar: {
-    marginBottom: 30,
+    marginBottom: 18,
   },
 });
