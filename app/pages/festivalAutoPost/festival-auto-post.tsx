@@ -2591,7 +2591,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingTop: 14,
-    paddingBottom: 45,
+    paddingBottom: 65,
     paddingBlock: "auto"
   },
   igCard: {

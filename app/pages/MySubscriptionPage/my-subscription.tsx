@@ -1286,10 +1286,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     marginTop: -20,
     elevation: 4,
+    paddingBottom: 40,
   },
   scroll: {
     padding: 16,
-    paddingBottom: 88
+    paddingBottom: 88,
   },
 
   tabContainer: {
