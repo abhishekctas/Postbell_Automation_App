@@ -2502,6 +2502,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 4,
+    marginBottom: 22,
   },
   addBtn: {
     borderRadius: 12,
