@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 12,
     marginTop: -12,
-    marginBottom: 80,
+    marginBottom: 90,
     backgroundColor: '#f8fafc',
     borderRadius: 20,
     borderWidth: 2,
@@ -139,6 +139,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   mainCardNoTabBar: {
-    marginBottom: 18,
+    marginBottom: 30,
   },
 });
