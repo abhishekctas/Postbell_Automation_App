@@ -503,7 +503,7 @@ export default function CustomerSetupWizard() {
       </ScrollView>
 
       {/* Sticky Bottom Actions Bar */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <View style={[styles.bottomBar]}>
         <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           {/* Back Button */}
           <TouchableOpacity
@@ -656,7 +656,6 @@ const styles = StyleSheet.create({
   bottomBar: {
     paddingTop: 10,
     paddingBottom: 8,
-    paddingHorizontal: 12,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
     backgroundColor: '#f8fafc',
@@ -708,8 +707,8 @@ const styles = StyleSheet.create({
   completeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 9,
     backgroundColor: '#16a34a',
   },

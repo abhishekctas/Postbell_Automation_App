@@ -982,7 +982,7 @@ export default function PostDetailsScreen() {
         </Box>
 
         {/* ── Platforms Section ── */}
-        <VStack style={{ marginTop: 8, marginBottom: 14 }}>
+        <VStack style={{ marginTop: 8, marginBottom: 8 }}>
           <Text style={styles.platformsSectionTitle}>PLATFORMS</Text>
 
           {/* Platform Pills / Tab Selector */}
@@ -1198,7 +1198,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 55,
   },
   card: {
     backgroundColor: '#ffffff',
