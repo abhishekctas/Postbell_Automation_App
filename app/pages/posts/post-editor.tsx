@@ -3232,7 +3232,7 @@ export default function PostEditorScreen() {
         {/* TAB 2: MANUAL POSTING COMPOSER */}
         {/* ================================================================= */}
         {activeTab === 'manual' && (
-          <VStack space="md">
+          <VStack space="md" style={{ marginBottom: 60 }}>
             {/* Form Validation Global Error Banner */}
             {errors.main && (
               <Box style={styles.errorBanner}>
@@ -5111,7 +5111,7 @@ export default function PostEditorScreen() {
             </Box>
 
             {/* Save & Action Buttons Bar */}
-            <VStack space="sm" style={{ marginTop: 8, marginBottom: 50 }}>
+            <VStack space="sm" style={{ marginTop: 8 }}>
               <TouchableOpacity
                 style={[styles.primaryBtn, { backgroundColor: '#0052d4' }]}
                 onPress={() => handleSavePost(isScheduled ? 'scheduled' : 'draft')}
